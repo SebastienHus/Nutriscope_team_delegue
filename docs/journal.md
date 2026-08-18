@@ -101,9 +101,13 @@ Sel (salt_100g)
 Ce jeu de données servira de base aux prochaines phases de nettoyage, d'analyse statistique et d'exploitation des données nutritionnelles.
 
 Cinq  questions  à  résoudre  en  équipe  :  
+
     - combien  de  produits  vendus  en  France  ?  
-    Nous avons trouvé 1136108 produits vendus en France et DOM-TOM.
-    - quelle  part  a  un  Nutri-Score renseigné  ?  
+    Nous avons trouvé 1 136 108 produits vendus en France et DOM-TOM.
+
+    - quelle  part  a  un  Nutri-Score renseigné  ?
+    59.13% ne sont pas renseignés.
+
     - les  dix  marques  les  plus  présentes  ?  
     Carrefour       17129
     Auchan          13770
@@ -115,6 +119,13 @@ Cinq  questions  à  résoudre  en  équipe  :
     Picard           3494
     Nestlé           3468
     Monoprix         3384
-    - le  taux  de  manquants  sur  les  nutriments  clés  ( energy_100g , sugars_100g ,  salt_100g ) ? 
+
+    - le  taux  de  manquants  sur  les  nutriments  clés  ( energy_100g , sugars_100g ,  salt_100g ) ?
+    energy_100g : 0.3046
+    sugars_100g : 0.3104
+    salt_100g : 0.3522
 
     - qu'est-ce qui vous semble le plus « sale » dans ces données ?
+    Les données sont très hétérogènes. Nous retrouvons plusieurs langues dans les descriptions des produits.
+    Les régions de France sont segmentées par DOM-TOM, origine des produits et destination. Il est très difficile de trier à partir d'un pays particulier.
+    Le .csv renseigne plus de colonnes que le .parquet notamment en ce qui concerne les valeurs nutritionnelles. Ce n'est pas le cas du .parquet qui regroupe le tout en une seule colonne "nutriments". Il existe donc des différences structurelles entre les différents fichiers de données ce qui empêche leur interchangeabilité.
