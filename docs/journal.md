@@ -102,28 +102,28 @@ Ce jeu de données servira de base aux prochaines phases de nettoyage, d'analyse
 
 Cinq  questions  à  résoudre  en  équipe  :  
 
-    - combien  de  produits  vendus  en  France  ?  
-    Nous avons trouvé 1 136 108 produits vendus en France et DOM-TOM.
+    - combien  de  produits  vendus  en  France  ?
+    Nous avons trouvé 1 136 108 produits vendus en France et DOM-TOM. Nous avons retiré les produits qui n'ont aucun nom.
 
     - quelle  part  a  un  Nutri-Score renseigné  ?
-    59.13% sont renseignés.
+    55.09% sont renseignés.
 
     - les  dix  marques  les  plus  présentes  ?  
-    Carrefour       17129
-    Auchan          13770
-    U               11947
-    Leader Price     5480
-    Casino           5135
-    Cora             3978
-    Le Gaulois       3555
-    Picard           3494
-    Nestlé           3468
-    Monoprix         3384
+    Carrefour       15121
+    Auchan          13569
+    U               11856
+    Leader Price     5422
+    Casino           5071
+    Cora             3935
+    Le Gaulois       3418
+    Picard           3405
+    Nestlé           3310
+    Monoprix         3260
 
     - le  taux  de  manquants  sur  les  nutriments  clés  ( energy_100g , sugars_100g ,  salt_100g ) ?
-    energy_100g : 0.3046
-    sugars_100g : 0.3104
-    salt_100g : 0.3522
+    energy_100g : 0.2351
+    sugars_100g : 0.2412
+    salt_100g : 0.2873
 
     - qu'est-ce qui vous semble le plus « sale » dans ces données ?
     Les données sont très hétérogènes. Nous retrouvons plusieurs langues dans les descriptions des produits.
