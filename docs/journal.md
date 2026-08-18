@@ -106,7 +106,7 @@ Cinq  questions  à  résoudre  en  équipe  :
     Nous avons trouvé 1 136 108 produits vendus en France et DOM-TOM.
 
     - quelle  part  a  un  Nutri-Score renseigné  ?
-    59.13% ne sont pas renseignés.
+    59.13% sont renseignés.
 
     - les  dix  marques  les  plus  présentes  ?  
     Carrefour       17129
