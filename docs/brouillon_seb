@@ -1,0 +1,50 @@
+proposition colonne a garder 
+
+--colonnes qui identifient et affichent un produit
+code
+product_name
+brands
+brands_tags ?????
+quantity
+main_category
+categories
+categories_tags
+image_url
+
+    -- Bonus ? 
+    ingredients_text
+    allergens
+    traces
+
+
+--pour calculer des scores comparer des produits peut etre proposer d autre produits
+-- categorie trop specifique pas forcement mise 
+energy-kcal_100g
+fat_100g
+saturated-fat_100g
+carbohydrates_100g
+sugars_100g
+fiber_100g
+proteins_100g
+salt_100g
+
+
+--Score deja calculer pourrait etre utile plus tard ? 
+nutriscore_score
+nutriscore_grade
+nova_group
+environmental_score_score
+environmental_score_grade
+
+countries
+
+completeness 
+no_nutrition_data--> voir hypo 
+
+
+comment determiner si unproduit est gardé ou non 
+en gros parmis ses colonnes les quelles on le plus de valeurs
+
+
+pour les 8 huite categorie cela correspond t il a des type de produit consommé ?
+
