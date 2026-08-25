@@ -19,3 +19,18 @@ Principaux champs pris en compte :
 
 Utilisation dans NutriScope :
 Cette colonne permet de filtrer les produits de mauvaise qualité documentaire. Nous pouvons par exemple conserver uniquement les produits ayant une complétude supérieure ou égale à 0,70 afin de garantir des analyses nutritionnelles fiables.
+
+
+
+
+code barre 
+type sur les nutriments
+categorie 
+marque
+completion taux ( le notre ou celui du jeu de donnée ) on part sur le notre mais il faudra aussi garder celui de base pour la analyse futur auquels se plie les distributeurs
+nutri score ( tout les score )
+les colonne lie a la determination du nutriscore  energie sucre sel fibre graisse fruit-legume a confirmer 
+prix 
+scan par jour ?,-->unique_scans_n
+label ( pour futur proposition un produit bio substituer doit proposer un autre produit bio en priorite )
+data liée aux Images
