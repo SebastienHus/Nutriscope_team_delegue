@@ -1,0 +1,713 @@
+========================================================================
+DICTIONNAIRE DE DONNÉES - OPEN FOOD FACTS
+========================================================================
+
+IDENTIFICATION DU PRODUIT
+------------------------------------------------------------------------
+
+1. code
+    Code-barres unique du produit.
+
+2. url
+    URL de la fiche produit Open Food Facts.
+
+3. product_name
+    Nom commercial du produit.
+
+4. abbreviated_product_name
+    Version abrégée du nom du produit.
+
+5. generic_name
+    Désignation générique du produit.
+
+6. main_category
+    Catégorie principale du produit.
+
+7. main_category_en
+    Catégorie principale en anglais.
+
+MÉTADONNÉES ET HISTORIQUE
+------------------------------------------------------------------------
+
+8. creator
+    Utilisateur ayant créé la fiche.
+
+9. created_t
+    Horodatage Unix de création.
+
+10. created_datetime
+    Date et heure de création.
+
+11. last_modified_t
+    Horodatage Unix de dernière modification.
+
+12. last_modified_datetime
+    Date et heure de dernière modification.
+
+13. last_modified_by
+    Dernier contributeur ayant modifié la fiche.
+
+14. last_updated_t
+    Horodatage Unix de dernière mise à jour.
+
+15. last_updated_datetime
+    Date et heure de dernière mise à jour.
+
+16. owner
+    Propriétaire de la fiche ou organisation associée.
+
+INFORMATIONS COMMERCIALES
+------------------------------------------------------------------------
+
+17. brands
+    Marques du produit.
+
+18. brands_tags
+    Marques normalisées sous forme de tags.
+
+19. brands_en
+    Marques en anglais.
+
+20. brand_owner
+    Société propriétaire de la marque.
+
+21. quantity
+    Quantité indiquée sur l'emballage.
+
+22. product_quantity
+    Valeur numérique de la quantité du produit.
+
+EMBALLAGE ET CONDITIONNEMENT
+------------------------------------------------------------------------
+
+23. packaging
+    Type(s) d'emballage du produit.
+
+24. packaging_tags
+    Types d'emballage normalisés.
+
+25. packaging_en
+    Informations d'emballage en anglais.
+
+26. packaging_text
+    Description libre de l'emballage.
+
+27. emb_codes
+    Codes EMB des établissements de conditionnement.
+
+28. emb_codes_tags
+    Codes EMB normalisés.
+
+29. first_packaging_code_geo
+    Coordonnées géographiques associées au premier code EMB.
+
+ORIGINE ET FABRICATION
+------------------------------------------------------------------------
+
+30. origins
+    Origines déclarées du produit.
+
+31. origins_tags
+    Origines normalisées.
+
+32. origins_en
+    Origines en anglais.
+
+33. manufacturing_places
+    Lieux de fabrication.
+
+34. manufacturing_places_tags
+    Lieux de fabrication normalisés.
+
+35. cities
+    Villes associées au produit.
+
+36. cities_tags
+    Villes normalisées.
+
+37. countries
+    Pays associés au produit.
+
+38. countries_tags
+    Pays normalisés.
+
+39. countries_en
+    Pays en anglais.
+
+DISTRIBUTION ET ACHAT
+------------------------------------------------------------------------
+
+40. purchase_places
+    Lieux d'achat du produit.
+
+41. stores
+    Enseignes ou magasins référencés.
+
+CATÉGORISATION ET CLASSIFICATIONS
+------------------------------------------------------------------------
+
+42. categories
+    Catégories du produit.
+
+43. categories_tags
+    Catégories normalisées.
+
+44. categories_en
+    Catégories en anglais.
+
+45. pnns_groups_1
+    Groupe nutritionnel PNNS de niveau 1.
+
+46. pnns_groups_2
+    Groupe nutritionnel PNNS de niveau 2.
+
+47. food_groups
+    Groupe alimentaire du produit.
+
+48. food_groups_tags
+    Groupe alimentaire normalisé.
+
+49. food_groups_en
+    Groupe alimentaire en anglais.
+
+LABELS ET CERTIFICATIONS
+------------------------------------------------------------------------
+
+50. labels
+    Labels, certifications et mentions qualité.
+
+51. labels_tags
+    Labels normalisés.
+
+52. labels_en
+    Labels en anglais.
+
+INGRÉDIENTS, ADDITIFS ET ALLERGÈNES
+------------------------------------------------------------------------
+
+53. ingredients_text
+    Liste des ingrédients.
+
+54. ingredients_tags
+    Ingrédients normalisés.
+
+55. ingredients_analysis_tags
+    Résultats d'analyse automatique des ingrédients.
+
+56. additives_n
+    Nombre d'additifs identifiés.
+
+57. additives
+    Liste des additifs.
+
+58. additives_tags
+    Additifs normalisés.
+
+59. additives_en
+    Additifs en anglais.
+
+60. allergens
+    Allergènes déclarés.
+
+61. allergens_en
+    Allergènes en anglais.
+
+62. traces
+    Traces potentielles d'allergènes.
+
+63. traces_tags
+    Traces normalisées.
+
+64. traces_en
+    Traces en anglais.
+
+PORTION ET SERVICE
+------------------------------------------------------------------------
+
+65. serving_size
+    Taille de portion recommandée.
+
+66. serving_quantity
+    Quantité numérique correspondant à une portion.
+
+SCORES ET INDICATEURS QUALITÉ
+------------------------------------------------------------------------
+
+67. nutriscore_score
+    Score numérique du Nutri-Score.
+
+68. nutriscore_grade
+    Classe Nutri-Score de A à E.
+
+69. nova_group
+    Groupe NOVA indiquant le niveau de transformation.
+
+70. environmental_score_score
+    Score environnemental.
+
+71. environmental_score_grade
+    Classe environnementale du produit.
+
+72. nutrient_levels_tags
+    Niveau nutritionnel relatif des principaux nutriments.
+
+QUALITÉ DES DONNÉES
+------------------------------------------------------------------------
+
+73. states
+    États de validation de la fiche.
+
+74. states_tags
+    États normalisés.
+
+75. states_en
+    États en anglais.
+
+76. data_quality_errors_tags
+    Erreurs de qualité détectées.
+
+77. completeness
+    Taux de complétude de la fiche.
+
+POPULARITÉ ET UTILISATION
+------------------------------------------------------------------------
+
+78. unique_scans_n
+    Nombre de scans uniques du produit.
+
+79. popularity_tags
+    Indicateurs de popularité.
+
+IMAGES
+------------------------------------------------------------------------
+
+80. last_image_t
+    Horodatage Unix de la dernière image ajoutée.
+
+81. last_image_datetime
+    Date et heure de la dernière image ajoutée.
+
+82. image_url
+    URL de l'image principale.
+
+83. image_small_url
+    URL miniature de l'image principale.
+
+84. image_ingredients_url
+    URL de l'image des ingrédients.
+
+85. image_ingredients_small_url
+    URL miniature de l'image des ingrédients.
+
+86. image_nutrition_url
+    URL du tableau nutritionnel.
+
+87. image_nutrition_small_url
+    URL miniature du tableau nutritionnel.
+
+VALEURS NUTRITIONNELLES ÉNERGÉTIQUES
+------------------------------------------------------------------------
+
+88. no_nutrition_data
+    Indique que les informations nutritionnelles ne sont pas indiquées sur l'étiquette du produit ; lorsque cette option est cochée, la valeur du champ est « on ».
+
+89. energy-kj_100g
+    Énergie en kilojoules pour 100 g.
+
+90. energy-kcal_100g
+    Énergie en kilocalories pour 100 g.
+
+91. energy_100g
+    Valeur énergétique totale pour 100 g.
+
+92. energy-from-fat_100g
+    Énergie apportée par les matières grasses pour 100 g.
+
+LIPIDES ET ACIDES GRAS
+------------------------------------------------------------------------
+
+93. fat_100g
+    Quantité totale de lipides pour 100 g.
+
+94. saturated-fat_100g
+    Quantité d'acides gras saturés pour 100 g.
+
+95. unsaturated-fat_100g
+    Quantité d'acides gras insaturés pour 100 g.
+
+96. monounsaturated-fat_100g
+    Quantité d'acides gras mono-insaturés pour 100 g.
+
+97. polyunsaturated-fat_100g
+    Quantité d'acides gras polyinsaturés pour 100 g.
+
+98. trans-fat_100g
+    Quantité d'acides gras trans pour 100 g.
+
+99. cholesterol_100g
+    Quantité de cholestérol pour 100 g.
+
+100. butyric-acid_100g
+    Quantité d'acide butyrique pour 100 g.
+
+101. caproic-acid_100g
+    Quantité d'acide caproïque pour 100 g.
+
+102. caprylic-acid_100g
+    Quantité d'acide caprylique pour 100 g.
+
+103. capric-acid_100g
+    Quantité d'acide caprique pour 100 g.
+
+104. lauric-acid_100g
+    Quantité d'acide laurique pour 100 g.
+
+105. myristic-acid_100g
+    Quantité d'acide myristique pour 100 g.
+
+106. palmitic-acid_100g
+    Quantité d'acide palmitique pour 100 g.
+
+107. stearic-acid_100g
+    Quantité d'acide stéarique pour 100 g.
+
+108. arachidic-acid_100g
+    Quantité d'acide arachidique pour 100 g.
+
+109. behenic-acid_100g
+    Quantité d'acide béhénique pour 100 g.
+
+110. lignoceric-acid_100g
+    Quantité d'acide lignocérique pour 100 g.
+
+111. cerotic-acid_100g
+    Quantité d'acide cérotique pour 100 g.
+
+112. montanic-acid_100g
+    Quantité d'acide montanique pour 100 g.
+
+113. melissic-acid_100g
+    Quantité d'acide mélissique pour 100 g.
+
+114. omega-9-fat_100g
+    Quantité d'oméga-9 pour 100 g.
+
+115. omega-3-fat_100g
+    Quantité d'oméga-3 pour 100 g.
+
+116. omega-6-fat_100g
+    Quantité d'oméga-6 pour 100 g.
+
+117. alpha-linolenic-acid_100g
+    Quantité d'acide alpha-linolénique pour 100 g.
+
+118. eicosapentaenoic-acid_100g
+    Quantité d'acide eicosapentaénoïque (EPA) pour 100 g.
+
+119. docosahexaenoic-acid_100g
+    Quantité d'acide docosahexaénoïque (DHA) pour 100 g.
+
+120. linoleic-acid_100g
+    Quantité d'acide linoléique pour 100 g.
+
+121. arachidonic-acid_100g
+    Quantité d'acide arachidonique pour 100 g.
+
+122. gamma-linolenic-acid_100g
+    Quantité d'acide gamma-linolénique pour 100 g.
+
+123. dihomo-gamma-linolenic-acid_100g
+    Quantité d'acide dihomo-gamma-linolénique pour 100 g.
+
+124. oleic-acid_100g
+    Quantité d'acide oléique pour 100 g.
+
+125. elaidic-acid_100g
+    Quantité d'acide élaïdique pour 100 g.
+
+126. gondoic-acid_100g
+    Quantité d'acide gondoïque pour 100 g.
+
+127. mead-acid_100g
+    Quantité d'acide de Mead pour 100 g.
+
+128. erucic-acid_100g
+    Quantité d'acide érucique pour 100 g.
+
+129. nervonic-acid_100g
+    Quantité d'acide nervonique pour 100 g.
+
+GLUCIDES ET SUCRES
+------------------------------------------------------------------------
+
+130. carbohydrates_100g
+    Quantité totale de glucides pour 100 g.
+
+131. carbohydrates-total_100g
+    Quantité totale de glucides calculée pour 100 g.
+
+132. sugars_100g
+    Quantité totale de sucres pour 100 g.
+
+133. added-sugars_100g
+    Quantité de sucres ajoutés pour 100 g.
+
+134. sucrose_100g
+    Quantité de saccharose pour 100 g.
+
+135. glucose_100g
+    Quantité de glucose pour 100 g.
+
+136. fructose_100g
+    Quantité de fructose pour 100 g.
+
+137. galactose_100g
+    Quantité de galactose pour 100 g.
+
+138. lactose_100g
+    Quantité de lactose pour 100 g.
+
+139. maltose_100g
+    Quantité de maltose pour 100 g.
+
+140. maltodextrins_100g
+    Quantité de maltodextrines pour 100 g.
+
+141. psicose_100g
+    Quantité de psicose pour 100 g.
+
+142. starch_100g
+    Quantité d'amidon pour 100 g.
+
+143. polyols_100g
+    Quantité totale de polyols pour 100 g.
+
+144. erythritol_100g
+    Quantité d'érythritol pour 100 g.
+
+145. isomalt_100g
+    Quantité d'isomalt pour 100 g.
+
+146. maltitol_100g
+    Quantité de maltitol pour 100 g.
+
+147. sorbitol_100g
+    Quantité de sorbitol pour 100 g.
+
+FIBRES ET PROTÉINES
+------------------------------------------------------------------------
+
+148. fiber_100g
+    Quantité totale de fibres alimentaires pour 100 g.
+
+149. soluble-fiber_100g
+    Quantité de fibres solubles pour 100 g.
+
+150. insoluble-fiber_100g
+    Quantité de fibres insolubles pour 100 g.
+
+151. polydextrose_100g
+    Quantité de polydextrose pour 100 g.
+
+152. proteins_100g
+    Quantité totale de protéines pour 100 g.
+
+153. casein_100g
+    Quantité de caséine pour 100 g.
+
+154. serum-proteins_100g
+    Quantité de protéines de lactosérum pour 100 g.
+
+155. nucleotides_100g
+    Quantité de nucléotides pour 100 g.
+
+SELS ET MINÉRAUX PRINCIPAUX
+------------------------------------------------------------------------
+
+156. salt_100g
+    Quantité totale de sel pour 100 g.
+
+157. added-salt_100g
+    Quantité de sel ajouté pour 100 g.
+
+158. sodium_100g
+    Quantité de sodium pour 100 g.
+
+159. potassium_100g
+    Quantité de potassium pour 100 g.
+
+160. chloride_100g
+    Quantité de chlorure pour 100 g.
+
+161. calcium_100g
+    Quantité de calcium pour 100 g.
+
+162. phosphorus_100g
+    Quantité de phosphore pour 100 g.
+
+163. iron_100g
+    Quantité de fer pour 100 g.
+
+164. magnesium_100g
+    Quantité de magnésium pour 100 g.
+
+165. zinc_100g
+    Quantité de zinc pour 100 g.
+
+166. copper_100g
+    Quantité de cuivre pour 100 g.
+
+167. manganese_100g
+    Quantité de manganèse pour 100 g.
+
+168. fluoride_100g
+    Quantité de fluorure pour 100 g.
+
+169. selenium_100g
+    Quantité de sélénium pour 100 g.
+
+170. chromium_100g
+    Quantité de chrome pour 100 g.
+
+171. molybdenum_100g
+    Quantité de molybdène pour 100 g.
+
+172. iodine_100g
+    Quantité d'iode pour 100 g.
+
+VITAMINES
+------------------------------------------------------------------------
+
+173. vitamin-a_100g
+    Quantité de vitamine A pour 100 g.
+
+174. beta-carotene_100g
+    Quantité de bêta-carotène pour 100 g.
+
+175. vitamin-d_100g
+    Quantité de vitamine D pour 100 g.
+
+176. vitamin-e_100g
+    Quantité de vitamine E pour 100 g.
+
+177. vitamin-k_100g
+    Quantité de vitamine K pour 100 g.
+
+178. vitamin-c_100g
+    Quantité de vitamine C pour 100 g.
+
+179. vitamin-b1_100g
+    Quantité de vitamine B1 (thiamine) pour 100 g.
+
+180. vitamin-b2_100g
+    Quantité de vitamine B2 (riboflavine) pour 100 g.
+
+181. vitamin-pp_100g
+    Quantité de niacine (vitamine PP) pour 100 g.
+
+182. vitamin-b6_100g
+    Quantité de vitamine B6 pour 100 g.
+
+183. vitamin-b9_100g
+    Quantité de vitamine B9 pour 100 g.
+
+184. folates_100g
+    Quantité de folates pour 100 g.
+
+185. vitamin-b12_100g
+    Quantité de vitamine B12 pour 100 g.
+
+186. biotin_100g
+    Quantité de biotine pour 100 g.
+
+187. pantothenic-acid_100g
+    Quantité d'acide pantothénique pour 100 g.
+
+188. phylloquinone_100g
+    Quantité de phylloquinone pour 100 g.
+
+COMPOSÉS SPÉCIFIQUES
+------------------------------------------------------------------------
+
+189. alcohol_100g
+    Quantité d'alcool pour 100 g.
+
+190. caffeine_100g
+    Quantité de caféine pour 100 g.
+
+191. taurine_100g
+    Quantité de taurine pour 100 g.
+
+192. methylsulfonylmethane_100g
+    Quantité de MSM (méthylsulfonylméthane) pour 100 g.
+
+193. hydroxymethylbutyrate_100g
+    Quantité de HMB pour 100 g.
+
+194. choline_100g
+    Quantité de choline pour 100 g.
+
+195. inositol_100g
+    Quantité d'inositol pour 100 g.
+
+196. carnitine_100g
+    Quantité de carnitine pour 100 g.
+
+197. beta-glucan_100g
+    Quantité de bêta-glucanes pour 100 g.
+
+198. cocoa_100g
+    Teneur en cacao pour 100 g.
+
+199. chlorophyl_100g
+    Quantité de chlorophylle pour 100 g.
+
+INDICATEURS PHYSICO-CHIMIQUES
+------------------------------------------------------------------------
+
+200. ph_100g
+    Valeur du pH du produit.
+
+201. acidity_100g
+    Niveau d'acidité du produit.
+
+202. water-hardness_100g
+    Dureté de l'eau.
+
+203. water_100g
+    Quantité d'eau pour 100 g.
+
+204. bicarbonate_100g
+    Quantité de bicarbonates pour 100 g.
+
+205. sulphate_100g
+    Quantité de sulfates pour 100 g.
+
+206. nitrate_100g
+    Quantité de nitrates pour 100 g.
+
+207. silica_100g
+    Quantité de silice pour 100 g.
+
+INDICATEURS SANTÉ ET ENVIRONNEMENT
+------------------------------------------------------------------------
+
+208. fruits-vegetables-legumes_100g
+    Pourcentage de fruits, légumes et légumineuses.
+
+209. glycemic-index_100g
+    Index glycémique du produit.
+
+210. collagen-meat-protein-ratio_100g
+    Ratio entre collagène et protéines de viande.
+
+211. carbon-footprint_100g
+    Empreinte carbone estimée pour 100 g de produit.
+
+========================================================================
+CONTRÔLE DES DONNÉES
+========================================================================
+
+Nombre de colonnes dans schema_openfoodfacts.csv : 211
+Nombre de colonnes décrites dans ce dictionnaire : 211
+
