@@ -1,0 +1,55 @@
+===============================================================================
+FICHE RÉCAPITULATIVE : LA COMPLÉTUDE DANS OPEN FOOD FACTS
+===============================================================================
+
+1. NATURE DE L'ALGORITHME
+-------------------------------------------------------------------------------
+* Type : Fonction logique, déterministe et universelle.
+* Intégration : Codée directement dans le serveur Open Food Facts.
+* Fonctionnement : Calcul d'un ratio (0.0 à 1.0 ou pourcentage) basé sur la
+  présence ou l'absence de champs clés. Pas d'IA ou de Machine Learning.
+
+2. COLONNES ET CHAMPS ANALYSÉS (Pour atteindre 100%)
+-------------------------------------------------------------------------------
+Pour être considéré comme totalement complet, un produit doit renseigner les
+colonnes nécessaires au calcul de tous les indicateurs (Nutri-Score, NOVA, 
+Éco-Score) :
+
+* Informations de base :
+  - product_name (Nom du produit)
+  - brands (Marques)
+  - quantity (Quantité / Poids)
+  - packaging (Emballage)
+
+* Photos obligatoires (Vérification visuelle) :
+  - Liens vers les images de la face avant, des ingrédients et de la nutrition.
+
+* Classification :
+  - categories (Indispensable pour contextualiser le produit).
+
+* Nutri-Score & Score NOVA :
+  - ingredients_text (Liste des ingrédients)
+  - Tableau nutritionnel complet : energy_100g, fat_100g, saturated-fat_100g,
+    sugars_100g, fiber_100g, proteins_100g, salt_100g.
+
+* Éco-Score :
+  - labels (Bio, Label Rouge, etc.)
+  - Origine des ingrédients
+  - Matériaux d'emballage
+
+3. VARIATION GÉOGRAPHIQUE / PAR PAYS
+-------------------------------------------------------------------------------
+* Règle générale : L'algorithme est STRICTEMENT LE MÊME pour tous les pays.
+* Nuance réglementaire : Le calcul ne s'adapte pas aux lois locales. 
+* Conséquence : Si un nutriment (comme les fibres) n'est pas obligatoire sur 
+  l'étiquette dans un pays (ex: Europe) et n'est donc pas saisi, le score de 
+  complétude sera pénalisé de la même manière qu'un produit américain où ce 
+  champ est légalement requis.
+
+4. OBJECTIFS DE LA COLONNE
+-------------------------------------------------------------------------------
+* Contrôle qualité : Identifier rapidement les fiches produits lacunaires.
+* Mobilisation : Permettre à la communauté de cibler les produits à enrichir.
+
+===============================================================================
+Fiche générée automatiquement le 25 août 2026.

@@ -1,0 +1,279 @@
+==================================================
+FICHE MÉMO - VALIDATION DES CODES EAN / UPC
+==================================================
+
+OBJECTIF
+---------
+Identifier :
+- les codes valides
+- les codes invalides
+- les valeurs manquantes
+- les valeurs suspectes
+
+==================================================
+1. LES PRINCIPAUX FORMATS
+==================================================
+
+EAN-13
+-------
+- 13 chiffres
+- Exemple : 3274080005003
+- Le dernier chiffre = clé de contrôle
+
+EAN-8
+------
+- 8 chiffres
+- Exemple : 30337101
+- Le dernier chiffre = clé de contrôle
+
+UPC-A
+-------
+- 12 chiffres
+- Utilisé principalement en Amérique du Nord
+- Exemple : 036000291452
+- Le dernier chiffre = clé de contrôle
+
+==================================================
+2. PREMIÈRE VÉRIFICATION : LONGUEUR
+==================================================
+
+Longueurs acceptées :
+
+8 chiffres  -> EAN-8
+12 chiffres -> UPC-A
+13 chiffres -> EAN-13
+
+Exemples suspects :
+
+123
+123456
+123456789
+12345678901234
+
+=> probablement invalides
+
+==================================================
+3. DEUXIÈME VÉRIFICATION : UNIQUEMENT DES CHIFFRES
+==================================================
+
+Valide :
+
+3274080005003
+
+Invalide :
+
+32740A0005003
+3274-0800-05003
+ABC123
+
+Regex :
+
+^[0-9]+$
+
+==================================================
+4. TROISIÈME VÉRIFICATION : CLÉ DE CONTRÔLE
+==================================================
+
+La majorité des erreurs se repèrent ici.
+
+Principe :
+
+- Le dernier chiffre n'est pas une donnée.
+- Il est calculé à partir des chiffres précédents.
+
+Si la clé calculée ≠ clé présente :
+
+=> code invalide
+
+==================================================
+5. CALCUL DE LA CLÉ EAN-13
+==================================================
+
+Exemple :
+
+3274080005003
+
+Retirer le dernier chiffre :
+
+327408000500
+
+Multiplier :
+
+rang impair ×1
+rang pair ×3
+
+Puis additionner.
+
+Calcul :
+
+3×1 + 2×3 + 7×1 + 4×3 + 0×1 + 8×3 +
+0×1 + 0×3 + 0×1 + 5×3 + 0×1 + 0×3
+
+= 67
+
+Calcul complément :
+
+10 - (67 mod 10)
+
+= 3
+
+Clé attendue = 3
+
+Code valide.
+
+==================================================
+6. CODES SUSPECTS À ÉLIMINER OU ANALYSER
+==================================================
+
+Valeur vide :
+
+NULL
+''
+NaN
+
+----------------------------------
+
+Tous les chiffres identiques :
+
+0000000000000
+1111111111111
+9999999999999
+
+=> souvent erreurs ou données de test
+
+----------------------------------
+
+Longueur incorrecte :
+
+12345
+123456789012345
+
+----------------------------------
+
+Contient lettres ou symboles :
+
+ABC123
+123-456
+
+----------------------------------
+
+Clé de contrôle incorrecte
+
+==================================================
+7. DOUBLONS
+==================================================
+
+Même code présent plusieurs fois :
+
+code
+------
+3274080005003
+3274080005003
+
+Deux possibilités :
+
+1. même produit
+2. doublon de chargement
+
+Toujours vérifier la cardinalité.
+
+==================================================
+8. REQUÊTES UTILES AVEC PANDAS
+==================================================
+
+Compter les valeurs manquantes
+
+df["code"].isna().sum()
+
+----------------------------------
+
+Longueur des codes
+
+df["code"].astype(str).str.len()
+
+----------------------------------
+
+Codes non numériques
+
+df[~df["code"].astype(str).str.match(r'^[0-9]+$')]
+
+----------------------------------
+
+Codes EAN13 uniquement
+
+df[df["code"].astype(str).str.len() == 13]
+
+----------------------------------
+
+Doublons
+
+df[df["code"].duplicated(keep=False)]
+
+==================================================
+9. INDICATEURS DE QUALITÉ
+==================================================
+
+Mesurer :
+
+- % de codes vides
+- % de codes non numériques
+- % de longueurs invalides
+- % de clés invalides
+- nombre de doublons
+
+Exemple :
+
+100 000 lignes
+
+95 000 EAN valides
+3 000 longueurs incorrectes
+1 200 clés invalides
+800 valeurs manquantes
+
+Taux qualité :
+
+95 %
+
+==================================================
+10. STRATÉGIE DE NETTOYAGE
+==================================================
+
+ETAPE 1
+Supprimer espaces
+
+ETAPE 2
+Supprimer caractères non numériques
+
+ETAPE 3
+Contrôler longueur
+
+ETAPE 4
+Contrôler clé EAN/UPC
+
+ETAPE 5
+Identifier doublons
+
+ETAPE 6
+Marquer :
+
+VALID
+INVALID_LENGTH
+INVALID_CHECK_DIGIT
+NON_NUMERIC
+MISSING
+DUPLICATE
+
+==================================================
+RÈGLE PRATIQUE
+==================================================
+
+Un code est considéré VALIDE si :
+
+✓ non vide
+✓ uniquement numérique
+✓ longueur = 8, 12 ou 13
+✓ clé de contrôle correcte
+
+Sinon :
+
+✗ code invalide
