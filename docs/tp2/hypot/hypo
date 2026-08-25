@@ -1,0 +1,21 @@
+Champ : completeness
+
+La colonne "completeness" (complétude) représente le niveau de remplissage des informations obligatoires et importantes d'une fiche produit dans Open Food Facts.
+
+Fonctionnement :
+- Valeur numérique comprise entre 0 et 1.
+- Plus la valeur est proche de 1, plus la fiche produit est complète.
+- Une valeur proche de 0 indique qu'il manque de nombreuses informations essentielles.
+
+Exemples :
+- completeness = 1 : la fiche contient la totalité des informations attendues (ingrédients, valeurs nutritionnelles, catégorie, etc.).
+- completeness = 0,8 : la majorité des informations est présente.
+- completeness = 0,2 : la fiche est très incomplète.
+
+Principaux champs pris en compte :
+- Liste des ingrédients (ingredients_text)
+- Valeurs nutritionnelles pour 100 g ou 100 ml
+- Catégorie du produit
+
+Utilisation dans NutriScope :
+Cette colonne permet de filtrer les produits de mauvaise qualité documentaire. Nous pouvons par exemple conserver uniquement les produits ayant une complétude supérieure ou égale à 0,70 afin de garantir des analyses nutritionnelles fiables.
