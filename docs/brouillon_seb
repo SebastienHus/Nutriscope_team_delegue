@@ -1,24 +1,90 @@
-proposition colonne a garder 
+=================================================
+SELECTION DES COLONNES OPEN FOOD FACTS
+=================================================
 
---colonnes qui identifient et affichent un produit
+OBJECTIF
+---------
+Conserver uniquement les colonnes utiles pour :
+
+- Identifier un produit
+- Afficher un produit
+- Comparer des produits
+- Calculer des scores ou recommandations
+- Filtrer les fiches de mauvaise qualité
+
+-------------------------------------------------
+COLONNES PRINCIPALES
+-------------------------------------------------
+
+-- colonnes qui identifient et affichent un produit
+
 code
+    Code-barres unique (EAN / UPC).
+    Attention :
+    - EAN-8 : 8 chiffres
+    - UPC-A : 12 chiffres
+    - EAN-13 : 13 chiffres
+    Tous ces formats sont considérés comme valides.
+
 product_name
+    Nom du produit affiché à l'utilisateur.
+
 brands
-brands_tags ?????
+    Marque(s) du produit.
+
+brands_tags
+    ???
+    Hypothèse :
+    utile pour les traitements automatiques.
+    Les valeurs sont normalisées contrairement à "brands".
+
 quantity
+    Quantité affichée sur l'emballage.
+
 main_category
+    Catégorie principale.
+
 categories
+    Liste complète des catégories.
+
 categories_tags
+    Version normalisée des catégories.
+    Probablement plus pertinente pour les regroupements
+    et les analyses que la colonne "categories".
+
 image_url
+    Image du produit.
 
-    -- Bonus ? 
-    ingredients_text
-    allergens
-    traces
+-------------------------------------------------
+BONUS ?
+-------------------------------------------------
 
+ingredients_text
+    Liste des ingrédients.
+    Très utile pour afficher le détail produit.
 
---pour calculer des scores comparer des produits peut etre proposer d autre produits
--- categorie trop specifique pas forcement mise 
+allergens
+    Allergènes déclarés.
+
+traces
+    Traces éventuelles d'allergènes.
+
+Remarque :
+Ces colonnes semblent intéressantes pour une future
+fonction de recherche, recommandation ou filtrage
+pour les personnes allergiques.
+
+-------------------------------------------------
+DONNEES NUTRITIONNELLES
+-------------------------------------------------
+
+-- pour calculer des scores, comparer des produits
+-- ou éventuellement proposer des produits similaires
+
+-- Les catégories sont parfois absentes ou très spécifiques.
+-- Les informations nutritionnelles semblent plus fiables
+-- pour effectuer des comparaisons.
+
 energy-kcal_100g
 fat_100g
 saturated-fat_100g
@@ -28,23 +94,161 @@ fiber_100g
 proteins_100g
 salt_100g
 
+Remarque :
+Ces colonnes paraissent suffisantes pour construire
+des indicateurs personnalisés ou des algorithmes
+de recommandation.
 
---Score deja calculer pourrait etre utile plus tard ? 
+-------------------------------------------------
+SCORES DEJA CALCULES
+-------------------------------------------------
+
+-- Scores déjà calculés.
+-- Peuvent être utiles plus tard pour éviter
+-- de recalculer certains indicateurs.
+
 nutriscore_score
 nutriscore_grade
+
 nova_group
+
 environmental_score_score
 environmental_score_grade
 
+Remarque :
+Ces colonnes pourraient servir comme variables cibles,
+comparaison ou vérification des calculs effectués.
+
+-------------------------------------------------
+LOCALISATION
+-------------------------------------------------
+
 countries
 
-completeness --> voir hypo ( permet d avoir une info sur la completion legale)
-no_nutrition_data--> a tester si pas rempli alors on ignore le produit filtre puissant 
+Hypothèse :
+Permet de filtrer les produits selon le pays de
+commercialisation ou d'étudier les différences
+entre marchés.
 
+-------------------------------------------------
+QUALITE DES DONNEES
+-------------------------------------------------
 
-comment determiner si unproduit est gardé ou non 
-en gros parmis ses colonnes les quelles on le plus de valeurs
+completeness
 
+    --> Voir hypothèse.
 
-pour les 8 huite categorie cela correspond t il a des type de produit consommé ?
+    Hypothèse :
+    Cette colonne semble représenter le niveau de
+    complétude de la fiche produit.
 
+    Peut servir à éliminer les fiches pauvres en données.
+    A vérifier par analyse statistique.
+
+no_nutrition_data
+
+    --> A tester.
+
+    Hypothèse :
+    Si la valeur indique l'absence d'informations
+    nutritionnelles, il pourrait être pertinent
+    d'exclure ces produits lors des comparaisons
+    nutritionnelles.
+
+    Potentiellement un filtre très efficace.
+
+-------------------------------------------------
+HYPOTHESE A VERIFIER
+-------------------------------------------------
+
+Comment déterminer si un produit doit être conservé ?
+
+Idée :
+
+1. Mesurer le taux de remplissage de chaque colonne.
+2. Identifier les colonnes les plus renseignées.
+3. Définir un seuil minimal de qualité.
+4. Exclure les produits qui ne possèdent pas les
+   informations indispensables.
+
+Exemple de critères possibles :
+
+- product_name renseigné
+- main_category ou categories renseigné
+- au moins une image
+- données nutritionnelles présentes
+- completeness supérieur à un seuil
+
+-------------------------------------------------
+QUESTION SUR LES FOOD GROUPS
+-------------------------------------------------
+
+Pour les 8 catégories de food_groups :
+
+Hypothèse :
+
+Elles semblent correspondre à de grands types
+d'aliments consommés plutôt qu'à des catégories
+commerciales détaillées.
+
+Exemples possibles :
+
+- Boissons
+- Produits laitiers
+- Fruits et légumes
+- Céréales
+- Matières grasses
+- Produits sucrés
+- Viandes / poissons / oeufs
+- Snacks ou produits composés
+
+A vérifier dans la documentation Open Food Facts,
+mais l'objectif paraît être une classification
+nutritionnelle de haut niveau.
+
+-------------------------------------------------
+PROPOSITION DE JEU DE COLONNES MINIMAL
+-------------------------------------------------
+
+Identification :
+
+- code
+- product_name
+- brands
+- image_url
+
+Classification :
+
+- main_category
+- categories_tags
+- food_groups
+
+Nutrition :
+
+- energy-kcal_100g
+- fat_100g
+- saturated-fat_100g
+- carbohydrates_100g
+- sugars_100g
+- fiber_100g
+- proteins_100g
+- salt_100g
+
+Scores :
+
+- nutriscore_score
+- nutriscore_grade
+- nova_group
+- environmental_score_grade
+
+Qualité :
+
+- completeness
+- no_nutrition_data
+
+Bonus :
+
+- ingredients_text
+- allergens
+- traces
+- countries
