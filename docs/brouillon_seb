@@ -38,8 +38,8 @@ environmental_score_grade
 
 countries
 
-completeness 
-no_nutrition_data--> voir hypo 
+completeness --> voir hypo ( permet d avoir une info sur la completion legale)
+no_nutrition_data--> a tester si pas rempli alors on ignore le produit filtre puissant 
 
 
 comment determiner si unproduit est gardé ou non 
