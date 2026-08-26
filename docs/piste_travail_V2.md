@@ -119,4 +119,4 @@ Face à l'opacité de l'algorithme completeness d'Open Food Facts (constatée lo
 * Note : La colonne completeness d'origine est conservée à des fins d'analyse comparative ultérieure.
 
 
-7.
+7.   
