@@ -1,0 +1,81 @@
+================================================================================
+          FICHE TECHNIQUE COMPLÈTE : ALGORITHME OFFICIEL NUTRI-SCORE
+================================================================================
+
+1. PRINCIPE GÉNÉRAL DU CALCUL (POUR 100G OU 100ML)
+--------------------------------------------------------------------------------
+La note repose sur l'attribution de points basée sur la déclaration nutritionnelle.
+
+       FORMULE STANDARD : Score = Total Points N - Total Points P
+
+* Points N (Composants à LIMITER) : Énergie (kJ), Acides Gras Saturés (g), 
+  Sucres totaux (g), Sel (g - remplace le sodium dans la version 2025).
+  Chaque critère vaut de 0 à 10 points. Maximum théorique = 40 points.
+* Points P (Composants à FAVORISER) : Fibres (g), Protéines (g), Pourcentage de 
+  Fruits, Légumes et Légumineuses (%). Chaque critère vaut de 0 à 5 ou 7 points.
+
+RÈGLE D'EXCLUSION DES PROTÉINES (Régulation du "Masquage" du gras/sucre) :
+- Si Points N < 11  -> Formule standard : Score = N - P
+- Si Points N >= 11 -> Les protéines comptent pour 0 SAUF si le produit contient 
+  plus de 80% de fruits et légumes. Formule : Score = N - (Fibres + Fruits).
+
+
+2. LA RÈGLE SPÉCIFIQUE DES FROMAGES (L'EXCEPTION HISTORIQUE)
+--------------------------------------------------------------------------------
+En raison de leur richesse naturelle en calcium et en protéines, les 
+fromages bénéficient d'un passe-droit unique concernant la règle d'exclusion :
+
+- DÉROGATION : Les points des PROTÉINES sont SYSTÉMATIQUEMENT comptabilisés, 
+  même si le total des Points N est supérieur ou égal à 11.
+- FORMULE UNIQUE DU FROMAGE : Score = Total Points N - Total Points P
+  (incluant toujours Protéines + Fibres + Fruits/Légumes).
+- Note terrain : Malgré cette aide, la forte teneur en sel et en acides gras 
+  saturés fait que ~90% des fromages traditionnels restent notés D ou E.
+
+
+3. LA RÈGLE SPÉCIFIQUE DES BOISSONS (FORTEMENT DURCIE)
+--------------------------------------------------------------------------------
+Les boissons ont leur propre barème strict d'attribution des points (Max N = 20) :
+
+- COMPOSANTE N UNIQUE : Les points sucre sont attribués dès de très faibles doses.
+- MALUS ÉDULCORANTS : L'algorithme intègre une pénalité automatique pour la 
+  présence d'édulcorants (aspartame, stévia, sucralose...). Tout produit contenant 
+  des édulcorants reçoit d'office des points N supplémentaires (jusqu'à +4 points).
+- CAS DE L'EAU PURE : L'eau est la SEULE boisson pouvant obtenir la note "A".
+- LES LAITS ET JUS : Les laits (animaux/végétaux) et les jus de fruits ne sont plus 
+  considérés comme des aliments solides mais entrent dans la catégorie Boissons.
+
+
+4. LA RÈGLE DES MATIÈRES GRASSES, HUILES, GRAINES ET FRUITS À COQUE
+--------------------------------------------------------------------------------
+Cette catégorie concerne les graisses ajoutées (beurre, huiles, margarines) :
+
+- MODIFICATION DES POINTS N : Les points ne sont pas calculés sur les "Acides gras 
+  saturés seuls", mais sur le RATIO "Acides gras saturés / Lipides totaux". Cela 
+  permet de valoriser les huiles riches en graisses insaturées.
+- MODIFICATION DES POINTS P : Les huiles de colza, de noix et d'olive reçoivent 
+  des points bonus spécifiques au sein de la composante "Fruits et légumes".
+
+
+5. LA RÈGLE SPÉCIFIQUE DES VIANDES ROUGES
+--------------------------------------------------------------------------------
+Afin de s'aligner sur les recommandations de santé publique limitant la viande rouge :
+
+- DÉROGATION : Les points attribués à la composante "Protéines" sont bridés et 
+  plafonnés à un maximum inférieur (souvent max 2 points au lieu de 5) pour 
+  toutes les viandes rouges (bœuf, porc, agneau, etc.) et charcuteries.
+
+
+6. GRILLE DE CONVERSION DU SCORE EN LETTRE (ALIMENTS SOLIDES HORS BOISSONS)
+--------------------------------------------------------------------------------
+Une fois le score calculé, la lettre correspondante est attribuée ainsi :
+
+         Score final <= -1  ------------------------> A (Vert foncé)
+         Score final entre 0 et 2  -----------------> B (Vert clair)
+         Score final entre 3 et 10  ----------------> C (Jaune)
+         Score final entre 11 et 18  ---------------> D (Orange)
+         Score final >= 19  ------------------------> E (Rouge)
+
+*Rappel : Les boissons possèdent une grille de conversion des scores beaucoup plus 
+sévère (les scores positifs tombent très rapidement en D ou E).*
+================================================================================

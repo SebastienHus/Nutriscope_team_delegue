@@ -16,7 +16,67 @@ dans un premier temps nous avons souhaiter comprendre ce que contenait les 211 c
 ce documentnous a permis de faire une analyse en equipe selon nos objectif ( voir point 2) pour savoir quelles colonne nous garderont
 [explication]
 
-colonne selectionnées
+Identification :
+
+- code
+- product_name
+- brands
+- brands_tag ( peut etre a privilegier par rapport a brands  ? )
+- image_url
+- image_small_url
+- image_ingredients_url
+- image_ingredients_small_url
+- image_nutrition_url
+- image_nutrition_small_url
+
+Classification :
+
+- main_category
+- categories_tags
+- food_groups ( quelle dif avec main category ? )
+
+Nutrition :
+
+- energy-kj_100g
+- fat_100g
+- saturated-fat_100g
+- sugars_100g
+- fiber_100g
+- proteins_100g
+- salt_100g
+- fruits-vegetables-legumes_100g
+
+Additif : ( le quel choisir ?)
+
+- additives_n
+- additives 
+- additives_tags ( je pencherai pour lui )
+
+Scores :
+
+- nutriscore_score
+- nutriscore_grade
+- nova_group
+- environmental_score_grade
+
+Qualité :
+
+- completeness
+- no_nutrition_data
+
+Bonus :
+
+- ingredients_text
+- allergens
+- traces
+- countries
+- quantity
+- labels_tags
+- labels ( entre lui et tag lequel garder )
+
+Creation :
+
+- nutriscore_data_complete
 
 
 4 - Netoyage et correction des data
