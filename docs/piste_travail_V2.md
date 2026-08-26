@@ -27,7 +27,6 @@
 [IDENTIFICATION]
 * code : Identifiant unique du produit (code-barres).
 * product_name : Nom du produit.
-* brands : Marques saisies par les utilisateurs (texte brut).
 * brands_tags : À privilégier. Identifiants standardisés, normalisés en minuscules et nettoyés (ex: en:nestle au lieu de Nestlé / NESTLE). Idéal pour les jointures et agrégations.
 * image_url / image_small_url : Photo générale du produit.
 * image_ingredients_url / image_ingredients_small_url : Photo de la liste des ingrédients (audit/Vérification).
@@ -39,7 +38,7 @@
 * food_groups : Différence avec main_category : main_category est la catégorie précise du produit (ex: en:yogurs). food_groups correspond à la nouvelle nomenclature internationale standardisée d'Open Food Facts (ex: en:dairy-products) qui regroupe les produits de manière plus macro, facilitant les filtres de haut niveau.
 
 [NUTRITION (BASE 100G / 100ML)]
-* energy-kj_100g (Énergie)
+* energy_100g (Énergie)
 * fat_100g (Lipides totaux)
 * saturated-fat_100g (Acides gras saturés)
 * sugars_100g (Sucres)
@@ -50,7 +49,6 @@
 
 [ADDITIFS]
 * additives_n : Nombre d'additifs.
-* additives : Texte brut.
 * additives_tags : À privilégier. Contient les codes normalisés (ex: en:e951). C'est la seule colonne fiable pour isoler précisément les familles d'additifs (comme les édulcorants de E950 à E969) indépendamment de la langue.
 
 [SCORES OFFICIELS]
@@ -80,12 +78,17 @@
 A. Règles de Nettoyage
 * Gestion des spécificités internationales : Le dataset couvrant des données mondiales, le nettoyage doit intégrer le fait que les règles réglementaires et d'affichage diffèrent d'un continent à l'autre (ex: Amérique vs Europe).
 
-voir doc point sur les code
 * Traitement des codes-barres (EAN) commençant par 200 :
     - Constat : Ces codes correspondent à des produits sans code-barres global standard.
     - Hypothèse de l'équipe : Il s'agit de produits déclassifiés ou inactifs, donc impossibles à proposer comme alternatives de remplacement à l'utilisateur final.
     - Décision initiale : Exclusion de ces produits en première instance.
     - Alerte et action requise : Lancer une vérification quantitative du nombre de codes commençant par 200. ATTENTION : Si le volume de produits impactés est trop élevé, la décision d'exclusion devra être réarbitrée par l'équipe.
+
+* Sélection et optimisation des variables énergétiques :
+    - Constat : Pour l'apport énergétique, le jeu de données propose trois colonnes : `energy-kj_100g`, `energy-kcal_100g` et `energy_100g`.
+    - Hypothèse de l'équipe : Nous supposions une conversion automatique entre les kilojoules (kJ) et les kilocalories (kcal), faisant de `energy_100g` la valeur finale en kJ nécessaire au calcul du Nutri-Score.
+    - Validation technique : L'analyse du code source et des données publiques d'Open Food Facts confirme nos hypothèses. Un algorithme interne effectue la conversion croisée et centralise le résultat en kJ dans `energy_100g`.
+    - Décision : Nous nous basons exclusivement sur la colonne `energy_100g` et supprimons les deux autres colonnes afin d'alléger le dataset.
   
 
 B. Règles de Correction
