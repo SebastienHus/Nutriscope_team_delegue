@@ -60,10 +60,17 @@ Nous utiliserons donc les data extraites lors du tp1 dans le fichier :
 
 | Colonne | Cardinalité |
 |----------|------------|
-| brands | |
-| categories | |
-| countries_tags | |
-| nutriscore_grade | |
+| code | 1136083 |
+| product_name | 736670 |
+| brands | 113242 |
+| categories | ? |
+| countries_tags | 4062 |
+| nutriscore_grade | 8 |
+| energy_100g | 103719 |
+| sugars_100g | 13689 |
+| salt_100g | 15780 |
+
+
 
 ### Observations
 
@@ -77,9 +84,9 @@ Nous utiliserons donc les data extraites lors du tp1 dans le fichier :
 
 | Indicateur | Valeur |
 |------------|---------|
-| Produits analysés | |
-| Codes-barres uniques | |
-| Doublons détectés | |
+| Produits analysés | 1136108 |
+| Codes-barres en doublon | 25 |
+| Doublons détectés | 0 |
 
 ### Exemple(s)
 
@@ -97,11 +104,13 @@ Nous utiliserons donc les data extraites lors du tp1 dans le fichier :
 
 | Contrôle | Nombre de cas |
 |-----------|--------------|
-| sugars_100g > 100 | |
-| salt_100g > 100 | |
-| energy_100g < 0 | |
-| energy_100g = 0 | |
-| valeurs manquantes | |
+| sugars_100g > 100 | 49 |
+| salt_100g > 100  | 48 |
+| energy_100g < 0 | 8 |
+| energy_100g = 0 | 17489 |
+| energy_100g is nan | 267145 |
+| sugars_100g is nan | 274063 |
+| salt_100g is nan | 326353 |
 
 ### Observations
 
