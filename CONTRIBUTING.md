@@ -47,9 +47,9 @@ Creez toujours une nouvelle branche depuis la branche dev pour vos modifications
 N'envoyez jamais de commits directement sur la branche principale (main).
 
 Nommez vos branches selon la convention suivante :
-* `feat-[nom-court]` : Ajout d'une nouvelle fonctionnalite.
-* `fix-[nom-court]` : Correction d'un bug.
-* `docs-[nom-court]` : Modification de la documentation.
+* `feature/[nom-court]` : Ajout d'une nouvelle fonctionnalite.
+* `fix/[nom-court]` : Correction d'un bug.
+* `docs/[nom-court]` : Modification de la documentation.
 
 
 ## Messages de Commit
