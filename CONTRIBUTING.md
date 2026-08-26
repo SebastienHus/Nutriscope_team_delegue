@@ -30,9 +30,9 @@ Vos contributions auront pour but :
 
 1. Forkez le projet sur votre compte GitHub ou GitLab.
    
-2. Clonez votre fork en local :
+2. Clonez :
    ```bash
-   git clone https://github.com[votre-utilisateur]/[nom-du-projet].git
+   git clone https://github.com[votre-utilisateur]/Nutriscope_team_delegue.git
    ```
 3. Installez les dependances necessaires :
    ```bash
@@ -43,7 +43,8 @@ Vos contributions auront pour but :
 
 ## Regles de Branches
 
-Creez toujours une nouvelle branche pour vos modifications. N'envoyez jamais de commits directement sur la branche principale (main ou master).
+Creez toujours une nouvelle branche depuis la branche dev pour vos modifications. 
+N'envoyez jamais de commits directement sur la branche principale (main).
 
 Nommez vos branches selon la convention suivante :
 * `feat-[nom-court]` : Ajout d'une nouvelle fonctionnalite.
@@ -78,5 +79,5 @@ Avant de soumettre votre travail :
 1. Mettez a jour votre branche par rapport a la branche principale officielle.
 2. Poussez (push) vos modifications sur votre fork.
 3. Ouvrez une Pull Request avec un titre clair.
-4. Decrivez precisement vos changements et liez le ticket associe (ex: Fixes #12).
+4. Decrivez precisement vos changements.
 5. Attendez la relecture et la validation d'un mainteneur du projet.
