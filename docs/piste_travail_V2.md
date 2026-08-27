@@ -71,9 +71,16 @@
 [INDICATEUR DE CRÉATION]
 * nutriscore_data_complete : Flag booléen indiquant si l'ensemble des 8 colonnes nutritionnelles nécessaires au calcul du Nutri-Score sont remplies.
 
+Point sur les autre colonnes qui ne sont pas selectionné et surtout pk !
+TODO
 
-4. NETTOYAGE ET CORRECTION DES DONNÉES
+
+1. NETTOYAGE ET CORRECTION DES DONNÉES
 --------------------------------------------------------------------------------
+
+Les données sont elles suffisamment propres et complètes pour construire NutriScope ?
+
+
 
 A. Règles de Nettoyage
 * Gestion des spécificités internationales : Le dataset couvrant des données mondiales, le nettoyage doit intégrer le fait que les règles réglementaires et d'affichage diffèrent d'un continent à l'autre (ex: Amérique vs Europe).
