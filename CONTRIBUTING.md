@@ -1,6 +1,6 @@
-### Contribution au projet Deluscop
+### Contribution au projet Nutriscope
 
-Ce document décrit les règles et bonnes pratiques mise en place par l'équipe Team délégué pour contribuer efficacement sur le projet Deluscop
+Ce document décrit les règles et bonnes pratiques mise en place par l'équipe Team délégué pour contribuer efficacement sur le projet Nutriscope
 
 
 ### Table des matieres
@@ -34,9 +34,12 @@ Vos contributions auront pour but :
    ```bash
    git clone https://github.com[votre-utilisateur]/Nutriscope_team_delegue.git
    ```
-3. Installez les dependances necessaires :
+
+3. Installez Python 3.12
+
+4. Installez les dependances necessaires :
    ```bash
-   [Exemple: npm install / pip install -r requirements.txt]
+   [Exemple: pip install -r requirements.txt]
    ```
 
 ---
@@ -70,7 +73,7 @@ Exemple : `feat(auth): ajouter la connexion par mot de passe`
 
 Avant de soumettre votre travail :
 * Assurez-vous que le projet compile sans erreur.
-* Lancez les tests locaux : `[Commande de test, ex: npm test]`
+* Lancez les tests locaux : `[Commande de test, ex: pytest]`
 * Respectez les conventions de code du projet.
 
 
