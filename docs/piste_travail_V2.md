@@ -111,16 +111,20 @@ Pour segmenter efficacement notre jeu de données général, nous définissons u
   -> Complétude requise : 100 %
   -> Objectif : Entraînement et validation du modèle de Machine Learning.
 
-* Priorité 2 (Haute) : Identification + Classification + Médias (image_url)
+* Priorité 2 (Haute) : Elargissement jeu de données nutrition
+   -> Complétude requise : 80 %
+ 
+
+* Priorité 3 (Haute) : Identification + Classification + Médias (image_url)
   -> Complétude requise : > 80 %
   -> Objectif : Intégration dans l'application finale pour l'utilisateur.
 
-* Priorité 3 (Secondaire) : Additifs + Données Bonus (labels_tags, allergens)
+* Priorité 4 (Secondaire) : Additifs + Données Bonus (labels_tags, allergens)
   -> Complétude requise : Variable
   -> Objectif : Fonctionnalités de filtrage avancé dans l'application.
 
 
-6. CRÉATION DE NOS PROPRES INDICATEURS (FEATURE ENGINEERING)
+1. CRÉATION DE NOS PROPRES INDICATEURS (FEATURE ENGINEERING)
 --------------------------------------------------------------------------------
 Face à l'opacité de l'algorithme completeness d'Open Food Facts (constatée lors des tests sur le code source), l'équipe crée deux indicateurs maison :
 
