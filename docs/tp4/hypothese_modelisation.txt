@@ -1,0 +1,581 @@
+=========================================================
+NUTRISCOPE
+MODELE DE DONNEES RELATIONNEL (3FN)
+VERSION 1
+=========================================================
+
+OBJECTIF
+
+Transformer le dataset Open Food Facts sélectionné
+en une base relationnelle normalisée respectant
+au maximum la troisième forme normale (3FN).
+
+Les données multi-valuées (tags, listes, tableaux)
+sont externalisées dans des tables dédiées avec
+tables de liaison.
+
+Les données calculables ou dérivables ne sont pas
+dupliquées.
+
+Le modèle privilégie :
+
+- la cohérence des données ;
+- la réduction des redondances ;
+- la facilité d'évolution ;
+- la conformité à la 3FN ;
+- l'exploitation analytique via SQL.
+
+
+=========================================================
+DECISION D'ARCHITECTURE : CATEGORIES
+=========================================================
+
+Aucune table MAIN_CATEGORY n'est conservée.
+
+Raison :
+
+Dans Open Food Facts, la catégorie principale est
+une information dérivable de la hiérarchie des
+catégories.
+
+Stocker simultanément :
+
+- main_category
+- categories_tags
+
+créerait une redondance.
+
+Afin de respecter la 3FN :
+
+- une seule table CATEGORY est conservée ;
+- les relations parent/enfant permettent
+  de reconstruire l'arbre des catégories.
+
+Exemple :
+
+foods
+└── dairy-products
+    └── yogurts
+        └── drinkable-yogurts
+
+La catégorie principale peut être retrouvée
+par parcours hiérarchique.
+
+
+=========================================================
+DECISION D'ARCHITECTURE : NUTRITION
+=========================================================
+
+La modélisation de type EAV :
+
+type_nutrition
+nutrition
+
+a été abandonnée.
+
+Motifs :
+
+- augmentation très importante du nombre de lignes ;
+- requêtes plus complexes ;
+- agrégations nutritionnelles plus coûteuses ;
+- difficulté de lecture.
+
+La table NUTRITION contient donc directement
+l'ensemble des indicateurs nutritionnels d'un produit.
+
+Cette modélisation reste conforme à la 3FN :
+
+code_produit
+    ->
+toutes les valeurs nutritionnelles
+
+car aucune colonne nutritionnelle ne dépend d'une autre.
+
+
+=========================================================
+TABLE : produit
+=========================================================
+
+Description :
+
+Table centrale contenant les informations propres
+à un produit.
+
+Colonnes :
+
+code (PK)
+
+product_name
+
+quantity
+
+ingredients_text
+
+completeness
+
+no_nutrition_data
+
+nutriscore_data_complete
+
+image_url
+
+image_small_url
+
+image_ingredients_url
+
+image_ingredients_small_url
+
+image_nutrition_url
+
+image_nutrition_small_url
+
+id_food_group (FK)
+
+
+=========================================================
+TABLE : category
+=========================================================
+
+Description :
+
+Hiérarchie complète des catégories Open Food Facts.
+
+Colonnes :
+
+id_category (PK)
+
+category_tag
+
+parent_category_id (FK nullable)
+
+Exemple :
+
+id | category_tag           | parent_category_id
+----------------------------------------------------
+1  | en:foods               | NULL
+2  | en:dairy-products      | 1
+3  | en:yogurts             | 2
+4  | en:drinkable-yogurts   | 3
+
+
+=========================================================
+TABLE : produit_category
+=========================================================
+
+Description :
+
+Association N-N entre produits et catégories.
+
+Colonnes :
+
+code_produit (FK)
+
+id_category (FK)
+
+PK :
+
+(code_produit, id_category)
+
+
+=========================================================
+TABLE : food_group
+=========================================================
+
+Description :
+
+Classification macro Open Food Facts.
+
+Colonnes :
+
+id_food_group (PK)
+
+food_group_name
+
+Exemples :
+
+en:dairy-products
+
+en:beverages
+
+en:fruits-and-vegetables
+
+
+=========================================================
+TABLE : marque
+=========================================================
+
+Description :
+
+Référentiel des marques.
+
+Colonnes :
+
+id_marque (PK)
+
+brand_tag
+
+Exemples :
+
+en:nestle
+
+en:carrefour
+
+en:danone
+
+
+=========================================================
+TABLE : produit_marque
+=========================================================
+
+Description :
+
+Association N-N entre produits et marques.
+
+Colonnes :
+
+code_produit (FK)
+
+id_marque (FK)
+
+PK :
+
+(code_produit, id_marque)
+
+
+=========================================================
+TABLE : additif
+=========================================================
+
+Description :
+
+Référentiel des additifs.
+
+Colonnes :
+
+id_additif (PK)
+
+additive_tag
+
+Exemples :
+
+en:e330
+
+en:e950
+
+en:e951
+
+
+=========================================================
+TABLE : produit_additif
+=========================================================
+
+Description :
+
+Association N-N entre produits et additifs.
+
+Colonnes :
+
+code_produit (FK)
+
+id_additif (FK)
+
+PK :
+
+(code_produit, id_additif)
+
+
+=========================================================
+TABLE : label
+=========================================================
+
+Description :
+
+Référentiel des labels.
+
+Colonnes :
+
+id_label (PK)
+
+label_tag
+
+Exemples :
+
+en:organic
+
+en:fair-trade
+
+en:protected-designation-of-origin
+
+
+=========================================================
+TABLE : produit_label
+=========================================================
+
+Description :
+
+Association N-N entre produits et labels.
+
+Colonnes :
+
+code_produit (FK)
+
+id_label (FK)
+
+PK :
+
+(code_produit, id_label)
+
+
+=========================================================
+TABLE : allergene
+=========================================================
+
+Description :
+
+Référentiel des allergènes.
+
+Colonnes :
+
+id_allergene (PK)
+
+allergene_tag
+
+Exemples :
+
+en:milk
+
+en:eggs
+
+en:gluten
+
+
+=========================================================
+TABLE : produit_allergene
+=========================================================
+
+Description :
+
+Association N-N entre produits et allergènes.
+
+Colonnes :
+
+code_produit (FK)
+
+id_allergene (FK)
+
+PK :
+
+(code_produit, id_allergene)
+
+
+=========================================================
+TABLE : trace
+=========================================================
+
+Description :
+
+Référentiel des traces potentielles.
+
+Colonnes :
+
+id_trace (PK)
+
+trace_tag
+
+Exemples :
+
+en:nuts
+
+en:soybeans
+
+en:sesame-seeds
+
+
+=========================================================
+TABLE : produit_trace
+=========================================================
+
+Description :
+
+Association N-N entre produits et traces.
+
+Colonnes :
+
+code_produit (FK)
+
+id_trace (FK)
+
+PK :
+
+(code_produit, id_trace)
+
+
+=========================================================
+TABLE : pays
+=========================================================
+
+Description :
+
+Référentiel des pays de commercialisation.
+
+Colonnes :
+
+id_pays (PK)
+
+country_tag
+
+Exemples :
+
+en:france
+
+en:belgium
+
+en:germany
+
+
+=========================================================
+TABLE : produit_pays
+=========================================================
+
+Description :
+
+Association N-N entre produits et pays.
+
+Colonnes :
+
+code_produit (FK)
+
+id_pays (FK)
+
+PK :
+
+(code_produit, id_pays)
+
+
+=========================================================
+TABLE : nutrition
+=========================================================
+
+Description :
+
+Fiche nutritionnelle complète d'un produit.
+
+Relation 1-1 avec produit.
+
+Cette modélisation est préférée à une structure
+EAV afin de limiter le volume de données et de
+simplifier les requêtes analytiques.
+
+Colonnes :
+
+code_produit (PK, FK)
+
+energy_100g
+
+fat_100g
+
+saturated_fat_100g
+
+sugars_100g
+
+fiber_100g
+
+proteins_100g
+
+salt_100g
+
+fruits_vegetables_legumes_100g
+
+
+=========================================================
+TABLE : score
+=========================================================
+
+Description :
+
+Scores calculés Open Food Facts.
+
+Relation 1-1 avec produit.
+
+Colonnes :
+
+code_produit (PK, FK)
+
+nutriscore_score
+
+nutriscore_grade
+
+nova_group
+
+environmental_score_grade
+
+
+=========================================================
+MODELE RELATIONNEL FINAL
+=========================================================
+
+produit
+
+food_group
+
+category
+produit_category
+
+marque
+produit_marque
+
+additif
+produit_additif
+
+label
+produit_label
+
+allergene
+produit_allergene
+
+trace
+produit_trace
+
+pays
+produit_pays
+
+nutrition
+
+score
+
+
+=========================================================
+NOMBRE TOTAL DE TABLES
+=========================================================
+
+Entités métier : 11
+
+produit
+food_group
+category
+marque
+additif
+label
+allergene
+trace
+pays
+nutrition
+score
+
+
+Tables de liaison : 7
+
+produit_category
+produit_marque
+produit_additif
+produit_label
+produit_allergene
+produit_trace
+produit_pays
+
+
+TOTAL : 18 TABLES
+
+=========================================================
+FIN DU DOCUMENT
+=========================================================
