@@ -1,0 +1,8 @@
+sqlparse
+sqlalchemy
+sqlalchemy-utils
+pandas
+numpy
+seaborn
+matplotlib
+psycopg
