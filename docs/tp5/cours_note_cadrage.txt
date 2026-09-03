@@ -1,0 +1,118 @@
+================================================================================
+                     DOCUMENT DE CADRAGE : PROJET IA NUTRISCOPE
+================================================================================
+
+1. DÉFINITION : QU’EST-CE QU’UNE NOTE DE CADRAGE ?
+--------------------------------------------------------------------------------
+Une note de cadrage est le document fondateur d’un projet. Elle pose les bases,
+définit le périmètre, aligne les attentes et valide le lancement. C’est une
+synthèse stratégique, non technique.
+
+Elle répond aux questions QQOQCP :
+* Quoi : ce que le projet va produire
+* Pourquoi : le besoin, les enjeux
+* Qui : acteurs, rôles, responsabilités
+* Où : contexte, environnement
+* Quand : planning, jalons
+* Comment : moyens, ressources, contraintes
+
+
+2. RÔLE DE LA NOTE DE CADRAGE DANS LE PROJET NUTRISCOPE
+--------------------------------------------------------------------------------
+* Montrer la compréhension de la commande NutriScope.
+* Définir ce qui sera construit sur 8 mois.
+* Fixer le périmètre fonctionnel et data.
+* Lister les livrables IA attendus.
+* Identifier les contraintes (RGPD, AI Act, technique, planning).
+* Donner une vision claire au jury et aux formateurs.
+* Éviter les dérives de périmètre (scope creep).
+* Servir de référence pour toute l’année.
+
+La direction NutriScope valide ce document avant tout développement.
+
+
+3. CONTEXTE & ENJEUX
+--------------------------------------------------------------------------------
+* Problème : manque de transparence nutritionnelle.
+* Opportunité : IA pour guider les choix alimentaires.
+* Enjeux : qualité data, fiabilité, conformité, industrialisation.
+
+
+4. OBJECTIFS DU PROJET (SMART)
+--------------------------------------------------------------------------------
+* Construire une base produits propre et exploitable.
+* Développer un modèle de prédiction du Nutri-Score.
+* Créer un moteur de substitution.
+* Entraîner un classifieur d’images.
+* Développer un assistant RAG.
+* Déployer une API et une mini-application.
+* Livrer conformité RGPD / AI Act.
+
+
+5. PÉRIMÈTRE FONCTIONNEL
+--------------------------------------------------------------------------------
+INCLUS :
+* 5 à 8 rayons alimentaires.
+* Pipeline de nettoyage.
+* Modèles IA (Nutri-Score, substitution, image).
+* Assistant RAG.
+* API FastAPI + démonstrateur.
+* Conformité RGPD / AI Act.
+
+EXCLUS :
+* Application mobile complète.
+* Interface utilisateur avancée.
+* Recommandations personnalisées (profil utilisateur).
+* Analyse nutritionnelle médicale.
+
+
+6. PARTIES PRENANTES & RÔLES
+--------------------------------------------------------------------------------
+* Direction NutriScope : commanditaire.
+* Équipe IA : réalisation.
+* Formateurs : validation des jalons.
+* Jury : évaluation finale.
+* Utilisateurs finaux : consommateurs en magasin.
+
+
+7. LIVRABLES ATTENDUS
+--------------------------------------------------------------------------------
+* Base PostgreSQL + fichiers Parquet.
+* Pipeline de nettoyage rejouable.
+* Modèles IA entraînés (Nutri-Score, substitution, image).
+* Tableau de bord EDA.
+* API FastAPI conteneurisée.
+* Mini-app de démonstration.
+* Registre RGPD.
+* Analyse de biais.
+* Positionnement AI Act.
+* Documentation complète.
+
+
+8. PLANNING & JALONS (8 MOIS)
+--------------------------------------------------------------------------------
+* J1 : Base SQL.
+* J2 : Pipeline data.
+* J3 : Modèle Nutri-Score.
+* J4 : Substitution.
+* J5 : Classifieur images.
+* J6 : Assistant RAG.
+* J7 : API + déploiement.
+* J8 : Conformité + dossier final.
+
+
+9. CONTRAINTES
+--------------------------------------------------------------------------------
+* Techniques : qualité data, performance des modèles.
+* Organisationnelles : travail en équipe, versioning Git.
+* Réglementaires : RGPD, AI Act, RGAA.
+* Temps : 216 heures de projet fil rouge.
+
+
+10. RISQUES & PARADES
+--------------------------------------------------------------------------------
+* Data incomplète → seuil de complétude.
+* Modèles instables → validation croisée.
+* Charge de travail → découpage clair.
+* Biais nutritionnels → analyse dédiée.
+* Conformité IA → documentation continue.
