@@ -2,15 +2,17 @@ import argparse
 import os
 import sqlparse
 import configparser
+import pandas as pd
 from sqlalchemy import create_engine, URL
 from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.schema import CreateTable
-import pandas as pd
 
+from clean_data import read_products_data, clean_products_data
 
 def read_database_options(filename):
     config = configparser.ConfigParser(allow_no_value=True) # Requis pour autoriser les listes sans valeur
     config.read(filename)
+    # config["database"]["categories"] = [category.strip() for category in config["database"]["categories"].split(",")]
 
     return config
 
@@ -64,13 +66,146 @@ def init_database(config, username, password):
 #     with open(filename, "w") as file:
 #         file.write(CreateTable(my_mysql_table).compile(mysql_engine))
 
+def to_list(value):
+    if not isinstance(value, str):
+        return []
+    return [v.strip() for v in value.split(",")]
+
+def get_multi_relationship(
+        data_frame: pd.DataFrame,
+        column_to_split: str,
+        primary_keys: tuple[str],
+        split= to_list,
+        as_:dict = None
+    ):
+    as_ = as_ or {}
+    _from_id, to_id = primary_keys
+    from_id = as_.get(_from_id, _from_id)
+
+    # 1. Copie et application de la fonction de découpage
+    df = data_frame.copy()
+    df["_temp_tags"] = df[column_to_split].apply(split)
+
+    # 2. Éclatement (explode) pour avoir une ligne par élément
+    exploded = df.explode("_temp_tags").dropna(subset=["_temp_tags"])
+
+    # 3. Création de la table de référence unique (right_table)
+    unique_tags = exploded["_temp_tags"].drop_duplicates().reset_index(drop=True)
+    right_table = pd.DataFrame({"id": unique_tags.index, "name": unique_tags})
+
+    # 4. Association des IDs de la table de référence vers la table de relation
+    tag_to_id = {name: idx for idx, name in unique_tags.items()}
+    
+    relation_data = []
+    for _, row in exploded.iterrows():
+        relation_data.append({
+            from_id: row[_from_id],
+            to_id: tag_to_id[row["_temp_tags"]]
+        })
+
+    relation_table = pd.DataFrame(relation_data)
+
+    return relation_table, right_table
+
+def import_data(engine, df):
+    pc = ["code", "name", "quantity", "ingredients_text", "image_url", "image_small_url", "image_ingredients_url", "image_ingredients_small_url", "image_nutrition_url", "image_nutrition_small_url"]
+    products = pd.DataFrame(columns=pc)
+    products[pc] = df[pc]
+    
+    nc = ["product_code", "energy_100g", "fat_100g", "saturated_fat_100g", "sugars_100g", "fiber_100g", "proteins_100g", "salt_100g", "fruits_vegetables_legumes_100g"]
+    nutrition = pd.DataFrame(columns=nc)
+    nutrition[nc] = df[["code", "energy_100g", "fat_100g", "saturated_fat_100g", "sugars_100g", "fiber_100g", "proteins_100g", "salt_100g", "fruits_vegetables_legumes_100g"]]
+    
+    sc = ["product_code", "nutriscore", "nutriscore_grade", "nova_group", "environmental_score_grade"]
+    score = pd.DataFrame(columns=sc)
+    score[sc] = df[["code", "nutriscore_score", "nutriscore_grade", "nova_group", "environmental_score_grade"]]
+
+    products_food_groups, food_groups = get_multi_relationship(
+        df[["code", "food_groups_tags"]],
+        as_={"code": "product_code"},
+        column_to_split="food_groups_tags",
+        primary_key="food_group_id"
+    )
+    products_categories, categories = get_multi_relationship(
+        df[["code", "categories_tags"]],
+        as_={"code": "product_code"},
+        column_to_split="categories_tags",
+        primary_key="category_id"
+    )
+    products_brands, brands = get_multi_relationship(
+        df[["code", "brands_tags"]],
+        as_={"code": "product_code"},
+        column_to_split="brands_tags",
+        primary_key="brand_id"
+    )
+    products_additives, additives = get_multi_relationship(
+        df[["code", "additives_tags"]],
+        as_={"code": "product_code"},
+        column_to_split="additives_tags",
+        primary_key="additive_id"
+    )
+    products_labels, labels = get_multi_relationship(
+        df[["code", "labels_tags"]],
+        as_={"code": "product_code"},
+        column_to_split="labels_tags",
+        primary_key="label_id"
+    )
+    products_allergens, allergens = get_multi_relationship(
+        df[["code", "allergens_tags"]],
+        as_={"code": "product_code"},
+        column_to_split="allergens_tags",
+        primary_key="allergen_id"
+    )
+    products_traces, traces = get_multi_relationship(
+        df[["code", "traces_tags"]],
+        as_={"code": "product_code"},
+        column_to_split="traces_tags",
+        primary_key="trace_id"
+    )
+    products_countries, countries = get_multi_relationship(
+        df[["code", "countries_tags"]],
+        as_={"code": "product_code"},
+        column_to_split="countries_tags",
+        primary_key="country_id"
+    )
+
+    products.to_sql("products", engine, if_exists="append")
+    nutrition.to_sql("nutrition", engine, if_exists="append")
+    score.to_sql("score", engine, if_exists="append")
+
+    food_groups.to_sql("food_groups", engine, if_exists="append")
+    categories.to_sql("categories", engine, if_exists="append")
+    brands.to_sql("brands", engine, if_exists="append")
+    additives.to_sql("additives", engine, if_exists="append")
+    labels.to_sql("labels", engine, if_exists="append")
+    allergens.to_sql("allergens", engine, if_exists="append")
+    traces.to_sql("traces", engine, if_exists="append")
+    countries.to_sql("countries", engine, if_exists="append")
+
+    products_food_groups.to_sql("products_food_groups", engine, if_exists="append")
+    products_categories.to_sql("products_categories", engine, if_exists="append")
+    products_brands.to_sql("products_brands", engine, if_exists="append")
+    products_additives.to_sql("products_additives", engine, if_exists="append")
+    products_labels.to_sql("products_labels", engine, if_exists="append")
+    products_allergens.to_sql("products_allergens", engine, if_exists="append")
+    products_traces.to_sql("products_traces", engine, if_exists="append")
+    products_countries.to_sql("products_countries", engine, if_exists="append")
+
+
 def main(args):
     filename = os.path.abspath(args.filename)
     if not os.path.exists(filename):
         raise FileNotFoundError(f"Le chemin n'existe pas : `{filename}`")
     config = read_database_options(filename)
     engine = init_database(config, args.username, args.password)
+
+    if not args.data_path:
+        return
     
+    df = read_products_data(args.data_path, config["db_columns"])
+    df = clean_products_data(df)
+
+    import_data(engine, df)
 
 
 if __name__ == "__main__":
@@ -82,5 +217,7 @@ if __name__ == "__main__":
     parser.add_argument("-u", "--username", default="postgres")
     # TODO: demander le mdp caché
     parser.add_argument("-pwd", "--password", default="admin")
+    # "../data/en.openfoodfacts.org.products.csv"
+    parser.add_argument("-d", "--data-path", default=None)
     args = parser.parse_args()
     main(args)

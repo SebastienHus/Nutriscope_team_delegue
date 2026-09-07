@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS products_labels CASCADE;
 DROP TABLE IF EXISTS products_additives CASCADE;
 DROP TABLE IF EXISTS products_brands CASCADE;
 DROP TABLE IF EXISTS products_categories CASCADE;
+DROP TABLE IF EXISTS products_food_groups CASCADE;
 
 DROP TABLE IF EXISTS score CASCADE;
 DROP TABLE IF EXISTS nutrition CASCADE;
@@ -193,13 +194,7 @@ CREATE TABLE products (
 
     image_nutrition_url TEXT,
 
-    image_nutrition_small_url TEXT,
-
-    food_group_id INTEGER,
-
-    CONSTRAINT fk_product_food_group
-        FOREIGN KEY (food_group_id)
-        REFERENCES food_groups(id)
+    image_nutrition_small_url TEXT
 
 );
 
@@ -245,7 +240,7 @@ CREATE TABLE score (
     product_code VARCHAR(50)
         PRIMARY KEY,
 
-    nutriscore_score INTEGER,
+    nutriscore INTEGER,
 
     nutriscore_grade CHAR(1),
 
@@ -258,6 +253,32 @@ CREATE TABLE score (
         REFERENCES products(code)
 
 );
+
+/* =====================================================
+   TABLE PRODUCT_FOOD_GROUP
+   ===================================================== */
+
+CREATE TABLE products_food_groups (
+
+    product_code VARCHAR(50),
+
+    food_group_id INTEGER,
+
+    PRIMARY KEY (
+        product_code,
+        food_group_id
+    ),
+
+    CONSTRAINT fk_pfg_product
+        FOREIGN KEY (product_code)
+        REFERENCES products(code),
+
+    CONSTRAINT fk_pfg_category
+        FOREIGN KEY (food_group_id)
+        REFERENCES food_groups(id)
+
+);
+
 
 
 /* =====================================================
