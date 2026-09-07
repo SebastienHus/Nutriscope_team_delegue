@@ -175,7 +175,7 @@ Freins :
 - Terminologie nutritionnelle difficile à interpréter.
 
 Situation d'usage :
-Jean récent dans l'utilisation numérique, consulte ponctuellement NutriScope avant d'acheter un produit qu'il ne connait pas.
+Jean récent dans l'utilisation numérique, consulte ponctuellement NutriScope avant d'acheter un produit qu'il ne connait pas. Il voit facilement si un aliment est faible en sel, en graisse et en sucres.
 
 # recap
 
