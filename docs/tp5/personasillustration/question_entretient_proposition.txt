@@ -1,0 +1,48 @@
+1. Quelles limites des solutions actuelles (Yuka, Open Food Facts, etc.) souhaitons-nous absolument dépasser ?
+
+Cette formulation te permet d'obtenir :
+
+la vision métier ;
+le besoin principal ;
+les points de différenciation.
+
+Je garderais ensuite :
+
+2. Si nous devions lancer une première version demain, laquelle de ces fonctionnalités serait indispensable ?
+Scan de code-barres
+Comparaison de produits
+Analyse nutritionnelle simplifiée
+Alertes allergènes
+Recommandations personnalisées
+Historique des produits consultés
+3. Quels critères permettront de considérer NutriScope comme une réussite ? Quels KPI clés devons-nous suivre ?
+4. Jusqu'où devons-nous aller dans la personnalisation des recommandations ?
+
+Exemples :
+
+Affichage d'informations uniquement
+Profil familial
+Allergies
+Diabète
+Pratique sportive
+Objectifs nutritionnels
+5. Sophie dispose de moins d'une minute pour choisir un produit. Quelles informations doivent lui être présentées immédiatement et lesquelles peuvent être affichées dans un second niveau de détail ?
+6. Les besoins des profils spécialisés comme les personnes diabétiques, allergiques, les sportifs ou les diététiciens doivent-ils être intégrés dès la première version ou dans des évolutions futures ?
+7. Avez-vous déjà identifié des risques ou points de vigilance pour ce projet, en dehors des aspects techniques ?
+8. Si des contraintes de temps ou de budget nous obligeaient à faire des choix, quels profils utilisateurs ou quelles fonctionnalités devraient être priorisés en premier ?
+9. Quel niveau de fiabilité ou d'explicabilité attendez-vous des recommandations fournies par NutriScope ?
+
+Pourquoi je l'ajoute ?
+
+Parce que vous faites de l'IA et de la recommandation alimentaire.
+
+Cela peut faire sortir :
+
+justification des recommandations ;
+transparence des calculs ;
+confiance utilisateur ;
+responsabilité des conseils.
+
+Et ça peut fortement influencer le design de l'application.
+
+10.Parmi nos personas secondaires (diététicienne, sportif, senior), lequel vous semble offrir le plus de potentiel pour une future évolution du produit et pourquoi ?
