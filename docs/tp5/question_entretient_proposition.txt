@@ -8,15 +8,9 @@ les points de différenciation.
 
 Je garderais ensuite :
 
-2. Si nous devions lancer une première version demain, laquelle de ces fonctionnalités serait indispensable ?
-Scan de code-barres
-Comparaison de produits
-Analyse nutritionnelle simplifiée
-Alertes allergènes
-Recommandations personnalisées
-Historique des produits consultés
-3. Quels critères permettront de considérer NutriScope comme une réussite ? Quels KPI clés devons-nous suivre ?
-4. Jusqu'où devons-nous aller dans la personnalisation des recommandations ?
+2. Quel est le business model de l'application ? Financement par la pub ? Si oui, est-ce qu'on restera libre sur les propositions de produits ?
+
+3. Qui utilisera la solution ? Quel est le public visé ?
 
 Exemples :
 
@@ -26,11 +20,22 @@ Allergies
 Diabète
 Pratique sportive
 Objectifs nutritionnels
-5. Sophie dispose de moins d'une minute pour choisir un produit. Quelles informations doivent lui être présentées immédiatement et lesquelles peuvent être affichées dans un second niveau de détail ?
-6. Les besoins des profils spécialisés comme les personnes diabétiques, allergiques, les sportifs ou les diététiciens doivent-ils être intégrés dès la première version ou dans des évolutions futures ?
+
+4. Si nous devions lancer une première version demain, laquelle de ces fonctionnalités serait indispensable ?
+Scan de code-barres
+Comparaison de produits
+Analyse nutritionnelle simplifiée
+Alertes allergènes
+Recommandations personnalisées
+Historique des produits consultés
+
+5. Puisque les données  d'OpenFoodTracks intègrent la dimension environnementale. Notre impact environnemental a-t-il une importance ? Comment est-ce qu'on la compensera ?
+
+6. Quand les produits ont un nutriscore équivalent, quels produits sont à privilégier ? 
+
 7. Avez-vous déjà identifié des risques ou points de vigilance pour ce projet, en dehors des aspects techniques ?
-8. Si des contraintes de temps ou de budget nous obligeaient à faire des choix, quels profils utilisateurs ou quelles fonctionnalités devraient être priorisés en premier ?
-9. Quel niveau de fiabilité ou d'explicabilité attendez-vous des recommandations fournies par NutriScope ?
+
+8. Quel niveau de détails à l'affichage attendez-vous des recommandations fournies par NutriScope ?
 
 Pourquoi je l'ajoute ?
 
@@ -45,4 +50,6 @@ responsabilité des conseils.
 
 Et ça peut fortement influencer le design de l'application.
 
-10.Parmi nos personas secondaires (diététicienne, sportif, senior), lequel vous semble offrir le plus de potentiel pour une future évolution du produit et pourquoi ?
+9.Parmi nos personas secondaires (diététicienne, sportif, senior), lequel vous semble offrir le plus de potentiel pour une future évolution du produit et pourquoi ?
+
+10. Quels critères permettront de considérer NutriScope comme une réussite ? Quels KPI clés devons-nous suivre ?
