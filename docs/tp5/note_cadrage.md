@@ -65,66 +65,19 @@ identification pouvoir / intérêt
 
 | Partie prenante              | Pouvoir | Intérêt |
 |------------------------------|---------|---------|
-| Fondateurs NutriScope        | Fort    | Fort    |
-| Formateurs / Commanditaires  | Fort    | Fort    |
-| Référent métier nutrition    | Moyen   | Fort    |
-| Responsable technique        | Moyen   | Fort    |
+| Direction  / Commanditaires  | Fort    | Fort    |
 | Utilisateurs                 | Faible  | Fort    |
+| Marketing                    | Moyen   | Fort    |
+| Equipe Data                  | Faible  | Fort    |
 | Professionnels de santé      | Faible  | Moyen   |
-| Open Food Facts              | Moyen   | Moyen   |
-| DPO / RGPD                   | Moyen   | Fort    |
-| Hébergeur                    | Moyen   | Faible  |
-| Financeurs                   | Fort    | Moyen   |
+| Open Food Facts              | Faible  | Faible  |
+| DPO / Délégué Prot. Data RGPD| Fort    | Fort    |
+| Financeurs                   | Fort    | Faible  |
 
-
-Le DPO  peu de pouvoir opérationnel mais un fort pouvoir de blocage en cas de non-conformité.
-Open Food Facts fournisseur data de base Leur intérêt tres limite si ce nest repartage selonlicence definis.
-Professionnels de santé ne sont pas au cœur du périmètre puisque NutriScope n'est pas un outil médical.
-
-point a voir 
-Référent nutrition et Responsable technique peuvent etre les fondateurs (es ce les formateur pour la direction ??), donc  pouvoir est en réalité lié à celui des fondateurs.
-
-
-pour nutriscope 
-
-
-| Pouvoir élevé / Intérêt élevé | Pouvoir élevé / Intérêt faible |
-|------------------------------|-------------------------------|
-| GÉRER DE PRÈS                | MAINTENIR SATISFAIT           |
-| Fondateurs NutriScope        | Financeurs                    |
-| Formateurs / Commanditaires  | DPO / RGPD                    |
-| Référent métier nutrition    | Hébergeur                     |
-| Responsable technique        |                               |
-
-| Pouvoir faible / Intérêt élevé | Pouvoir faible / Intérêt faible |
-|-------------------------------|--------------------------------|
-| MAINTENIR INFORMÉ             | SURVEILLER                     |
-| Utilisateurs                  | Acteurs externes non impliqués |
-| Professionnels de santé       | Concurrents                    |
-| Communauté Open Food Facts    | Grand public non utilisateur   |
-| Testeurs                      |                                |
-
-
-analyse de matrice 
-
-Les acteurs à gérer de près disposent d'un fort pouvoir et d'un fort intérêt
-dans le projet. Ils participent directement aux décisions stratégiques,
-fonctionnelles et techniques. Pour NutriScope, il s'agit principalement
-des fondateurs et des commanditaires du projet.
-
-Les acteurs à maintenir satisfaits possèdent une capacité d'influence
-importante mais interviennent peu dans les activités quotidiennes.
-Le DPO, les financeurs ou l'hébergeur doivent être consultés régulièrement
-afin d'éviter tout blocage réglementaire, financier ou technique.
-
-Les acteurs à maintenir informés ont un intérêt élevé mais peu de pouvoir
-de décision. Les utilisateurs, les testeurs et la communauté Open Food Facts
-peuvent fournir des retours précieux permettant d'améliorer le produit.
-
-Enfin, les acteurs à surveiller disposent d'un faible niveau d'intérêt
-et d'influence. Une veille périodique est suffisante afin de détecter
-une éventuelle évolution de leur position vis-à-vis du projet.
-
+Postulats
+Marketing
+Equipe Data
+Professionnels de santé
 
 ---
 
@@ -132,7 +85,7 @@ une éventuelle évolution de leur position vis-à-vis du projet.
 
 
 # Parent soucieux de l'alimentation familiale
-Nom : Micheline Martin
+Nom : Sophie Martin
 Âge : 38 ans
 Profession : Assistante administrative
 
@@ -151,13 +104,14 @@ Sophie utilise NutriScope dans les rayons d'un supermarché afin
 de comparer plusieurs céréales pour le petit-déjeuner de ses enfants.
 
 
-# Personne diabétique
+# Personne diabétique et allergiques
 Nom : Marc Leboucher
 Âge : 57 ans
 Profession : Comptable
 
 Objectifs :
 - Contrôler sa consommation de sucre.
+- Trouver des produits alternatifs respectant ses allergies
 - Identifier rapidement les produits adaptés.
 - Réduire les risques liés à son alimentation.
 
@@ -166,26 +120,7 @@ Freins :
 - Difficulté à comparer les produits.
 
 Situation d'usage :
-Marc consulte NutriScope avant d'acheter des biscuits ou
-desserts afin d'évaluer leur impact nutritionnel.
-
-
-# Étudiant avec budget limité
-Nom : Violette
-Âge : 22 ans
-Profession : Étudiante
-
-Objectifs :
-- Manger correctement sans augmenter son budget.
-- Trouver le meilleur compromis qualité/prix.
-
-Freins :
-- Budget serré.
-- Peu de connaissances en nutrition.
-
-Situation d'usage :
-Lucas compare plusieurs produits premiers prix pour
-identifier celui ayant le meilleur profil nutritionnel.
+Marc consulte NutriScope afin de comparer l'impact nutritionnel des produits sucrés ou trouver des alternatives à des produits sur le marché.
 
 
 # Diététicienne
@@ -199,21 +134,21 @@ Objectifs :
 - Comparer rapidement plusieurs aliments.
 
 Freins :
-- Temps de consultation limité.
 - Informations dispersées entre plusieurs sources.
 
 Situation d'usage :
-Claire utilise NutriScope en consultation pour expliquer
+Claire utilise NutriScope en consultation ou pour compte-rendu pour expliquer
 les différences entre plusieurs produits similaires.
 
+- À détailler
 
 # Sportif amateur
 Nom : Nicolas Lapoutre
-Âge : 29 ans
-Profession : Développeur
+Âge : 20 ans
+Profession : Etudiant
 
 Objectifs :
-- Optimiser son alimentation.
+- Cherche à prendre de la masse musculaire
 - Contrôler ses apports nutritionnels.
 - Limiter les aliments ultra-transformés.
 
@@ -222,9 +157,10 @@ Freins :
 - Comparaison difficile entre plusieurs marques.
 
 Situation d'usage :
-Julien analyse les produits protéinés ou les boissons
+Nicolas analyse les produits protéinés ou les boissons
 énergétiques avant achat.
 
+- À détailler
 
 # Senior surveillant sa santé
 Nom : Jean Moreau
@@ -241,8 +177,7 @@ Freins :
 - Terminologie nutritionnelle difficile à interpréter.
 
 Situation d'usage :
-Jean consulte NutriScope avant ses achats alimentaires
-hebdomadaires.
+Jean récent dans l'utilisation numérique, consulte ponctuellement NutriScope avant d'acheter un produit qu'il ne connait pas.
 
 # recap
 
@@ -253,13 +188,10 @@ CONSOMMATEURS GRAND PUBLIC
 - Sophie Martin
   Parent soucieux de l'alimentation familiale
 
-- Lucas Dupont
-  Étudiant à petit budget
-
 - Jean Moreau
   Senior attentif à sa santé
 
-- Julien Martin
+- Nicolas Lapoutre
   Sportif amateur
 
 
@@ -267,7 +199,7 @@ CONSOMMATEURS GRAND PUBLIC
 PERSONNES AVEC BESOINS NUTRITIONNELS SPÉCIFIQUES
 ==================================================
 
-- Marc Leroy
+- Marc Leboucher
   Patient diabétique
 
 - Personne souffrant d'hypertension
@@ -298,11 +230,10 @@ PROFESSIONNELS DE SANTÉ
 
 
 ==================================================
-PROFESSIONNELS DE L'AGROALIMENTAIRE
+PROFESSIONNELS DE L'AGROALIMENTAIRE (ARCHIVES)
 ==================================================
 
-- Thomas Richard
-  Responsable Qualité
+- Responsable Qualité
 
 - Responsable R&D
 
@@ -316,35 +247,26 @@ PROFESSIONNELS DE L'AGROALIMENTAIRE
 
 
 ==================================================
-ACTEURS DE L'ÉCOSYSTÈME DONNÉES ALIMENTAIRES
-==================================================
-
-- Contributeur Open Food Facts
-
-- Data Steward
-
-- Responsable Open Data
-
-- Analyste Données Alimentaires
-
-
-==================================================
 PERSONAS LES PLUS PERTINENTS POUR LE PROJET
 ==================================================
 
 1. Sophie Martin
    Parent soucieux de l'alimentation familiale
 
-2. Marc Leroy
-   Patient diabétique
+2. Marc Leboucher
+   Patient diabétique et allergique
 
-3. Thomas Richard
-   Responsable Qualité Agroalimentaire
+3. Nicolas Lapoutre
+   Etudiant sportif amateur
+
+4. Jean Moreau
+   Senior surveillant sa santé
 
 Couverture des besoins :
 - Grand public
+- Sport
 - Santé / alimentation spécialisée
-- Industrie agroalimentaire
+- Tranches d'âge étalées
 
 ---
 
