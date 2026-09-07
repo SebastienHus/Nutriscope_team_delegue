@@ -110,11 +110,11 @@ def get_multi_relationship(
 def import_data(engine, df):
     pc = ["code", "name", "quantity", "ingredients_text", "image_url", "image_small_url", "image_ingredients_url", "image_ingredients_small_url", "image_nutrition_url", "image_nutrition_small_url"]
     products = pd.DataFrame(columns=pc)
-    products[pc] = df[pc]
+    products[pc] = df[["code", "product_name", "quantity", "ingredients_text", "image_url", "image_small_url", "image_ingredients_url", "image_ingredients_small_url", "image_nutrition_url", "image_nutrition_small_url"]]
     
     nc = ["product_code", "energy_100g", "fat_100g", "saturated_fat_100g", "sugars_100g", "fiber_100g", "proteins_100g", "salt_100g", "fruits_vegetables_legumes_100g"]
     nutrition = pd.DataFrame(columns=nc)
-    nutrition[nc] = df[["code", "energy_100g", "fat_100g", "saturated_fat_100g", "sugars_100g", "fiber_100g", "proteins_100g", "salt_100g", "fruits_vegetables_legumes_100g"]]
+    nutrition[nc] = df[["code", "energy_100g", "fat_100g", "saturated-fat_100g", "sugars_100g", "fiber_100g", "proteins_100g", "salt_100g", "fruits-vegetables-legumes_100g"]]
     
     sc = ["product_code", "nutriscore", "nutriscore_grade", "nova_group", "environmental_score_grade"]
     score = pd.DataFrame(columns=sc)
