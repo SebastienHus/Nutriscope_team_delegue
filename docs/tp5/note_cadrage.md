@@ -75,19 +75,20 @@ identification pouvoir / intérêt
 | Financeurs                   | Fort    | Faible  |
 
 Postulats
-Marketing
-Equipe Data
-Professionnels de santé
+- On considère ici que le **Marketing** a un pouvoir suffisamment important sur le projet. Dans les premiers mois de l'application, la priorité absolue est d'exister sur les stores et de recruter des utilisateurs. Le marketing prend le lead pour valider le positionnement, concevoir des campagnes d'acquisition agressives, travailler le référencement sur les stores et imaginer la diffusion et l'image.
+- **L'équipe Data** au contraire n'a que peu d'impact. Aux prémices de l'application, la base d'utilisateurs est trop petite pour que l'équipe data puisse mener des analyses de comportement significatives ou optimiser des algorithmes de recommandation.
+- Il serait pertinent de se rapprocher de **Professionnels de santé** afin de non seulement faire la promotion de l'application auprès d'eux, mais aussi pour avoir leur avis métier.
 
 ---
 
 ## 4. Personnas identifier selon objectif et besoin de l aplication 
 
+![image](img/personae.jpg)
 
-# Parent soucieux de l'alimentation familiale
-Nom : Sophie Martin
-Âge : 38 ans
-Profession : Assistante administrative
+### Parent soucieux de l'alimentation familiale
+#### Nom : Sophie Martin
+#### Âge : 38 ans
+#### Profession : Assistante administrative
 
 Objectifs :
 - Faire des choix alimentaires plus sains pour sa famille.
@@ -104,10 +105,10 @@ Sophie utilise NutriScope dans les rayons d'un supermarché afin
 de comparer plusieurs céréales pour le petit-déjeuner de ses enfants.
 
 
-# Personne diabétique et allergiques
-Nom : Marc Leboucher
-Âge : 57 ans
-Profession : Comptable
+### Personne diabétique et allergiques
+#### Nom : Marc Leboucher
+#### Âge : 57 ans
+#### Profession : Comptable
 
 Objectifs :
 - Contrôler sa consommation de sucre.
@@ -123,33 +124,30 @@ Situation d'usage :
 Marc consulte NutriScope afin de comparer l'impact nutritionnel des produits sucrés ou trouver des alternatives à des produits sur le marché.
 
 
-# Diététicienne
-Nom : Claire Bernard
-Âge : 31 ans
-Profession : Diététicienne nutritionniste
+### Diététicienne
+#### Nom : Claire Bernard
+#### Âge : 31 ans
+#### Profession : Diététicienne nutritionniste
 
 Objectifs :
 - Disposer d'informations fiables.
 - Illustrer ses conseils auprès des patients.
-- Comparer rapidement plusieurs aliments.
+- Comparer plusieurs aliments pour un bilan.
 
 Freins :
 - Informations dispersées entre plusieurs sources.
 
 Situation d'usage :
-Claire utilise NutriScope en consultation ou pour compte-rendu pour expliquer
-les différences entre plusieurs produits similaires.
+Claire utilise NutriScope afin d'analyser les principales différences entre plusieurs produits aux apports similaires. Elle peut l'utiliser comme argument lors d'une consultation ou pour un bilan nutritionnel.
 
-- À détailler
-
-# Sportif amateur
-Nom : Nicolas Lapoutre
-Âge : 20 ans
-Profession : Etudiant
+### Sportif amateur
+#### Nom : Nicolas Lapoutre
+#### Âge : 20 ans
+#### Profession : Etudiant
 
 Objectifs :
-- Cherche à prendre de la masse musculaire
-- Contrôler ses apports nutritionnels.
+- Chercher à prendre de la masse musculaire.
+- Contrôler ses apports nutritionnels en termes d'énergie et de protéines.
 - Limiter les aliments ultra-transformés.
 
 Freins :
@@ -157,15 +155,15 @@ Freins :
 - Comparaison difficile entre plusieurs marques.
 
 Situation d'usage :
-Nicolas analyse les produits protéinés ou les boissons
-énergétiques avant achat.
+Nicolas analyse en magasin les produits protéinés et les boissons
+énergétiques. Il trie ses recherches selon l'apport en protéines et en énergie.
 
 - À détailler
 
-# Senior surveillant sa santé
-Nom : Jean Moreau
-Âge : 68 ans
-Profession : Retraité
+### Senior surveillant sa santé
+#### Nom : Jean Moreau
+#### Âge : 68 ans
+#### Profession : Retraité
 
 Objectifs :
 - Limiter le sel, le sucre et les graisses.
