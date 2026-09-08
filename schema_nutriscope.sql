@@ -174,7 +174,7 @@ CREATE TABLE products (
 
     name TEXT,
 
-    quantity VARCHAR(100),
+    quantity VARCHAR(255),
 
     ingredients_text TEXT,
 

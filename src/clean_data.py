@@ -15,7 +15,7 @@ def read_products_data(data_path, columns=None):
         chunksize=1000,
         on_bad_lines="warn",
         dtype=dtypes,
-        nrows=10000
+        # nrows=10000
     )
 
     return pd.concat(chunks, ignore_index=True)
@@ -27,7 +27,6 @@ def check_nutriscore(value):
     if isinstance(value, str) and value in NUTRISCORE_GRADES:
         return value
     return np.nan
-
 
 def check_nutriment(value):
     # Ne peut excéder 100 ou être négatif
@@ -57,22 +56,27 @@ def clean_products_data(df):
     for col in nutriment_columns:
         _df[col] = pd.to_numeric(_df[col], errors="coerce")
 
+    _df["nutriscore_score"] = pd.to_numeric(_df["nutriscore_score"], errors="coerce")
+    _df["nova_group"] = pd.to_numeric(_df["nova_group"], errors="coerce")
+
     # Filtrage des codes commençant par 200. Ce sont des produits non codés, on ne les garde pas
     _df = _df[~_df["code"].str.startswith("200", na=False)]
     
     # Filtrage des codes non officiels. Les officiels sont composés de 8, 12 et 13 digits
     _df["code"] = _df["code"].apply(lambda x: x if check_code(x) in VALID_CODE_LENGTH else np.nan)
 
+    # Filtrage des produits sans nom ou sans code
+    _df.dropna(subset=["code", "product_name"], inplace=True)
+
     # Filtrage des notes nutriscores invalides
     _df["nutriscore_grade"] = _df["nutriscore_grade"].apply(check_nutriscore)
 
-    # Filtrage des notes d'environnement invalides
+    # Filtrage des notes d'environnement invalides, pareil que le nutriscore
     _df["environmental_score_grade"] = _df["environmental_score_grade"].apply(check_nutriscore)
 
-    for col in nutriment_columns[:1]:
-        _df[col] = _df[col].apply(check_energy)
-    for col in nutriment_columns[1:]:
-        _df[col] = _df[col].apply(check_nutriment)
+    function_to_apply = {"energy_100g": check_energy}
+    for col in nutriment_columns:
+        _df[col] = _df[col].apply(function_to_apply.get(col, check_nutriment))
 
     _df.dropna(subset=nutriment_columns, inplace=True)
 
