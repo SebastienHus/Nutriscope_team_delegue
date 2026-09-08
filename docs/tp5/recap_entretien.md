@@ -33,9 +33,9 @@ La direction souhaite développer une application :
 
 L'application doit permettre aux utilisateurs de mieux comprendre les produits alimentaires et de prendre des décisions éclairées sans nécessiter de connaissances nutritionnelles avancées.
 
-Le projet ne doit pas être perçu comme un outil médical.
+Le projet ne doit pas être perçu comme un outil médical mais informatif.
 
-L'application devra être utilisable directement en magasin, lors de l'achat.
+L'application devra être utilisable rapidement en magasin lors du choix des produits.
 
 ---
 
@@ -49,6 +49,8 @@ Le cœur de cible est constitué des :
 - Parents réalisant les courses alimentaires du foyer
 
 La direction confirme que notre persona principal, **Sophie Martin**, représente bien la cible prioritaire du produit.
+
+L'application doit servir des informations nutritionnelles accessibles au grand public.
 
 ### Points complémentaires
 
@@ -74,7 +76,7 @@ Par rapport aux solutions existantes, la direction souhaite :
 - Plus de simplicité
 - Une meilleure personnalisation
 - Une aide à la décision contextualisée
-- Un accompagnement par assistant conversationnel
+- **Un accompagnement par assistant conversationnel**
 
 L'application ne doit pas se limiter à afficher des données nutritionnelles.
 
@@ -102,6 +104,12 @@ La direction considère les fonctionnalités suivantes comme indispensables dès
 ### Recommandation
 
 - Assistant conversationnel
+
+### Améliorations
+
+- Historique des scans
+- Favoris
+- Liste de course
 - Recommandations personnalisées selon le profil utilisateur
 
 ---
@@ -117,7 +125,7 @@ Fonctionnalités envisagées :
 - Produits favoris
 - Recommandations adaptées au profil alimentaire
 
-La création d'un compte utilisateur reste ouverte à discussion.
+La création d'un compte utilisateur reste ouverte à discussion selon RGPD mais fortement soutenue par la direction.
 
 ### Point de vigilance
 
@@ -126,6 +134,7 @@ Le DPO pourrait limiter certaines fonctionnalités liées à :
 - la collecte de données personnelles
 - l'exploitation de l'historique utilisateur
 - la personnalisation avancée
+- ne pas revendre les données utilisateurs aux partenaires fournisseurs et ni entre fournisseurs qui risque de rentrer dans des pratiques anit-concurrentielles
 
 Des arbitrages seront probablement nécessaires entre :
 
@@ -164,7 +173,7 @@ L'objectif premier est l'adoption de l'application par les utilisateurs.
 La direction envisage progressivement :
 
 - des partenariats avec les marques
-- la mise en avant de certains produits
+- la mise en avant de certains de leurs produits
 
 ### Point d'attention éthique
 
@@ -215,7 +224,7 @@ Cependant, la possibilité de développer :
 - des indicateurs complémentaires
 - des systèmes de catégorisation
 
-pourra être étudiée ultérieurement.
+pourra être étudiée ultérieurement sous acceptation du DPO.
 
 ---
 
@@ -312,37 +321,9 @@ La direction fixe les objectifs suivants :
 
 - 40 % de réutilisation de l'application
 
+### Note utilisateur
+
+- Une moyenne de +4.3 sur les différents stores 
+
 ---
 
-# Mise à jour des hypothèses
-
-## Hypothèses confirmées
-
-- Le cœur de cible est bien le parent réalisant les courses alimentaires.
-- L'application doit être utilisable directement en magasin.
-- La comparaison de produits constitue un besoin fort.
-- La personnalisation représente une attente importante.
-- Les profils allergiques et diabétiques sont pertinents mais secondaires.
-
-## Hypothèses infirmées
-
-- Aucun besoin de différencier les usages selon le genre.
-- Pas de volonté de créer un Nutri-Score propriétaire.
-
-## Nouveaux besoins identifiés
-
-- Assistant conversationnel.
-- Historique lié à un compte utilisateur.
-- Système de favoris.
-- Recommandations contextualisées selon le profil.
-- Gouvernance éthique des partenariats commerciaux.
-- Approche RSE intégrée au modèle économique.
-
-## Points de vigilance découverts
-
-- Conformité RGPD.
-- Arbitrage avec le DPO concernant la personnalisation.
-- Risque de conflit d'intérêt avec les partenariats de marque.
-- Risque réputationnel lié aux recommandations.
-- Nécessité d'un positionnement non médical.
-- Importance de préserver la confiance utilisateur.

@@ -69,6 +69,7 @@ identification pouvoir / intérêt
 | Utilisateurs                 | Faible  | Fort    |
 | Marketing                    | Moyen   | Fort    |
 | Equipe Data                  | Faible  | Fort    |
+| Equipe Projet                | Moyen   | Fort    |
 | Professionnels de santé      | Faible  | Moyen   |
 | Open Food Facts              | Faible  | Faible  |
 | DPO / Délégué Prot. Data RGPD| Fort    | Fort    |
