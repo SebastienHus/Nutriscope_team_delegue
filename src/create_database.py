@@ -69,41 +69,32 @@ def init_database(config, username, password):
 #     with open(filename, "w") as file:
 #         file.write(CreateTable(my_mysql_table).compile(mysql_engine))
 
-def to_list(value):
-    if not isinstance(value, str):
-        return []
-    return [v.strip() for v in value.split(",")]
-
 def get_multi_relationship(
         data_frame: pd.DataFrame,
         column_to_split: str,
         primary_keys: tuple[str],
-        split= to_list,
         as_:dict = None
     ):
     as_ = as_ or {}
     _from_id, to_id = primary_keys
     from_id = as_.get(_from_id, _from_id)
 
-    # 1. Copie et application de la fonction de découpage
-    df = data_frame.copy()
-    df["_temp_tags"] = df[column_to_split].apply(split)
+    # 1. Éclatement (explode) pour avoir une ligne par élément
+    # `column_to_split` doit être une liste d'éléments
+    exploded = data_frame.explode(column_to_split).dropna(subset=column_to_split)
 
-    # 2. Éclatement (explode) pour avoir une ligne par élément
-    exploded = df.explode("_temp_tags").dropna(subset=["_temp_tags"])
-
-    # 3. Création de la table de référence unique (right_table)
-    unique_tags = exploded["_temp_tags"].drop_duplicates().reset_index(drop=True)
+    # 2. Création de la table de référence unique (right_table)
+    unique_tags = exploded[column_to_split].drop_duplicates().reset_index(drop=True)
     right_table = pd.DataFrame({"id": unique_tags.index, "name": unique_tags})
 
-    # 4. Association des IDs de la table de référence vers la table de relation
+    # 3. Association des IDs de la table de référence vers la table de relation
     tag_to_id = {name: idx for idx, name in unique_tags.items()}
     
     relation_data = []
     for _, row in exploded.iterrows():
         relation_data.append({
             from_id: row[_from_id],
-            to_id: tag_to_id[row["_temp_tags"]]
+            to_id: tag_to_id[row[column_to_split]]
         })
 
     # BUG: why drop duplicates is needed there ?
