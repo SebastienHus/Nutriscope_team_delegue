@@ -137,6 +137,11 @@ Lorsque les informations sont insuffisantes ou difficiles à comprendre, il peut
 
 Le consommateur décide d'ajouter, remplacer ou non le produit a son panier.
 
+
+## Carte BPMN
+
+
+
 ---
 
 ## Frictions identifiées
