@@ -349,6 +349,174 @@ Avantages :
 Inconvénients :
 
 - Développement initial plus important.
+
+## Risque R4 : Dépendance à Open Food Facts
+
+### Constat
+
+La plateforme repose principalement sur les données provenant d'Open Food Facts.
+
+Une indisponibilité du service, une évolution de son modèle de données ou une dégradation de la qualité des informations pourrait impacter directement NutriScope.
+
+### Solutions envisagées
+
+#### Option 1 : Consommation directe
+
+Interroger Open Food Facts à chaque demande utilisateur.
+
+Avantages :
+
+- Données toujours à jour.
+- Pas de stockage local important.
+
+Inconvénients :
+
+- Forte dépendance à un service tiers.
+- Impact direct en cas d'indisponibilité.
+
+#### Option 2 : Réplication locale
+
+Conserver une copie locale des données utiles.
+
+Avantages :
+
+- Réduction de la dépendance.
+- Meilleures performances.
+
+Inconvénients :
+
+- Nécessite une synchronisation régulière.
+
+#### Option 3 : Multiplication des sources
+
+Combiner plusieurs bases de données alimentaires.
+
+Exemples :
+
+- Open Food Facts
+- CIQUAL
+- Bases partenaires
+
+Avantages :
+
+- Réduction du risque de dépendance.
+
+Inconvénients :
+
+- Complexité d'intégration plus importante.
+
+### Solution retenue
+
+Mise en cache locale des produits les plus consultés et synchronisation périodique avec Open Food Facts.
+
+L'architecture devra permettre l'ajout futur d'autres sources de données.
+
+### Justification
+
+Cette approche limite les risques liés à une source unique tout en conservant un niveau raisonnable de complexité pour le projet.
+
+---
+
+## Risque R6 : Recommandations peu pertinentes
+
+### Constat
+
+La qualité des recommandations dépend directement :
+
+- de la qualité des données d'entraînement ;
+- du volume de données disponibles ;
+- de la représentativité des données ;
+- de la qualité des profils utilisateurs ;
+- des règles métier utilisées.
+
+Un modèle entraîné sur des données incomplètes, bruitées ou biaisées peut produire des recommandations peu pertinentes.
+
+### Solutions envisagées
+
+#### Option 1 : Modèle prédictif dès le démarrage
+
+Utiliser rapidement un modèle d'apprentissage automatique.
+
+Avantages :
+
+- Potentiel de personnalisation élevé.
+
+Inconvénients :
+
+- Risque de mauvaises recommandations.
+- Sensibilité forte à la qualité des données.
+
+#### Option 2 : Approche hybride
+
+Combiner règles métier et IA.
+
+Avantages :
+
+- Recommandations plus explicables.
+- Réduction des erreurs.
+
+Inconvénients :
+
+- Développement plus important.
+
+#### Option 3 : Approche progressive
+
+Commencer par des règles métier fiables puis introduire progressivement des modèles prédictifs.
+
+Avantages :
+
+- Réduction du risque.
+- Contrôle plus simple des résultats.
+
+Inconvénients :
+
+- Personnalisation limitée au début.
+
+### Solution retenue
+
+Dans un premier temps, les recommandations seront basées principalement sur des règles métier transparentes et explicables.
+
+L'utilisation de modèles prédictifs sera envisagée uniquement après :
+
+- nettoyage des données ;
+- validation de leur qualité ;
+- constitution d'un historique suffisant ;
+- évaluation des performances obtenues.
+
+Les produits présentant des données incohérentes ou aberrantes seront exclus des jeux d'entraînement afin d'éviter l'introduction de biais dans les modèles.
+
+### Justification
+
+La confiance de l'utilisateur repose principalement sur la pertinence des recommandations.
+
+Privilégier d'abord la qualité des données et l'explicabilité permet de sécuriser le fonctionnement de la plateforme avant d'introduire des mécanismes d'apprentissage plus avancés.
+
+
+## Synthese plan de mitigation 
+
+## Synthèse des stratégies de mitigation retenues
+
+| Risque | Solutions étudiées | Solution retenue | Justification |
+|----------|-------------------|------------------|---------------|
+| **R1 - Données nutritionnelles incohérentes** | Correction automatique, exclusion des données incohérentes | Exclusion des données aberrantes des jeux d'entraînement et des calculs métier | Garantir la qualité des analyses et limiter l'introduction de biais dans les modèles prédictifs |
+| **R2 - Produits incomplets** | Rejet systématique, analyse partielle | Analyse partielle lorsque les données critiques sont présentes avec affichage d'un indice de confiance | Améliorer la couverture du catalogue tout en restant transparent sur la qualité des résultats |
+| **R3 - Hétérogénéité des données** | Traitement manuel, normalisation automatisée | Normalisation automatique lors de l'import et utilisation de référentiels internes | Garantir l'homogénéité des traitements et réduire les anomalies liées aux formats multiples |
+| **R4 - Dépendance à Open Food Facts** | Consommation directe, réplication locale, multi-sources | Cache local avec synchronisation périodique et architecture ouverte à d'autres sources | Réduire la dépendance tout en conservant des données à jour et de bonnes performances |
+| **R6 - Recommandations peu pertinentes** | Modèle prédictif immédiat, approche hybride, approche progressive | Règles métier dans un premier temps puis introduction progressive de modèles prédictifs | Sécuriser la qualité des recommandations avant d'introduire des mécanismes d'apprentissage plus complexes |
+
+---
+
+## Principes directeurs retenus
+
+| Principe | Application dans NutriScope |
+|-----------|----------------------------|
+| Qualité avant quantité | Les données incohérentes sont exclues des entraînements et analyses critiques |
+| Transparence | Affichage d'un indice de confiance lorsque certaines informations sont manquantes |
+| Normalisation systématique | Contrôle et harmonisation des données avant exploitation |
+| Réduction des dépendances | Mise en cache locale et préparation à l'intégration d'autres sources |
+| IA progressive et maîtrisée | Priorité aux règles métier explicables avant l'introduction de modèles complexes |
+| Amélioration continue | Réévaluation régulière des données, modèles et recommandations |
+
 ---
 
 # Conclusion
