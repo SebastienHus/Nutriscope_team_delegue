@@ -31,9 +31,14 @@ L'analyse de notre parcours utilisateur actuel (situation AS-IS) met en avant pl
 Pour évaluer le marché, nous avons identifié les principaux acteurs représentatifs utilisés par les consommateurs :
 
 1. **Yuka** : L'acteur référent grand public axé sur la notation et la recommandation simplifiée.
+
 2. **Open Food Facts** : La base de données open source et collaborative majeure qui alimente une partie importante de l'écosystème alimentaire.
-3. **myLabel / ScanUp** : Des applications spécialisées dans la personnalisation selon certains critères (éthique, environnement, transformation des aliments, allergènes).
-4. **Foodvisor** : Application de coaching nutritionnel proposant un suivi alimentaire personnalisé, des recommandations nutritionnelles et des outils d'accompagnement liés aux objectifs de santé et de bien-être.
+
+3. **myLabel** : Application spécialisée dans la personnalisation des produits selon les préférences alimentaires, les allergènes, les critères éthiques et environnementaux.
+
+4. **ScanUp** : Application spécialisée dans l'analyse détaillée de la composition des produits alimentaires, du niveau de transformation des aliments et de la qualité des ingrédients.
+
+5. **Foodvisor** : Application de coaching nutritionnel proposant un suivi alimentaire personnalisé, des recommandations nutritionnelles et des outils d'accompagnement liés aux objectifs de santé et de bien-être.
 
 ---
 
@@ -43,7 +48,8 @@ Pour évaluer le marché, nous avons identifié les principaux acteurs représen
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Yuka** | Application grand public | Oui | Partielle (Note /100) | Oui | Non (Note générique) | Non | Oui (Barème propre) |
 | **Open Food Facts** | Base de données ouverte | Oui | Non (Données brutes) | Non | Non | Non | Oui (Nutri-Score, NOVA) |
-| **myLabel / ScanUp** | Application spécialisée | Oui | Partielle (Filtres visuels) | Limitée | Oui (Éthique / Allergènes) | Non | Oui (Composition / Additifs) |
+| **myLabel** | Application spécialisée | Oui | Partielle (Filtres visuels) | Limitée | Oui (Éthique / Allergènes) | Non | Oui |
+| **ScanUp** | Application spécialisée | Oui | Oui (Composition détaillée et décryptage des ingrédients) | Limitée | Partielle | Non | Oui (Composition / Additifs / Niveau de transformation) |
 | **Foodvisor** | Assistant nutritionnel et coaching alimentaire | Oui | Oui (Conseils nutritionnels) | Oui | Oui (Objectifs et profils) | Non | Oui |
 
 ---
@@ -64,15 +70,16 @@ L'analyse comparative de ces fonctionnalités montre un espace vacant sur le mar
 
 ### Matrice comparative des fonctionnalités
 
-| Fonctionnalités / Critères | Yuka | Open Food Facts | myLabel | ScanUp |Foodvisor | NutriScope *(Notre solution)* |
+| Fonctionnalités / Critères | Yuka | Open Food Facts | myLabel | ScanUp | Foodvisor | NutriScope *(Notre solution)* |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Scan de code-barres** | 🟢 | 🟢 | 🟢 | | 🟢 | 🟢 |
-| **Analyse nutritionnelle globale** | 🟢 | 🟢 | 🟢 | | 🟢 | 🟢 |
-| **Recommandation d'alternatives** | 🟢 | 🔴 | 🔴 | | 🟢 | 🟢 |
-| **Explication vulgarisée de la note** | 🔴 | 🔴 | 🔴 | | 🔴 | 🟢 |
-| **Personnalisation selon profil (santé/objectifs)** | 🔴 | 🔴 | 🟢 | | 🟢 | 🟢 |
-| **Assistant conversationnel IA (RAG)** | 🔴 | 🔴 | 🔴 | | 🔴 | 🟢 |
-| **Approche pédagogique et non culpabilisante** | 🔴 | 🔴 | 🟢 | | 🟢 | 🟢 |
+| **Scan de code-barres** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 |
+| **Analyse nutritionnelle globale** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 |
+| **Recommandation d'alternatives** | 🟢 | 🔴 | 🔴 | ⚠️ | 🟢 | 🟢 |
+| **Explication vulgarisée de la note** | 🔴 | 🔴 | 🔴 | 🟢 | 🔴 | 🟢 |
+| **Personnalisation selon profil (santé/objectifs)** | 🔴 | 🔴 | 🟢 | ⚠️ | 🟢 | 🟢 |
+| **Assistant conversationnel IA (RAG)** | 🔴 | 🔴 | 🔴 | 🔴 | 🔴 | 🟢 |
+| **Approche pédagogique et non culpabilisante** | 🔴 | 🔴 | 🟢 | 🟢 | 🟢 | 🟢 |
+| **Transparence sur les critères de notation** | ⚠️ | 🟢 | ⚠️ | 🟢 | ⚠️ | 🟢 |
 
 ---
 
@@ -88,7 +95,9 @@ NutriScope se démarque directement des acteurs existants par plusieurs leviers 
 
 - **Une aide directe à la décision en magasin** : Là où certaines applications se concentrent sur le suivi alimentaire ou l'affichage d'une note, NutriScope intervient au moment où l'utilisateur doit choisir entre plusieurs produits.
 
-- **Une transparence complète vis-à-vis du score nutritionnel affiché**
+- **Une transparence complète vis-à-vis du score nutritionnel affiché** : chaque résultat, recommandation ou alerte est justifié et expliqué afin que l'utilisateur comprenne les critères pris en compte et les raisons ayant conduit au résultat présenté.
+- 
+- **Un indice de confiance associé aux recommandations** : lorsque certaines données sont absentes ou incomplètes, NutriScope informe clairement l'utilisateur du niveau de fiabilité de l'analyse proposée afin de garantir une transparence maximale.
 
 ---
 
@@ -153,15 +162,13 @@ Fournir des recommandations tenant compte des contraintes et objectifs propres �
 
 #### 4. Informer avec transparence
 
-Chaque indicateur de nutrition doivent être explicables, expliqués et facilement accessibles aux utilisateurs.
+Chaque indicateur nutritionnel doit être explicable, compréhensible et facilement accessible afin que l'utilisateur puisse comprendre les informations qui lui sont présentées et les utiliser en toute confiance.
 
 ---
 
 ### Proposition de valeur (version courte)
 
-> NutriScope aide les consommateurs à comprendre rapidement un produit alimentaire et à identifier les alternatives les plus adaptées à leurs besoins, sans avoir à analyser eux-mêmes des informations nutritionnelles complexes.
-
-Note : Manque ce que l'on propose de plus
+> NutriScope aide les consommateurs à comprendre rapidement un produit alimentaire, à obtenir des explications claires sur sa composition, à comprendre les raisons d'une recommandation et à identifier les alternatives les plus adaptées à leurs besoins grâce à une information personnalisée, transparente et exploitable directement au moment de l'achat.
 
 ---
 
