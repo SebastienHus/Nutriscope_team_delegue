@@ -1,0 +1,483 @@
+/* =====================================================
+   NUTRISCOPE V1
+   CREATION COMPLETE DE LA BASE
+   ===================================================== */
+
+
+/* =====================================================
+   ETAPE 0 : CREATION DE LA BASE
+   ===================================================== */
+
+/*
+CREATE DATABASE "NutriScope"
+WITH
+ENCODING = 'UTF8'
+OWNER = postgres;
+
+Puis se connecter :
+
+\c NutriScope
+*/
+
+
+/* =====================================================
+   ETAPE 1 : SUPPRESSION DES TABLES
+   SCRIPT REJOUABLE
+   ===================================================== */
+
+DROP TABLE IF EXISTS produit_pays CASCADE;
+DROP TABLE IF EXISTS produit_trace CASCADE;
+DROP TABLE IF EXISTS produit_allergene CASCADE;
+DROP TABLE IF EXISTS produit_label CASCADE;
+DROP TABLE IF EXISTS produit_additif CASCADE;
+DROP TABLE IF EXISTS produit_marque CASCADE;
+DROP TABLE IF EXISTS produit_category CASCADE;
+
+DROP TABLE IF EXISTS score CASCADE;
+DROP TABLE IF EXISTS nutrition CASCADE;
+DROP TABLE IF EXISTS produit CASCADE;
+
+DROP TABLE IF EXISTS pays CASCADE;
+DROP TABLE IF EXISTS trace CASCADE;
+DROP TABLE IF EXISTS allergene CASCADE;
+DROP TABLE IF EXISTS label CASCADE;
+DROP TABLE IF EXISTS additif CASCADE;
+DROP TABLE IF EXISTS marque CASCADE;
+DROP TABLE IF EXISTS category CASCADE;
+DROP TABLE IF EXISTS food_group CASCADE;
+
+
+/* =====================================================
+   TABLE FOOD GROUP
+   ===================================================== */
+
+CREATE TABLE food_group (
+
+    id_food_group SERIAL PRIMARY KEY,
+
+    food_group_name VARCHAR(255)
+    NOT NULL
+    UNIQUE
+
+);
+
+
+/* =====================================================
+   TABLE CATEGORY
+   ===================================================== */
+
+CREATE TABLE category (
+
+    id_category SERIAL PRIMARY KEY,
+
+    category_tag VARCHAR(255)
+    NOT NULL
+    UNIQUE,
+
+    parent_category_id INTEGER,
+
+    CONSTRAINT fk_category_parent
+        FOREIGN KEY (parent_category_id)
+        REFERENCES category(id_category)
+
+);
+
+
+/* =====================================================
+   TABLE MARQUE
+   ===================================================== */
+
+CREATE TABLE marque (
+
+    id_marque SERIAL PRIMARY KEY,
+
+    brand_tag VARCHAR(255)
+    NOT NULL
+    UNIQUE
+
+);
+
+
+/* =====================================================
+   TABLE ADDITIF
+   ===================================================== */
+
+CREATE TABLE additif (
+
+    id_additif SERIAL PRIMARY KEY,
+
+    additive_tag VARCHAR(255)
+    NOT NULL
+    UNIQUE
+
+);
+
+
+/* =====================================================
+   TABLE LABEL
+   ===================================================== */
+
+CREATE TABLE label (
+
+    id_label SERIAL PRIMARY KEY,
+
+    label_tag VARCHAR(255)
+    NOT NULL
+    UNIQUE
+
+);
+
+
+/* =====================================================
+   TABLE ALLERGENE
+   ===================================================== */
+
+CREATE TABLE allergene (
+
+    id_allergene SERIAL PRIMARY KEY,
+
+    allergene_tag VARCHAR(255)
+    NOT NULL
+    UNIQUE
+
+);
+
+
+/* =====================================================
+   TABLE TRACE
+   ===================================================== */
+
+CREATE TABLE trace (
+
+    id_trace SERIAL PRIMARY KEY,
+
+    trace_tag VARCHAR(255)
+    NOT NULL
+    UNIQUE
+
+);
+
+
+/* =====================================================
+   TABLE PAYS
+   ===================================================== */
+
+CREATE TABLE pays (
+
+    id_pays SERIAL PRIMARY KEY,
+
+    country_tag VARCHAR(255)
+    NOT NULL
+    UNIQUE
+
+);
+
+
+/* =====================================================
+   TABLE PRODUIT
+   ===================================================== */
+
+CREATE TABLE produit (
+
+    code VARCHAR(50) PRIMARY KEY,
+
+    product_name TEXT,
+
+    quantity VARCHAR(100),
+
+    ingredients_text TEXT,
+
+    completeness NUMERIC(10,2),
+
+    no_nutrition_data BOOLEAN,
+
+    nutriscore_data_complete BOOLEAN,
+
+    image_url TEXT,
+
+    image_small_url TEXT,
+
+    image_ingredients_url TEXT,
+
+    image_ingredients_small_url TEXT,
+
+    image_nutrition_url TEXT,
+
+    image_nutrition_small_url TEXT,
+
+    id_food_group INTEGER,
+
+    CONSTRAINT fk_produit_food_group
+        FOREIGN KEY (id_food_group)
+        REFERENCES food_group(id_food_group)
+
+);
+
+
+/* =====================================================
+   TABLE NUTRITION
+   ===================================================== */
+
+CREATE TABLE nutrition (
+
+    code_produit VARCHAR(50)
+        PRIMARY KEY,
+
+    energy_100g NUMERIC(12,4),
+
+    fat_100g NUMERIC(12,4),
+
+    saturated_fat_100g NUMERIC(12,4),
+
+    sugars_100g NUMERIC(12,4),
+
+    fiber_100g NUMERIC(12,4),
+
+    proteins_100g NUMERIC(12,4),
+
+    salt_100g NUMERIC(12,4),
+
+    fruits_vegetables_legumes_100g NUMERIC(12,4),
+
+    CONSTRAINT fk_nutrition_produit
+        FOREIGN KEY (code_produit)
+        REFERENCES produit(code)
+
+);
+
+
+/* =====================================================
+   TABLE SCORE
+   ===================================================== */
+
+CREATE TABLE score (
+
+    code_produit VARCHAR(50)
+        PRIMARY KEY,
+
+    nutriscore_score INTEGER,
+
+    nutriscore_grade CHAR(1),
+
+    nova_group SMALLINT,
+
+    environmental_score_grade CHAR(1),
+
+    CONSTRAINT fk_score_produit
+        FOREIGN KEY (code_produit)
+        REFERENCES produit(code)
+
+);
+
+
+/* =====================================================
+   TABLE PRODUIT_CATEGORY
+   ===================================================== */
+
+CREATE TABLE produit_category (
+
+    code_produit VARCHAR(50),
+
+    id_category INTEGER,
+
+    PRIMARY KEY (
+        code_produit,
+        id_category
+    ),
+
+    CONSTRAINT fk_pc_produit
+        FOREIGN KEY (code_produit)
+        REFERENCES produit(code),
+
+    CONSTRAINT fk_pc_category
+        FOREIGN KEY (id_category)
+        REFERENCES category(id_category)
+
+);
+
+
+/* =====================================================
+   TABLE PRODUIT_MARQUE
+   ===================================================== */
+
+CREATE TABLE produit_marque (
+
+    code_produit VARCHAR(50),
+
+    id_marque INTEGER,
+
+    PRIMARY KEY (
+        code_produit,
+        id_marque
+    ),
+
+    CONSTRAINT fk_pm_produit
+        FOREIGN KEY (code_produit)
+        REFERENCES produit(code),
+
+    CONSTRAINT fk_pm_marque
+        FOREIGN KEY (id_marque)
+        REFERENCES marque(id_marque)
+
+);
+
+
+/* =====================================================
+   TABLE PRODUIT_ADDITIF
+   ===================================================== */
+
+CREATE TABLE produit_additif (
+
+    code_produit VARCHAR(50),
+
+    id_additif INTEGER,
+
+    PRIMARY KEY (
+        code_produit,
+        id_additif
+    ),
+
+    CONSTRAINT fk_pa_produit
+        FOREIGN KEY (code_produit)
+        REFERENCES produit(code),
+
+    CONSTRAINT fk_pa_additif
+        FOREIGN KEY (id_additif)
+        REFERENCES additif(id_additif)
+
+);
+
+
+/* =====================================================
+   TABLE PRODUIT_LABEL
+   ===================================================== */
+
+CREATE TABLE produit_label (
+
+    code_produit VARCHAR(50),
+
+    id_label INTEGER,
+
+    PRIMARY KEY (
+        code_produit,
+        id_label
+    ),
+
+    CONSTRAINT fk_pl_produit
+        FOREIGN KEY (code_produit)
+        REFERENCES produit(code),
+
+    CONSTRAINT fk_pl_label
+        FOREIGN KEY (id_label)
+        REFERENCES label(id_label)
+
+);
+
+
+/* =====================================================
+   TABLE PRODUIT_ALLERGENE
+   ===================================================== */
+
+CREATE TABLE produit_allergene (
+
+    code_produit VARCHAR(50),
+
+    id_allergene INTEGER,
+
+    PRIMARY KEY (
+        code_produit,
+        id_allergene
+    ),
+
+    CONSTRAINT fk_pall_produit
+        FOREIGN KEY (code_produit)
+        REFERENCES produit(code),
+
+    CONSTRAINT fk_pall_allergene
+        FOREIGN KEY (id_allergene)
+        REFERENCES allergene(id_allergene)
+
+);
+
+
+/* =====================================================
+   TABLE PRODUIT_TRACE
+   ===================================================== */
+
+CREATE TABLE produit_trace (
+
+    code_produit VARCHAR(50),
+
+    id_trace INTEGER,
+
+    PRIMARY KEY (
+        code_produit,
+        id_trace
+    ),
+
+    CONSTRAINT fk_pt_produit
+        FOREIGN KEY (code_produit)
+        REFERENCES produit(code),
+
+    CONSTRAINT fk_pt_trace
+        FOREIGN KEY (id_trace)
+        REFERENCES trace(id_trace)
+
+);
+
+
+/* =====================================================
+   TABLE PRODUIT_PAYS
+   ===================================================== */
+
+CREATE TABLE produit_pays (
+
+    code_produit VARCHAR(50),
+
+    id_pays INTEGER,
+
+    PRIMARY KEY (
+        code_produit,
+        id_pays
+    ),
+
+    CONSTRAINT fk_pp_produit
+        FOREIGN KEY (code_produit)
+        REFERENCES produit(code),
+
+    CONSTRAINT fk_pp_pays
+        FOREIGN KEY (id_pays)
+        REFERENCES pays(id_pays)
+
+);
+
+
+/* =====================================================
+   INDEX CONSEILLES
+   ===================================================== */
+
+CREATE INDEX idx_product_name
+ON produit(product_name);
+
+CREATE INDEX idx_brand_tag
+ON marque(brand_tag);
+
+CREATE INDEX idx_category_tag
+ON category(category_tag);
+
+CREATE INDEX idx_additive_tag
+ON additif(additive_tag);
+
+CREATE INDEX idx_label_tag
+ON label(label_tag);
+
+CREATE INDEX idx_country_tag
+ON pays(country_tag);
+
+CREATE INDEX idx_food_group_name
+ON food_group(food_group_name);
+
+
+/* =====================================================
+   FIN DU SCRIPT
+   ===================================================== */
