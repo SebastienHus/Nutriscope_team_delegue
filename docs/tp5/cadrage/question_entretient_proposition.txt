@@ -1,0 +1,55 @@
+1. Quelles limites des solutions actuelles (Yuka, Open Food Facts, etc.) souhaitons-nous absolument dépasser ?
+
+Cette formulation te permet d'obtenir :
+
+la vision métier ;
+le besoin principal ;
+les points de différenciation.
+
+Je garderais ensuite :
+
+2. Quel est le business model de l'application ? Financement par la pub ? Si oui, est-ce qu'on restera libre sur les propositions de produits ?
+
+3. Qui utilisera la solution ? Quel est le public visé ?
+
+Exemples :
+
+Affichage d'informations uniquement
+Profil familial
+Allergies
+Diabète
+Pratique sportive
+Objectifs nutritionnels
+
+4. Si nous devions lancer une première version demain, laquelle de ces fonctionnalités serait indispensable ?
+Scan de code-barres
+Comparaison de produits
+Analyse nutritionnelle simplifiée
+Alertes allergènes
+Recommandations personnalisées
+Historique des produits consultés
+
+5. Puisque les données  d'OpenFoodTracks intègrent la dimension environnementale. Notre impact environnemental a-t-il une importance ? Comment est-ce qu'on la compensera ?
+
+6. Quand les produits ont un nutriscore équivalent, quels produits sont à privilégier ? 
+
+7. Avez-vous déjà identifié des risques ou points de vigilance pour ce projet, en dehors des aspects techniques ?
+
+8. Quel niveau de détails à l'affichage attendez-vous des recommandations fournies par NutriScope ?
+
+Pourquoi je l'ajoute ?
+
+Parce que vous faites de l'IA et de la recommandation alimentaire.
+
+Cela peut faire sortir :
+
+justification des recommandations ;
+transparence des calculs ;
+confiance utilisateur ;
+responsabilité des conseils.
+
+Et ça peut fortement influencer le design de l'application.
+
+9.Parmi nos personas secondaires (diététicienne, sportif, senior), lequel vous semble offrir le plus de potentiel pour une future évolution du produit et pourquoi ?
+
+10. Quels critères permettront de considérer NutriScope comme une réussite ? Quels KPI clés devons-nous suivre ?

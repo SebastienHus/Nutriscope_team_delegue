@@ -1,0 +1,51 @@
+Fiche recap 
+
+devant toute entreprise, demandez-vous
+« quels flux ? quelles traces ? qui décide ? » — avant « quel modèle ? »
+
+chaque flux laisse une trace numerique ( ou le devrait ) 
+Les parties prenantes (actionnaires, régulateurs, salariés, société) (TODO def courte a faire )
+
+( todo a remettre sus forme de tableau propre)
+Direction générale stratégie, arbitrages DG, secrétariat général plans, budgets, décisions
+Production /
+opérations
+fabriquer, délivrer chef d'atelier, ingénieur capteurs, qualité, incidents
+Marketing & ventes trouver et garder des
+clients
+commercial, chef de produit CRM, campagnes, tarifs
+Supply chain approvisionner, livrer acheteur, logisticien stocks, commandes,
+transport
+Finance financer, mesurer contrôleur de gestion,
+comptable
+factures, comptes,
+prévisions
+RH recruter, développer RRH, paie, formation dossiers salariés
+(sensibles)
+DSI / IT outiller, sécuriser dev, ops, data, sécurité logs, référentiels, bases
+
+
+( todo a relire tu peux reformuler completer si tu le juge necessaire )
+La fonction est un regroupement durable : « la finance », « les ventes »
+Le métier est un savoir-faire individuel : contrôleur de gestion, acheteur,
+développeur IA
+Le processus traverse les fonctions : « traiter une commande » mobilise ventes,
+stock, logistique et facturation
+
+noteLes cas d'usage IA les plus rentables se cachent dans les processus
+transverses : c'est là que les frictions s'accumulent, et c'est là
+qu'aucune fonction ne voit le problème en entier.
+
+( todo fais moiun point sur ce qu est une fonction transverse avec exemple )
+
+
+
+
+---
+
+POINT POUR LE PROJET  
+Une startup comme NutriScope démarre sans organigramme : trois personnes
+font
+tout. Les fonctions apparaissent avec la croissance — mais les rôles
+(qui décide, qui vend, qui construit) existent dès le premier jour.
+

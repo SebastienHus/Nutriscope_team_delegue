@@ -1,0 +1,133 @@
+================================================================================
+                     DOCUMENT DE CADRAGE : PROJET IA NUTRISCOPE
+================================================================================
+
+1. DÉFINITION : QU’EST-CE QU’UNE NOTE DE CADRAGE ?
+--------------------------------------------------------------------------------
+Une note de cadrage est le document fondateur d’un projet. Elle pose les bases,
+définit le périmètre, aligne les attentes et valide le lancement. C’est une
+synthèse stratégique, non technique.
+
+Elle répond aux questions QQOQCP :
+* Quoi : ce que le projet va produire
+* Pourquoi : le besoin, les enjeux
+* Qui : acteurs, rôles, responsabilités
+* Où : contexte, environnement
+* Quand : planning, jalons
+* Comment : moyens, ressources, contraintes
+
+
+2. RÔLE DE LA NOTE DE CADRAGE DANS LE PROJET NUTRISCOPE
+--------------------------------------------------------------------------------
+* Montrer la compréhension de la commande NutriScope.
+* Définir ce qui sera construit sur 8 mois.
+* Fixer le périmètre fonctionnel et data.
+* Lister les livrables IA attendus.
+* Identifier les contraintes (RGPD, AI Act, technique, planning, parties prenantes).
+* Éviter les dérives de périmètre (scope creep).L'application n'a pas vocation a éduquer les consomateurs mais à indiquer/substituer des produits
+l'application n'a pas vocation à être utilisé medicalement
+
+
+
+* Donner une vision claire au jury et aux formateurs.
+
+La direction NutriScope valide ce document avant tout développement.
+
+
+
+
+3. CONTEXTE & ENJEUX
+--------------------------------------------------------------------------------
+* objectif application pour utilisateurs finaux type mr et madame micheline
+
+* Problème : manque de transparence nutritionnelle.
+
+* Opportunité : IA pour guider les choix alimentaires, chatbot, integration d'outil computer vision.
+
+* Enjeux : qualité data, fiabilité, conformité, industrialisation.(technique)
+le mieux manger/substitution
+
+
+
+4. OBJECTIFS DU PROJET (SMART)
+--------------------------------------------------------------------------------
+* Construire une base produits propre et exploitable.
+* Développer un modèle de prédiction du Nutri-Score.
+* Créer un moteur de substitution.
+* Entraîner un classifieur d’images.---??????? a voir
+* Développer un assistant RAG.
+* Déployer une API et une mini-application.
+* Livrer conformité RGPD / AI Act.
+
+
+5. PÉRIMÈTRE FONCTIONNEL
+--------------------------------------------------------------------------------
+INCLUS :
+* 5 à 8 rayons alimentaires.
+* Pipeline de nettoyage.
+* Modèles IA (Nutri-Score, substitution).
+* Assistant RAG.
+* API FastAPI + démonstrateur.
+* Conformité RGPD / AI Act.
+
+PISTE D'AMELIORATIONS:
+* Application mobile complète.
+* Interface utilisateur avancée.
+* Recommandations personnalisées (profil utilisateur).
+* Analyse nutritionnelle médicale. trop contraignant reglementairement donc non
+
+
+6. PARTIES PRENANTES & RÔLES
+--------------------------------------------------------------------------------
+* Direction NutriScope : commanditaire. ( formateur )
+* Équipe IA-et autre role associés : réalisation. ( nous )
+* Formateurs : validation des jalons direction.
+* Utilisateurs finaux : consommateurs en magasin.
+
+
+7. LIVRABLES ATTENDUS
+--------------------------------------------------------------------------------
+* Base PostgreSQL + fichiers Parquet. ok
+* Pipeline de nettoyage rejouable. en cours 
+* Modèles IA entraînés (Nutri-Score, substitution, image). a venir
+* Tableau de bord EDA. 
+* API FastAPI conteneurisée.
+* Mini-app de démonstration.
+* Registre RGPD.
+* Analyse de biais.
+* Positionnement AI Act.
+* Documentation complète.
+
+
+8. PLANNING & JALONS (8 MOIS)
+--------------------------------------------------------------------------------
+* J1 : Base SQL.
+* J2 : Pipeline data.
+* J3 : Modèle Nutri-Score.
+* J4 : Substitution.
+* J5 : Assistant RAG.
+* J6 : API + déploiement.
+* J7 : Conformité + dossier final.
+
+
+9. CONTRAINTES
+--------------------------------------------------------------------------------
+* Techniques : qualité data, performance des modèles. python 3.12 m Outils imposés : Python 3.12, Git (dépôt d'équipe), DuckDB/PostgreSQL, scikit-learn, TensorFlow/Keras, FastAPI,
+Docker. Le reste — éditeur, librairies complémentaires — est libre, à condition de le justifier dans le README
+code et noms de variables en anglais, documentation et soutenances en français
+
+* Organisationnelles : travail en équipe agilite.
+
+
+* Réglementaires : RGPD, AI Act, RGAA(accessibilité).
+* Temps(representerai le budget alloué) : 216 heures de projet fil rouge.
+
+
+10. RISQUES & PARADES
+--------------------------------------------------------------------------------
+* Data incomplète → seuil de complétude.
+* Modèles instables → validation croisée.
+* Charge de travail → découpage clair.
+* Biais nutritionnels → analyse dédiée.
+* Conformité IA → documentation continue.
+* Comprehension attentes de l'utilisateur -> etude de marché 
