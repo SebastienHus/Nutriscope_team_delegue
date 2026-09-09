@@ -88,7 +88,7 @@ DONNEES NUTRITIONNELLES
 energy-kcal_100g
 fat_100g
 saturated-fat_100g
-carbohydrates_100g
+carbohydrates_100gxxxx
 sugars_100g
 fiber_100g
 proteins_100g
@@ -145,7 +145,7 @@ completeness
     Peut servir à éliminer les fiches pauvres en données.
     A vérifier par analyse statistique.
 
-no_nutrition_data
+no_nutrition_data xxxx
 
     --> A tester.
 
@@ -169,7 +169,7 @@ Idée :
 2. Identifier les colonnes les plus renseignées.
 3. Définir un seuil minimal de qualité.
 4. Exclure les produits qui ne possèdent pas les
-   informations indispensables.
+   informations indispensables.--> on ne prend pas les ligne qui n aurait aucune info sur les nutriment de renseigné
 
 Exemple de critères possibles :
 
@@ -205,7 +205,7 @@ Exemples possibles :
 A vérifier dans la documentation Open Food Facts,
 mais l'objectif paraît être une classification
 nutritionnelle de haut niveau.
-
+hypothese peut on regrouper des categorie ensemble ???
 -------------------------------------------------
 PROPOSITION DE JEU DE COLONNES MINIMAL
 -------------------------------------------------
