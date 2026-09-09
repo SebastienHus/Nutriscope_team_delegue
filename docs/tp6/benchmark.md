@@ -40,6 +40,26 @@ Pour évaluer le marché, nous avons identifié les principaux acteurs représen
 
 5. **Foodvisor** : Application de coaching nutritionnel proposant un suivi alimentaire personnalisé, des recommandations nutritionnelles et des outils d'accompagnement liés aux objectifs de santé et de bien-être.
 
+# Situations des applications concurrentes sur google play store(sept 2026)
+
+| Application | Téléchargements | Base utilisateurs | Note Store | Avis | Catégorie | Modèle économique | Maturité |
+|------------|----------------|------------------|------------|------|-----------|------------------|----------|
+| **Yuka** | 10M+ | 80M+ (revendiqué) | 4,7 | 187 000+ | Santé et remise en forme | Gratuit / Premium | Leader |
+| **Open Food Facts** | 1M+ | Non communiqué | 4,4 | 16 000+ | Alimentation et boissons | Open Source | Référence données |
+| **myLabel** | 100k+ | Non communiqué | 3,9 | 800+ | Style de vie | Gratuit / Dons | Niche |
+| **ScanUp** | 100k+ | Non communiqué | 4,3 | 1 000+ | Santé et remise en forme | Gratuit | Niche |
+| **Foodvisor** | 10M+ | 15M+ | 4,7 | 187 000+ | Santé et remise en forme | Premium / Achats intégrés | Leader |
+| **NutriScope** | - | - | - | - | Nutrition personnalisée | À définir | Nouveau entrant |
+
+# tableau profil d'entreprises
+
+| Application / Structure | Chiffre d'Affaires / Produits | Résultat Net (Bénéfice / Perte) | Équipe / Salariés | Siège Social | Pays |
+|------------------------|-------------------------------|----------------------------------|-------------------|--------------|------|
+| **Yuka** *(Yuca SAS)* | 10,3 M€ *(dernier CA officiel déclaré)* | Non divulgué *(confidentialité des comptes)* | ~10 à 19 salariés | Paris (75011) | France |
+| **Foodvisor** *(FV Foodvisor SAS)* | non communiqué | -312 k€ *(dernier résultat publié)* | ~10 à 19 salariés | Levallois-Perret (92300) | France |
+| **Open Food Facts** *(Association loi 1901)* | ~700 k€ à 1 M€ *(budget, dons et subventions)* | 0 € *(structure à but non lucratif)* | ~5 à 10 salariés + bénévoles | Paris (75010) | France |
+
+
 ---
 
 ### Fonctionnalités observées chez les concurrents
