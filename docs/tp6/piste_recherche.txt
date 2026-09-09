@@ -1,0 +1,82 @@
+ce qui a ete realisé 
+
+Le problème existe-t-il ?
+Le processus actuel est-il perfectible ?
+L'IA peut-elle apporter de la valeur ?
+Quels sont les risques ?
+
+ce que nous allons faire
+Le problème existe
+↓
+D'autres le résolvent déjà
+↓
+Pourquoi quelqu'un utiliserait NutriScope ?
+
+
+
+Rediger un contexte 
+nutriscope besoin ect 
+
+( puis contexte etude precedente)
+qu'il existe un besoin ;
+que les utilisateurs rencontrent des frictions ;
+que des améliorations sont possibles ;
+que le projet est faisable.
+
+finir contexte par question pk nutriscope
+
+
+problematique 
+Pourquoi faire NutriScope alors que Yuka, Open Food Facts,
+ScanUp ou myLabel existent déjà ?
+
+partie benchmark 
+
+identifié :
+
+manque de personnalisation ;
+difficulté de compréhension ;
+nécessité d'interpréter les résultats ;
+dispersion des informations ;
+besoin d'accompagnement dans la décision.
+
+Ce sont précisément vos candidats à la différenciation.
+
+donc identification des principaux concurrent:
+-
+-
+
+
+
+donc regarder chez concurrent princiapl 
+Yuka, et les autre concurrent principaux 3 max )
+
+Questions :
+
+Scanne ?
+Explique ?
+Recommande ?
+Personnalise ?
+Conversationnel ?
+Gratuit ou payant ?
+analyse nutri ?
+
+(autres question pertiente a trouver dans ce context)
+
+Open Food Facts
+
+Questions :
+
+Source de données ou véritable assistant ?
+Fait-il de la recommandation ?
+Fait-il de la personnalisation ?
+
+suite ces donnée ajouter matrice comparative avec logo
+les cse vide sont nos point differenciant 
+
+
+realiser swot 
+
+
+en venir a la proposition de valeur
+quelle est ma valeur ajoute face ames concurrents
