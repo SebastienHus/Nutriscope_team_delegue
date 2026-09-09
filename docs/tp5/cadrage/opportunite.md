@@ -138,7 +138,7 @@ Moyenne
 
 ---
 
-## Risque R5 : Non-conformité RGPD
+## Risque R5 : Non-conformité RGPD (Changement de réglementation)
 
 ### Description
 
