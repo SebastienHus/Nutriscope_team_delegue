@@ -64,15 +64,15 @@ L'analyse comparative de ces fonctionnalités montre un espace vacant sur le mar
 
 ### Matrice comparative des fonctionnalités
 
-| Fonctionnalités / Critères | Yuka | Open Food Facts | myLabel / ScanUp | Foodvisor | NutriScope *(Notre solution)* |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Scan de code-barres** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 |
-| **Analyse nutritionnelle globale** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 |
-| **Recommandation d'alternatives** | 🟢 | 🔴 | 🔴 | 🟢 | 🟢 |
-| **Explication vulgarisée de la note** | 🔴 | 🔴 | 🔴 | 🟢 | 🟢 |
-| **Personnalisation selon profil (santé/objectifs)** | 🔴 | 🔴 | 🟢 | 🟢 | 🟢 |
-| **Assistant conversationnel IA (RAG)** | 🔴 | 🔴 | 🔴 | 🔴 | 🟢 |
-| **Approche pédagogique et non culpabilisante** | 🔴 | 🔴 | 🟢 | 🟢 | 🟢 |
+| Fonctionnalités / Critères | Yuka | Open Food Facts | myLabel | ScanUp |Foodvisor | NutriScope *(Notre solution)* |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Scan de code-barres** | 🟢 | 🟢 | 🟢 | | 🟢 | 🟢 |
+| **Analyse nutritionnelle globale** | 🟢 | 🟢 | 🟢 | | 🟢 | 🟢 |
+| **Recommandation d'alternatives** | 🟢 | 🔴 | 🔴 | | 🟢 | 🟢 |
+| **Explication vulgarisée de la note** | 🔴 | 🔴 | 🔴 | | 🔴 | 🟢 |
+| **Personnalisation selon profil (santé/objectifs)** | 🔴 | 🔴 | 🟢 | | 🟢 | 🟢 |
+| **Assistant conversationnel IA (RAG)** | 🔴 | 🔴 | 🔴 | | 🔴 | 🟢 |
+| **Approche pédagogique et non culpabilisante** | 🔴 | 🔴 | 🟢 | | 🟢 | 🟢 |
 
 ---
 
@@ -87,6 +87,8 @@ NutriScope se démarque directement des acteurs existants par plusieurs leviers 
 - **Une personnalisation poussée** : Prise en compte réelle des contraintes de l'utilisateur (famille pressée, personne diabétique, sportif, allergies, intolérances) plutôt qu'une note globale arbitraire.
 
 - **Une aide directe à la décision en magasin** : Là où certaines applications se concentrent sur le suivi alimentaire ou l'affichage d'une note, NutriScope intervient au moment où l'utilisateur doit choisir entre plusieurs produits.
+
+- **Une transparence complète vis-à-vis du score nutritionnel affiché**
 
 ---
 
@@ -133,7 +135,7 @@ NutriScope se démarque directement des acteurs existants par plusieurs leviers 
 
 ## 4. Proposition de valeur
 
-Là où les solutions actuelles se limitent souvent à attribuer une note globale ou à présenter des données nutritionnelles brutes, **NutriScope apporte une valeur ajoutée centrée sur la compréhension et la prise de décision**.
+Là où les solutions actuelles se limitent souvent à attribuer une note globale ou à présenter des données nutritionnelles brutes, **NutriScope apporte une valeur ajoutée centrée sur la compréhension, la transparence et la prise de décision**.
 
 ### Nos objectifs
 
@@ -149,11 +151,17 @@ Expliquer clairement les points d'attention d'un produit dans un langage compré
 
 Fournir des recommandations tenant compte des contraintes et objectifs propres à chaque utilisateur plutôt qu'une évaluation générique.
 
+#### 4. Informer avec transparence
+
+Chaque indicateur de nutrition doivent être explicables, expliqués et facilement accessibles aux utilisateurs.
+
 ---
 
 ### Proposition de valeur (version courte)
 
 > NutriScope aide les consommateurs à comprendre rapidement un produit alimentaire et à identifier les alternatives les plus adaptées à leurs besoins, sans avoir à analyser eux-mêmes des informations nutritionnelles complexes.
+
+Note : Manque ce que l'on propose de plus
 
 ---
 
