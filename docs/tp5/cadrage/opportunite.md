@@ -215,6 +215,146 @@ fort ( ref a reputation de l appli )
 
 ---
 
+# Alternative plan de mitigation
+
+## Risque R1 : Données nutritionnelles incohérentes
+
+### Constat
+
+Certaines données issues d'Open Food Facts peuvent contenir des valeurs aberrantes ou incohérentes :
+
+- sucres supérieurs à 100 g pour 100 g ;
+- sel supérieur à 100 g pour 100 g ;
+- énergie négative ;
+- valeurs manifestement erronées.
+
+### Solutions envisagées
+
+#### Option 1 : Correction automatique
+
+Corriger ou remplacer automatiquement les valeurs incohérentes.
+
+Avantages :
+
+- Conservation d'un plus grand volume de données.
+
+Inconvénients :
+
+- Risque d'introduire de nouvelles erreurs.
+- Altération potentielle de la donnée d'origine.
+
+#### Option 2 : Isolation des données incohérentes
+
+Conserver les données mais les exclure de certains traitements.
+
+Avantages :
+
+- Préservation de la donnée brute.
+- Réduction des risques sur les modèles.
+
+Inconvénients :
+
+- Complexification des traitements.
+
+### Solution retenue
+
+Les produits présentant des incohérences majeures seront exclus des jeux d'entraînement et de validation des modèles prédictifs.
+
+Les données concernées seront conservées à des fins d'audit mais non utilisées dans les calculs ayant un impact direct sur les recommandations.
+
+### Justification
+
+La qualité des données est prioritaire pour garantir la fiabilité des modèles et limiter la propagation d'erreurs dans les analyses.
+
+---
+
+## Risque R2 : Produits incomplets
+
+### Constat
+
+Certains produits disposent d'informations partielles :
+
+- ingrédients absents ;
+- Nutri-Score manquant ;
+- valeurs nutritionnelles incomplètes.
+
+### Solutions envisagées
+
+#### Option 1 : Rejet systématique
+
+Refuser toute analyse lorsque certaines données sont absentes.
+
+Avantages :
+
+- Résultats très fiables.
+
+Inconvénients :
+
+- Nombre important de produits non exploitables.
+
+#### Option 2 : Analyse partielle
+
+Exploiter les données disponibles lorsque les informations essentielles sont présentes.
+
+Avantages :
+
+- Couverture plus importante du catalogue.
+
+Inconvénients :
+
+- Niveau de précision variable.
+
+### Solution retenue
+
+Lorsque les informations critiques sont disponibles, le produit reste analysable.
+
+En cas de données secondaires manquantes, l'application affiche un indice de confiance permettant à l'utilisateur d'évaluer la fiabilité du résultat.
+
+### Justification
+
+Cette approche préserve l'expérience utilisateur tout en restant transparente sur les limites de l'analyse proposée.
+
+---
+
+## Risque R3 : Hétérogénéité des données
+
+### Constat
+
+Certaines informations sont représentées sous plusieurs formats :
+
+- noms de pays ;
+- catégories ;
+- tags ;
+- unités de mesure.
+
+### Solutions envisagées
+
+#### Option 1 : Traitement manuel
+
+Corriger progressivement les incohérences détectées.
+
+Avantages :
+
+- Mise en œuvre rapide.
+
+Inconvénients :
+
+- Peu scalable.
+
+#### Option 2 : Normalisation automatisée
+
+Uniformiser les données lors de leur importation.
+
+Avantages :
+
+- Traitement homogène.
+- Réduction des anomalies futures.
+
+Inconvénients :
+
+- Développement initial plus important.
+---
+
 # Conclusion
 
 L'analyse met en évidence un risque critique et plusieurs risques importants principalement liés à la qualité, à la complétude et à la disponibilité des données. Ces risques sont directement liés à l'utilisation d'une source de données ouverte et collaborative telle qu'Open Food Facts.
