@@ -194,11 +194,7 @@ fort ( ref a reputation de l appli )
 
 # 4. Matrice Probabilité × Impact
 
-| Impact \\ Probabilité | Faible | Moyenne | Élevée |
-|----------------------|---------|---------|---------|
-| **Élevé** | R5 🟠 | R4 🟠 | R1 🔴 |
-| **Moyen** | | R6 🟡 | R2 🟠 / R3 🟠 |
-| **Faible** | | | |
+![img](matrice-risques.jpg)
 
 ---
 
