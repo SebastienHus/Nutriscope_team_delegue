@@ -54,7 +54,6 @@ La définition du périmètre NutriScope s'appuie directement sur les travaux d'
 | **Historique des scans & Favoris** | 🟠 **Évolution (V2)** | Sauvegarde locale des produits et personnalisation progressive des parcours | Cartographie des Processus |
 | **Profil utilisateur & Filtres allergènes** | 🟠 **Évolution (V2)** | Personnalisation selon contraintes de santé (diabète, régimes spécifiques) | Spécifications Données |
 | **Reconnaissance visuelle / Photo étiquette**| 🔴 **Hors périmètre (V3)**| OCR d'étiquette et traitement par Computer Vision direct en rayon | Note de cadrage |
-| **Analyse du panier complet / Ticket caisse**| 🔴 **Hors périmètre (V3)**| Import et évaluation globale de l'équilibre du panier d'achat | Synthèse Stratégique |
 | **Application Mobile native dédiée** | 🔴 **Hors périmètre (MVP)**| Déploiement initial sous forme d'API FastAPI conteneurisée et démonstrateur Web | Note de cadrage |
 
 ---
@@ -67,7 +66,6 @@ La définition du périmètre NutriScope s'appuie directement sur les travaux d'
   * Pipeline automatisé d'ingestion et de nettoyage du catalogue mondial Open Food Facts.
   * Scan de code-barres (EAN) et recherche textuelle instantanée.
   * Fiche produit synthétique avec Nutri-Score (réel ou prédit par l'IA selon l'algorithme 2023/2024) et indice de confiance.
-  * Transparence complète et explicabilité non culpabilisant de la composition.
   * Moteur IA de substitution recommandant des alternatives plus saines dans le même rayon.
   * Assistant conversationnel RAG vulgarisant les données nutritionnelles.
   * Traitement des cas d'erreur et gestion des incertitudes de données.
@@ -76,9 +74,9 @@ La définition du périmètre NutriScope s'appuie directement sur les travaux d'
   * Profil utilisateur avec filtres d'allergènes et contraintes alimentaires basiques.
 * **Could have (Envisageables pour V3)** : 
   * Personnalisation avancée des recommandations selon les objectifs nutritionnels du foyer.
+  * Personnalisation sur ordre de préférences des produits affichés.
 * **Won't have (Exclus du MVP)** : 
   * Reconnaissance visuelle d'étiquettes par photo (OCR / Computer Vision).
-  * Analyse globale du panier d'achat ou import de ticket de caisse.
 
 ---
 
@@ -98,7 +96,15 @@ La définition du périmètre NutriScope s'appuie directement sur les travaux d'
 
 ### 3.3 Spécification des User Stories
 
-#### US-01 : Scan et recherche de produit
+#### US-01a : Scan et recherche de produit
+* **En tant que** : Sophie (parent pressé).
+* **Je veux** : Scanner le code-barres d'un produit en magasin.
+* **Afin de** : Accéder instantanément à sa fiche d'analyse nutritionnelle sans perdre de temps en rayon.
+* **Critères d'acceptation** :
+  * Le temps de réponse de l'API pour retourner la fiche produit doit être inférieur à 500 ms.
+  * Si le code-barres est absent du catalogue, un message clair informe l'utilisateur sans provoquer d'erreur critique.
+
+#### US-01b : Scan et recherche de produit
 * **En tant que** : Sophie (parent pressé).
 * **Je veux** : Scanner le code-barres d'un produit en magasin ou saisir son nom dans la barre de recherche.
 * **Afin de** : Accéder instantanément à sa fiche d'analyse nutritionnelle sans perdre de temps en rayon.

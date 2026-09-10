@@ -33,8 +33,7 @@ Ce document présente la décomposition fonctionnelle du projet NutriScope. Pour
 │
 ├── US-01a : Consultation par Scan EAN
 ├── US-01b : Consultation par Recherche textuelle
-├── US-02c : Restitution pédagogique non culpabilisante
-└── US-06a : Gestion des produits hors catalogue (404)
+└── US-02c : Explication non culpabilisante
 
 ┌────────────────────────────────────────────────────────────────────────┐
 │                     EPIC 4 : CONVERSATIONAL RAG                        │
