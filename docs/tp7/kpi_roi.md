@@ -49,46 +49,22 @@ Les seuils d'alerte sont reliés à un raisonnement propre au projet NutriScope.
 
 Un seuil d'alerte n'a d'intérêt que s'il déclenche une décision (voir §1, « actionnable ») : voici, pour chaque KPI, ce qui serait mis en place en priorité.
 
-Scans par jour actif < 0,8. 
- - Regarder d'abord si le temps de réponse de l'API de scan (métrique T1) s'est dégradé.
-  --> ameliorer les performance bloquantes
- - Si l'abandon est concentré sur certains rayons (un problème de reconnaissance produit plutôt que d'usage).
-  --> lien avec pb de segmentationplus bas
- - Vérifier  Si le geste lui-même n'est pas en cause, ajouter (pb ui ux)
+| Métrique & Seuil | Problématique / Symptôme | Diagnostic & Cause Racine | Plan d'Action (Technique, UI/UX, Data & Growth) |
+| :--- | :--- | :--- | :--- |
+| **Scans / jour actif**<br>`< 0,8` | Sous-utilisation quotidienne de la fonctionnalité de scan | • **Perf API (T1) :** Vérifier si le temps de réponse s'est dégradé.<br>• **Segmentation :** Identifier si l'abandon cible certains rayons (pb de reconnaissance/packaging).<br>• **Ergonomie (UI/UX) :** Évaluer si le geste de scan pose problème. | • **Technique :** Optimiser la latence T1, mettre en cache les métadonnées, enrichir la BDD sur les rayons faibles.<br>• **UI/UX :** Améliorer le composant de capture (guidage visuel, feedback haptique/sonore), rendre le bouton de scan plus accessible. |
+| **Taux d'activation J7**<br>`< 40 %` | Moins de 40 % des inscrits scannent dans les 7 jours | • **Parcours d'accueil :** Trop d'étapes imposées avant le premier scan.<br>• **Bloqueurs techniques :** Tracker le refus de permission caméra et les erreurs d'installation.<br>• **Décrochage :** Identifier le point d'abandon dans l'onboarding. | • **UI/UX :** Simplifier le parcours d'accueil (*Time to First Scan*), ajouter un *pre-prompt* d'explication pour l'accès caméra.<br>• **Growth :** Configurer une relance auto (push/e-mail) à **J+2-J+3** pour les inscrits n'ayant pas encore scanné. |
+| **Rétention à 30 jours**<br>`< 20 %` | Moins de 20 % d'utilisateurs actifs après un mois | • **Analyse de cohortes :** Déterminer le moment exact du décrochage (dès S2 ou plus tard).<br>• **Analyse comportementale :** Comparer les profils actifs vs inactifs. | • **User Research :** Déclencher un questionnaire/feedback *in-app* auprès des inactifs depuis 15 jours.<br>• **Growth :** Envoyer des rappels contextualisés (nouveaux rayons, substitutions) et valoriser la valeur accumulée (historique/panier). |
+| **Taux de substitution acceptée**<br>`< 8 %` | Rejet majoritaire des suggestions d'alternatives | • **Qualité modèle :** Contrôler si la précision est `< 85-90 %`.<br>• **Analyse par rayon :** Resegmenter pour repérer les catégories mal couvertes.<br>• **Explicabilité UI :** Identifier pourquoi les suggestions valides ne conviennent pas aux utilisateurs. | • **Data / ML :** Ré-entraîner et affiner le modèle de recommandation ; compléter le catalogue sur les rayons sous-performants.<br>• **UI/UX :** Mieux afficher les arguments de substitution (Nutri-Score, prix) et intégrer un micro-feedback lors des refus. |
+| **Réponses assistant sourcées**<br>`< 80 %` | Plus de 20 % de réponses sans sources explicites | • **Audit RAG :** Auditer les thématiques pour lesquelles l'assistant échoue à citer des sources.<br>• **Couverture doc :** Identifier les lacunes dans la base de connaissances. | • **Data / LLM :** Enrichir la BDD documentaire, ré-entraîner / ajuster les prompts RAG pour forcer le *grounding* (citations).<br>• **Growth / CRM :** Après ré-entraînement, offrir **X mois gratuits sur le compte payant** aux bêta-testeurs / utilisateurs impactés. |
+| **Coût / requête assistant**<br>`> 0,03 €` | Dépassement du budget moyen par requête IA | • **Tokens :** Analyser si la hausse vient du volume de jetons par échange (contexte RAG/historique trop long) ou du nombre de conversations.<br>• **Distribution :** Identifier les questions simples traitées inutilement par un modèle coûteux. | • **Prompt Eng. :** Réduire le contexte transmis au strict nécessaire.<br>• **Infra :** Mettre en place un cache sémantique et une FAQ/réponses courantes pré-calculées.<br>• **Routing :** Définir une stratégie multi-modèles (réserver le modèle coûteux aux abonnés payants / cas complexes, basculer le gratuit sur un modèle plus léger). |
 
-Taux d'activation à J7 < 40 %. 
- - Revoir en priorité le parcours d'accueil (nombre d'étapes avant le premier scan.
-    --> simplifier ui ux
- -  --> Verifier automatiquement problème de refus de permission caméra ou des erreurs d'installation expliquent une partie du décrochage. 
- -  -->Une relance (notification ou e-mail) à J2-J3 pour les inscrits n'ayant pas encore scanné peut aussi être testée.
-
-Rétention à 30 jours < 20 %. 
- - Commencer par une analyse de cohortes pour situer le moment exact du décrochage (dès la deuxième semaine, ou plus tard). 
- - → Mettre en place des notifications de rappel contextualisées (nouveaux rayons couverts, substitutions proposées) 
- - → retour in-app auprès des utilisateurs inactifs depuis 15 jours pour comprendre le frein.
-
-Taux de substitution acceptée < 8 %. 
- - Vérifier d'abord la métrique technique associée (précision, seuil ≥ 85-90 %, voir §3) : si elle est en dessous, le problème est la qualité des suggestions.
- - → re-entrainer le modèle
- - Si la précision est correcte mais le taux d'acceptation reste bas, tester une meilleure alors -> pourquoi chaque substitution proposées ne convient pas et -->resegmenter par rayon pour repérer les catégories de produits les moins bien couvertes.
-
-Taux de réponses assistant sourcées < 80 %. 
- - Auditer les thématiques qui resortent le plus  
- - → apresre entraienement offrir x mois compte payant gratuit
-
-Coût par requête assistant > 0,03 €. 
- - Identifier si la hausse vient du volume de jetons par conversation (contexte transmis au modèle trop long) ou du nombre de conversations par utilisateur. 
- - Réduire le contexte envoyé au strict nécessaire.
- - Mettre en cache les réponses aux questions les plus fréquentes
- - → Envisager de réserver le modèle actuel compte payant.
- - → Définir un question reponse courrant basé sur les thématiques les plus demandées.
 ---
 
 ## 3. Arbre des indicateurs NutriScope
 
 Ce tableau est la donnée source du schéma publié séparément (voir lien ci-dessous) : il applique la grille de lecture du §1 (objectif business → KPI métier → KPI produit → métriques techniques) au projet NutriScope, avec pour chaque case sa baseline, sa cible, qui en assure le suivi, et — pour les KPI produit et les métriques techniques — à quoi il sert et ce qu'il montre.
 
-**Schéma :** [Arbre des indicateurs NutriScope](https://claude.ai/artifact/2WDBdrS6KjEVzuRVHbcgsM) — même contenu que le tableau ci-dessous, mis en scène comme la page 28 du module 2.4. Pour le régénérer après une modification du tableau, republier la même page.
+**Schéma :** [Arbre des indicateurs NutriScope](arbre_indicateurs_nutriscope_2.html) — même contenu que le tableau ci-dessous, mis en scène comme la page 28 du module 2.4. Pour le régénérer après une modification du tableau, republier la même page.
 
 | Niveau | Indicateur | Rattaché à | Baseline | Cible | Responsable du suivi | Ce qu'il montre / à quoi il sert |
 |---|---|---|---|---|---|---|
