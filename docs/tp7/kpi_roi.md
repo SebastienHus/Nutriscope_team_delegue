@@ -51,13 +51,16 @@ Un seuil d'alerte n'a d'intérêt que s'il déclenche une décision (voir §1, �
 
 Scans par jour actif < 0,8. 
  - Regarder d'abord si le temps de réponse de l'API de scan (métrique T1) s'est dégradé.
+  --> ameliorer les performance bloquantes
  - Si l'abandon est concentré sur certains rayons (un problème de reconnaissance produit plutôt que d'usage).
+  --> lien avec pb de segmentationplus bas
  - Vérifier  Si le geste lui-même n'est pas en cause, ajouter (pb ui ux)
 
 Taux d'activation à J7 < 40 %. 
  - Revoir en priorité le parcours d'accueil (nombre d'étapes avant le premier scan.
- -  Verifier problème de refus de permission caméra ou des erreurs d'installation expliquent une partie du décrochage. 
- -  Une relance (notification ou e-mail) à J2-J3 pour les inscrits n'ayant pas encore scanné peut aussi être testée.
+    --> simplifier ui ux
+ -  --> Verifier automatiquement problème de refus de permission caméra ou des erreurs d'installation expliquent une partie du décrochage. 
+ -  -->Une relance (notification ou e-mail) à J2-J3 pour les inscrits n'ayant pas encore scanné peut aussi être testée.
 
 Rétention à 30 jours < 20 %. 
  - Commencer par une analyse de cohortes pour situer le moment exact du décrochage (dès la deuxième semaine, ou plus tard). 
