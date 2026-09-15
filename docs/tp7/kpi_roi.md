@@ -45,6 +45,39 @@ Les seuils d'alerte sont reliés à un raisonnement propre au projet NutriScope.
 
 **Coût par requête assistant > 0,03 €.** Ce seuil découle du modèle de coûts du tableur lui-même, pas d'un chiffre extérieur : avec les hypothèses retenues (4 000 jetons par conversation, 2 € par million de jetons), le coût actuel est d'environ 0,008 € par conversation. Au-delà de 0,03 € — soit environ quatre fois l'hypothèse posée — le poste « Run - modèle de langage » deviendrait le principal poste de coût variable et menacerait un modèle déjà fragile avec les taux de conversion retenus (1 % en scénario normal, voir §6).
 
+**Quelles actions engager si le seuil est franchi**
+
+Un seuil d'alerte n'a d'intérêt que s'il déclenche une décision (voir §1, « actionnable ») : voici, pour chaque KPI, ce qui serait mis en place en priorité.
+
+Scans par jour actif < 0,8. 
+ - Regarder d'abord si le temps de réponse de l'API de scan (métrique T1) s'est dégradé.
+ - Si l'abandon est concentré sur certains rayons (un problème de reconnaissance produit plutôt que d'usage).
+ - Vérifier  Si le geste lui-même n'est pas en cause, ajouter (pb ui ux)
+
+Taux d'activation à J7 < 40 %. 
+ - Revoir en priorité le parcours d'accueil (nombre d'étapes avant le premier scan.
+ -  Verifier problème de refus de permission caméra ou des erreurs d'installation expliquent une partie du décrochage. 
+ -  Une relance (notification ou e-mail) à J2-J3 pour les inscrits n'ayant pas encore scanné peut aussi être testée.
+
+Rétention à 30 jours < 20 %. 
+ - Commencer par une analyse de cohortes pour situer le moment exact du décrochage (dès la deuxième semaine, ou plus tard). 
+ - Mettre en place des notifications de rappel contextualisées (nouveaux rayons couverts, substitutions proposées) 
+ -  retour in-app auprès des utilisateurs inactifs depuis 15 jours pour comprendre le frein.
+
+Taux de substitution acceptée < 8 %. 
+ - Vérifier d'abord la métrique technique associée (précision, seuil ≥ 85-90 %, voir §3) : si elle est en dessous, le problème est la qualité des suggestions.
+ - Si la précision est correcte mais le taux d'acceptation reste bas, tester une meilleure alos -> pourquoi chaque substitution proposée ne convient pas et resegmenter par rayon pour repérer les catégories de produits les moins bien couvertes.
+
+Taux de réponses assistant sourcées < 80 %. 
+ - Auditer les thématiques qui resortent le plus  
+ - Ajuster l'assistant pour qu'il affiche « données insuffisantes » (comme le prévoit déjà l'US-06 du cahier des charges pour les produits inconnus) plutôt que d'improviser une réponse quand aucune source pertinente n'est trouvée.
+
+Coût par requête assistant > 0,03 €. 
+ - Identifier si la hausse vient du volume de jetons par conversation (contexte transmis au modèle trop long) ou du nombre de conversations par utilisateur. 
+ - Réduire le contexte envoyé au strict nécessaire.
+ - Mettre en cache les réponses aux questions les plus fréquentes
+ - Envisager de réserver le modèle actuel compte payant.
+ - définir un question reponse courrant basé sur les thématiques les plus demandées.
 ---
 
 ## 3. Arbre des indicateurs NutriScope
