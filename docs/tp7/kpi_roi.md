@@ -61,16 +61,17 @@ Taux d'activation à J7 < 40 %.
 
 Rétention à 30 jours < 20 %. 
  - Commencer par une analyse de cohortes pour situer le moment exact du décrochage (dès la deuxième semaine, ou plus tard). 
- - Mettre en place des notifications de rappel contextualisées (nouveaux rayons couverts, substitutions proposées) 
- -  retour in-app auprès des utilisateurs inactifs depuis 15 jours pour comprendre le frein.
+ - -->Mettre en place des notifications de rappel contextualisées (nouveaux rayons couverts, substitutions proposées) 
+ -  -->retour in-app auprès des utilisateurs inactifs depuis 15 jours pour comprendre le frein.
 
 Taux de substitution acceptée < 8 %. 
  - Vérifier d'abord la métrique technique associée (précision, seuil ≥ 85-90 %, voir §3) : si elle est en dessous, le problème est la qualité des suggestions.
- - Si la précision est correcte mais le taux d'acceptation reste bas, tester une meilleure alos -> pourquoi chaque substitution proposée ne convient pas et resegmenter par rayon pour repérer les catégories de produits les moins bien couvertes.
+    --> re-entrainer le modèle
+ - Si la précision est correcte mais le taux d'acceptation reste bas, tester une meilleure alors -> pourquoi chaque substitution proposées ne convient pas et -->resegmenter par rayon pour repérer les catégories de produits les moins bien couvertes.
 
 Taux de réponses assistant sourcées < 80 %. 
  - Auditer les thématiques qui resortent le plus  
- - Ajuster l'assistant pour qu'il affiche « données insuffisantes » (comme le prévoit déjà l'US-06 du cahier des charges pour les produits inconnus) plutôt que d'improviser une réponse quand aucune source pertinente n'est trouvée.
+ - --> apresre entraienement offrir x mois compte payant gratuit
 
 Coût par requête assistant > 0,03 €. 
  - Identifier si la hausse vient du volume de jetons par conversation (contexte transmis au modèle trop long) ou du nombre de conversations par utilisateur. 
