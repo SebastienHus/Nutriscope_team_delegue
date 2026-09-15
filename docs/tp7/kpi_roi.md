@@ -1,18 +1,12 @@
 # TP 7 — Note d'hypothèses : KPI, coûts & ROI
 
-**Projet :** NutriScope · **TP :** TP 7 « KPI, coûts & ROI » (Cahier des TP, p. 19) · **Date :** 15/09
-**Objectif du TP :** chiffrer le projet comme le ferait une direction financière.
-**Livrables associés :** `docs/cadrage/kpi_roi.xlsx` (tableur versionné, hypothèses apparentes), `trajectoire_36_mois_mensuelle_saisonniere_nutriscope.csv` (détail mensuel de la trajectoire MAU) et la présente note.
-
 Cette note explicite les hypothèses et les résultats du tableur `kpi_roi.xlsx`. Toutes les valeurs d'entrée y figurent en **bleu sur fond jaune** (onglet *Hypotheses*) ; tout le reste est calculé par formule.
-
-> **Sources.** Les définitions de méthode (§1) reprennent le support de cours, module 2.4. Les indices de saisonnalité (§5) s'appuient sur un indice de consommation alimentaire mensuelle (base 100). Ces sources ne sont pas re-citées à chaque usage dans la suite du document.
 
 ---
 
 ## 1. Rappels de cours
 
-**Bon KPI :** mesurable, attribuable (à une équipe ou une décision précise), actionnable (un seuil franchi déclenche une action), compris de tous, peu nombreux (5 à 7 KPI produit maximum — c'est ce qui a guidé le choix des six KPI produit du §2).
+**KPI :** mesurable, attribuable (à une équipe ou une décision précise), actionnable (un seuil franchi déclenche une action), compris de tous, peu nombreux (5 à 7 KPI produit maximum — c'est ce qui a guidé le choix des six KPI produit du §2).
 
 **Arbre des indicateurs :** objectif business → KPI métier (ce que regarde la direction) → KPI produit (un indicateur d'usage par fonctionnalité) → métriques techniques (ce que l'équipe technique surveille au quotidien). Chaque flèche entre deux niveaux est une hypothèse à vérifier, pas une certitude : si la métrique technique s'améliore sans effet sur le KPI produit associé, l'hypothèse est fausse.
 
@@ -33,7 +27,7 @@ Six KPI produit ont été définis (le tableau complet, avec baseline, source de
 | Taux de réponses assistant sourcées | ≥ 90 % dès la mise en production | < 80 % |
 | Coût par requête assistant | ≤ 0,02 € / conversation | > 0,03 € |
 
-Le taux de substitution acceptée ci-dessus est un KPI produit : il mesure si l'utilisateur *choisit* la suggestion. Ce choix dépend d'une condition technique en amont, posée dans l'onglet *Hypotheses* (section I) du tableur : le moteur doit atteindre une **précision@3 d'au moins 85 % à 90 %**, c'est-à-dire qu'au moins une substitution pertinente doit figurer parmi les 3 premières proposées dans 85 à 90 % des cas — c'est la métrique technique T3 de l'arbre du §3, qui conditionne le KPI produit correspondant.
+Le taux de substitution acceptée ci-dessus est un KPI produit : il mesure si l'utilisateur *choisit* la suggestion. Ce choix dépend d'une condition technique en amont, posée dans l'onglet *Hypotheses* (section I) du tableur : le moteur doit atteindre une **précision d'au moins 85 % à 90 %**, c'est-à-dire qu'au moins une substitution pertinente doit figurer parmi les 3 premières proposées dans 85 à 90 % des cas — c'est la métrique technique T3 de l'arbre du §3, qui conditionne le KPI produit correspondant.
 
 ### Pourquoi chacun de ces seuils, et pas un autre
 
