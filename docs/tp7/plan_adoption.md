@@ -99,7 +99,7 @@
 | **Ambassadeurs** | Relais terrain | 5 utilisateurs référents + 1 membre du Support Client | Trimestrielle | Rapport de retours terrain et propositions d'amélioration d'usage. |
 | **Boucle de retours** | Feedback Loops | Support Client & Product Owner | Hebdomadaire | Synthèse catégorisée des tickets de support et des avis In-App, Backlog |
 | **Comité d'adoption** | Inspect & Adapt | Sponsor, Responsable Marketing et DPO | Semestrielle | Bilan global des indicateurs d'usage et décisions de cadrage stratégique |
-| **Évolutions du modèle** | DataOps & AI | Équipe Data/IA | Tous les 6 mois | Rapport d'audit de performance des algorithmes et réalignement scientifique |
+| **Évolutions du modèle** | DataOps & MLOps | Équipe Data/IA | Tous les 6 mois | Rapport d'audit de performance des algorithmes et réalignement scientifique |
 
 ---
 
