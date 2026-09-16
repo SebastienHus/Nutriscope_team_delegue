@@ -50,6 +50,19 @@ def check_code(code):
         return code_length
     return -1
 
+def is_in_store_coding(code):
+    if code is np.nan:
+        return False
+    
+    if (
+        not isinstance(code, str)
+        or not code.isdecimal()
+        or len(code) < 3
+    ):
+        return False
+    
+    return 200 <= int(code[:3]) <= 299
+
 def check_brand(value):
     if len(value) > 255: # Valeur absurde
         return np.nan
@@ -93,7 +106,7 @@ def clean_products_data(df: pd.DataFrame):
     _df["nova_group"] = pd.to_numeric(_df["nova_group"], errors="coerce")
 
     # Filtrage des codes commençant par 200. Ce sont des produits non codés, on ne les garde pas
-    _df = _df[~_df["code"].str.startswith("200", na=False)]
+    _df = _df[~_df["code"].apply(is_in_store_coding)]
     
     # Filtrage des codes non officiels. Les officiels sont composés de 8, 12 et 13 digits
     _df["code"] = _df["code"].apply(lambda x: x if check_code(x) in VALID_CODE_LENGTH else np.nan)
