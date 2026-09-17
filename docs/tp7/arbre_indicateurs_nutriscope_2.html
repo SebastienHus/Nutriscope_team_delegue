@@ -1,0 +1,354 @@
+<!doctype html><html><head><meta charset='utf-8'><title>Arbre KPI NutriScope</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F4F7F2;
+    --surface:#FFFFFF;
+    --ink:#182620;
+    --ink-muted:#516156;
+    --border:#D7E0D9;
+    --accent:#2E6F52;
+    --accent-ink:#FFFFFF;
+    --amber:#9C6B1F;
+    --amber-bg:#F3E7D3;
+    --tier1-bg:#E4EFE7;
+    --tier1-line:#BFD6C6;
+    --tier2-bg:#EEF3EA;
+    --tier2-line:#CFDECB;
+    --tier3-bg:#F1F1EC;
+    --tier3-line:#DBDBD1;
+    --link:#8AA093;
+    --font-display:'Archivo',system-ui,sans-serif;
+    --font-body:'Source Sans 3',system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#101A15;
+      --surface:#16211B;
+      --ink:#EAF1EB;
+      --ink-muted:#9FB1A5;
+      --border:#28362E;
+      --accent:#5FC08C;
+      --accent-ink:#0D1712;
+      --amber:#E3B15D;
+      --amber-bg:#332A18;
+      --tier1-bg:#1C2B22;
+      --tier1-line:#2E4536;
+      --tier2-bg:#19241D;
+      --tier2-line:#26362C;
+      --tier3-bg:#181E1A;
+      --tier3-line:#28312B;
+      --link:#3D5346;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#101A15;
+    --surface:#16211B;
+    --ink:#EAF1EB;
+    --ink-muted:#9FB1A5;
+    --border:#28362E;
+    --accent:#5FC08C;
+    --accent-ink:#0D1712;
+    --amber:#E3B15D;
+    --amber-bg:#332A18;
+    --tier1-bg:#1C2B22;
+    --tier1-line:#2E4536;
+    --tier2-bg:#19241D;
+    --tier2-line:#26362C;
+    --tier3-bg:#181E1A;
+    --tier3-line:#28312B;
+    --link:#3D5346;
+  }
+
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    margin:0;
+    padding-inline:20px;
+    padding-block:32px 56px;
+  }
+  .wrap{max-width:1280px;margin:0 auto;}
+  header{margin-bottom:22px;}
+  .eyebrow{
+    font-family:var(--font-display);
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 8px;
+  }
+  h1{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:clamp(24px,3.4vw,34px);
+    line-height:1.15;
+    margin:0 0 10px;
+    text-wrap:balance;
+  }
+  .lede{
+    font-size:15.5px;
+    line-height:1.55;
+    color:var(--ink-muted);
+    max-width:66ch;
+    margin:0 0 4px;
+  }
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family:var(--font-display);
+    font-size:11.5px;
+    font-weight:700;
+    color:var(--amber);
+    background:var(--amber-bg);
+    border-radius:999px;
+    padding:5px 12px;
+    margin-top:12px;
+  }
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    margin:22px 0 6px;
+    padding:14px 16px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+  }
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-muted);}
+  .swatch{width:14px;height:14px;border-radius:4px;flex:none;border:1px solid var(--border);}
+  .sw-obj{background:var(--accent);}
+  .sw-t1{background:var(--tier1-bg);border-color:var(--tier1-line);}
+  .sw-t2{background:var(--tier2-bg);border-color:var(--tier2-line);}
+  .sw-t3{background:var(--tier3-bg);border-color:var(--tier3-line);}
+
+  figure{margin:18px 0 0;}
+  .diagram-frame{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:8px 6px 4px;
+    overflow-x:auto;
+  }
+  svg{display:block;width:100%;height:auto;min-width:920px;color:var(--ink);}
+
+  .link{stroke:var(--link);stroke-width:2;}
+  .node rect{stroke-width:1.4;}
+  .node .t-name{font-family:var(--font-display);font-size:14.5px;fill:var(--ink);}
+  .node .t-target{font-family:var(--font-body);font-size:12.5px;fill:var(--ink-muted);}
+  .n-obj rect{fill:var(--accent);stroke:var(--accent);}
+  .n-obj .t-name{fill:var(--accent-ink);font-size:17px;}
+  .n-obj .t-target{fill:var(--accent-ink);opacity:.92;}
+  .n-metier rect{fill:var(--tier1-bg);stroke:var(--tier1-line);}
+  .n-produit rect{fill:var(--tier2-bg);stroke:var(--tier2-line);}
+  .n-tech rect{fill:var(--tier3-bg);stroke:var(--tier3-line);}
+  .node .t-tag{
+    font-family:var(--font-display);
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    fill:var(--amber);
+  }
+  .t-tierlabel{
+    font-family:var(--font-display);
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    fill:var(--ink-muted);
+  }
+
+  figcaption{
+    font-size:13px;
+    color:var(--ink-muted);
+    line-height:1.6;
+    margin:14px 4px 0;
+    max-width:78ch;
+  }
+  figcaption b{color:var(--ink);}
+
+  footer{
+    margin-top:30px;
+    padding-top:18px;
+    border-top:1px solid var(--border);
+    font-size:12.5px;
+    color:var(--ink-muted);
+    line-height:1.6;
+  }
+  footer code{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:1px 5px;
+    font-size:12px;
+  }
+
+  @media (max-width:640px){
+    svg{min-width:1100px;}
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">NutriScope · TP7 · module 2.4</p>
+    <h1>Arbre des indicateurs</h1>
+    <p class="lede">Objectif business → KPI métier → KPI produit → métriques techniques. Chaque flèche est une hypothèse à vérifier : si la métrique du bas s'améliore, le KPI du dessus doit bouger, sinon elle est décorative.</p>
+    <span class="badge">Mise à jour du 15/09 — conversion Premium 1 % (central), précision de substitution ≥ 85–90 %</span>
+  </header>
+
+  <div class="legend">
+    <div class="legend-item"><span class="swatch sw-obj"></span>Objectif business</div>
+    <div class="legend-item"><span class="swatch sw-t1"></span>KPI métier — ce que regarde la direction</div>
+    <div class="legend-item"><span class="swatch sw-t2"></span>KPI produit — un par fonctionnalité</div>
+    <div class="legend-item"><span class="swatch sw-t3"></span>Métriques techniques — suivi quotidien</div>
+  </div>
+
+  <figure>
+    <div class="diagram-frame">
+<svg viewBox="0 0 1590 800" role="img" aria-label="Arbre des indicateurs NutriScope : un objectif business, quatre KPI métier, six KPI produit et sept métriques techniques, reliés par des flèches de bas en haut." xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+  </marker>
+</defs>
+<path class="link" d="M795,126 C795,163 321,163 321,198" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M795,126 C795,163 637,163 637,198" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M795,126 C795,163 953,163 953,198" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M795,126 C795,163 1269,163 1269,198" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M321,290 C321,325 198,325 198,358" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M321,290 C321,325 418,325 418,358" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M321,290 C321,325 644,325 644,358" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M637,290 C637,325 880,325 880,358" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M953,290 C953,325 1122,325 1122,358" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M1269,290 C1269,325 1372,325 1372,358" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M198,444 C198,482 120,482 120,518" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M418,444 C418,482 330,482 330,518" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M880,444 C880,482 556,482 556,518" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M880,444 C880,482 798,482 798,518" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M1122,444 C1122,482 1044,482 1044,518" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M1372,444 C1372,482 1267,482 1267,518" fill="none" marker-end="url(#arrow)"></path>
+<path class="link" d="M1372,444 C1372,482 1470,482 1470,518" fill="none" marker-end="url(#arrow)"></path>
+<g class="node n-obj">
+<rect x="575" y="50" width="440" height="76" rx="10"></rect>
+<text x="795" y="76" text-anchor="middle" class="t-name" font-weight="700">NutriScope</text>
+<text x="795" y="98" text-anchor="middle" class="t-target">Adoption durable &amp; rentabilité à 36 mois</text>
+</g>
+<g class="node n-metier">
+<rect x="176" y="200" width="290" height="90" rx="10"></rect>
+<text x="321" y="226" text-anchor="middle" class="t-name" font-weight="700">Fidéliser</text>
+<text x="321" y="248" text-anchor="middle" class="t-target">Rétention 30 j ≥ 40 % (M12)</text>
+<text x="321" y="278" text-anchor="middle" class="t-tag">Resp. produit</text>
+</g>
+<g class="node n-metier">
+<rect x="492" y="200" width="290" height="90" rx="10"></rect>
+<text x="637" y="226" text-anchor="middle" class="t-name" font-weight="700">Monétiser</text>
+<text x="637" y="248" text-anchor="middle" class="t-target">Conversion Premium 1 % (central)</text>
+<text x="637" y="278" text-anchor="middle" class="t-tag">Direction</text>
+</g>
+<g class="node n-metier">
+<rect x="808" y="200" width="290" height="90" rx="10"></rect>
+<text x="953" y="226" text-anchor="middle" class="t-name" font-weight="700">Tenir les coûts</text>
+<text x="953" y="248" text-anchor="middle" class="t-target">Coût / utilisateur actif ≤ 0,10 €</text>
+<text x="953" y="278" text-anchor="middle" class="t-tag">Resp. infra</text>
+</g>
+<g class="node n-metier">
+<rect x="1124" y="200" width="290" height="90" rx="10"></rect>
+<text x="1269" y="226" text-anchor="middle" class="t-name" font-weight="700">Rassurer</text>
+<text x="1269" y="248" text-anchor="middle" class="t-target">Note moyenne stores ≥ 4,3/5</text>
+<text x="1269" y="278" text-anchor="middle" class="t-tag">Resp. produit</text>
+</g>
+<g class="node n-produit">
+<rect x="100" y="360" width="195" height="84" rx="10"></rect>
+<text x="198" y="386" text-anchor="middle" class="t-name" font-weight="600">Scans / jour actif</text>
+<text x="198" y="408" text-anchor="middle" class="t-target">≥ 1,5 (M6)</text>
+<text x="198" y="432" text-anchor="middle" class="t-tag">Resp. produit</text>
+</g>
+<g class="node n-produit">
+<rect x="321" y="360" width="195" height="84" rx="10"></rect>
+<text x="418" y="386" text-anchor="middle" class="t-name" font-weight="600">Activation à J7</text>
+<text x="418" y="408" text-anchor="middle" class="t-target">≥ 60 % (M6)</text>
+<text x="418" y="432" text-anchor="middle" class="t-tag">Croissance</text>
+</g>
+<g class="node n-produit">
+<rect x="542" y="360" width="205" height="84" rx="10"></rect>
+<text x="644" y="386" text-anchor="middle" class="t-name" font-weight="600">Rétention à 30 jours</text>
+<text x="644" y="408" text-anchor="middle" class="t-target">≥ 40 % (M12)</text>
+<text x="644" y="432" text-anchor="middle" class="t-tag">Resp. produit</text>
+</g>
+<g class="node n-produit">
+<rect x="773" y="360" width="215" height="84" rx="10"></rect>
+<text x="880" y="386" text-anchor="middle" class="t-name" font-weight="600">Substitution acceptée</text>
+<text x="880" y="408" text-anchor="middle" class="t-target">≥ 15 % (M12)</text>
+<text x="880" y="432" text-anchor="middle" class="t-tag">Resp. data/IA</text>
+</g>
+<g class="node n-produit">
+<rect x="1014" y="360" width="215" height="84" rx="10"></rect>
+<text x="1122" y="386" text-anchor="middle" class="t-name" font-weight="600">Coût / requête assistant</text>
+<text x="1122" y="408" text-anchor="middle" class="t-target">≤ 0,02 € / conv.</text>
+<text x="1122" y="432" text-anchor="middle" class="t-tag">Resp. infra</text>
+</g>
+<g class="node n-produit">
+<rect x="1255" y="360" width="235" height="84" rx="10"></rect>
+<text x="1372" y="386" text-anchor="middle" class="t-name" font-weight="600">Réponses assistant sourcées</text>
+<text x="1372" y="408" text-anchor="middle" class="t-target">≥ 90 %</text>
+<text x="1372" y="432" text-anchor="middle" class="t-tag">Resp. data/IA</text>
+</g>
+<g class="node n-tech">
+<rect x="27" y="520" width="185" height="96" rx="10"></rect>
+<text x="120" y="546" text-anchor="middle" class="t-name" font-weight="600">Temps de réponse API</text>
+<text x="120" y="568" text-anchor="middle" class="t-target">&lt; 500 ms (US-01)</text>
+<text x="120" y="604" text-anchor="middle" class="t-tag">Resp. infra</text>
+</g>
+<g class="node n-tech">
+<rect x="238" y="520" width="185" height="96" rx="10"></rect>
+<text x="330" y="546" text-anchor="middle" class="t-name" font-weight="600">Disponibilité API</text>
+<text x="330" y="568" text-anchor="middle" class="t-target">≥ 99,5 %</text>
+<text x="330" y="604" text-anchor="middle" class="t-tag">Resp. infra</text>
+</g>
+<g class="node n-tech">
+<rect x="449" y="520" width="215" height="96" rx="10"></rect>
+<text x="556" y="546" text-anchor="middle" class="t-name" font-weight="600">Précision substitution</text>
+<text x="556" y="568" text-anchor="middle" class="t-target">≥ 85–90 % (préc@3)</text>
+<text x="556" y="604" text-anchor="middle" class="t-tag">Resp. data/IA</text>
+</g>
+<g class="node n-tech">
+<rect x="690" y="520" width="215" height="96" rx="10"></rect>
+<text x="798" y="546" text-anchor="middle" class="t-name" font-weight="600">Exactitude Nutri-Score</text>
+<text x="798" y="568" text-anchor="middle" class="t-target">≥ 85 % prédit</text>
+<text x="798" y="604" text-anchor="middle" class="t-tag">Resp. data/IA</text>
+</g>
+<g class="node n-tech">
+<rect x="931" y="520" width="225" height="96" rx="10"></rect>
+<text x="1044" y="546" text-anchor="middle" class="t-name" font-weight="600">Jetons / prix du modèle</text>
+<text x="1044" y="568" text-anchor="middle" class="t-target">4000 jetons × 2 €/M</text>
+<text x="1044" y="604" text-anchor="middle" class="t-tag">Resp. infra</text>
+</g>
+<g class="node n-tech">
+<rect x="1182" y="520" width="170" height="96" rx="10"></rect>
+<text x="1267" y="546" text-anchor="middle" class="t-name" font-weight="600">Latence P95</text>
+<text x="1267" y="568" text-anchor="middle" class="t-target">&lt; 3 s</text>
+<text x="1267" y="604" text-anchor="middle" class="t-tag">Resp. infra</text>
+</g>
+<g class="node n-tech">
+<rect x="1378" y="520" width="185" height="96" rx="10"></rect>
+<text x="1470" y="546" text-anchor="middle" class="t-name" font-weight="600">Couverture RAG</text>
+<text x="1470" y="568" text-anchor="middle" class="t-target">à définir en test</text>
+<text x="1470" y="604" text-anchor="middle" class="t-tag">Resp. data/IA</text>
+</g>
+<text x="12" y="88" class="t-tierlabel">Objectif business</text>
+<text x="12" y="245" class="t-tierlabel">KPI métier</text>
+<text x="12" y="402" class="t-tierlabel">KPI produit</text>
+<text x="12" y="500" class="t-tierlabel">Métriques techniques</text>
+</svg>
+    </div>
+    <figcaption><b>Ce que montre le schéma :</b> un objectif business (NutriScope, adoption et rentabilité à 36 mois), quatre KPI métier que suit la direction, six KPI produit issus du TP7 (un par fonctionnalité), et sept métriques techniques qui les soutiennent au quotidien — l'étiquette sous chaque case indique qui en assure le suivi. Le détail complet (baseline, à quoi sert chaque indicateur, source de mesure) est dans <code>note_hypotheses_kpi_roi.md</code>, section « Arbre des indicateurs ».</figcaption>
+  </figure>
+
+  <footer>
+    Schéma généré à partir du tableau de données de <code>note_hypotheses_kpi_roi.md</code> — modifier ce tableau puis régénérer le schéma pour le tenir à jour. Style inspiré de l'arbre des indicateurs du support Module 2.4 (p. 28).
+  </footer>
+</div>

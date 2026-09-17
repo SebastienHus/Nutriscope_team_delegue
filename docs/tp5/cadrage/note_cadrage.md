@@ -84,7 +84,7 @@ Postulats
 
 ## 4. Personnas identifier selon objectif et besoin de l aplication 
 
-![image](img/personae.jpg)
+![image](../img/personae.jpg)
 
 ### Parent soucieux de l'alimentation familiale
 #### Nom : Sophie Martin
