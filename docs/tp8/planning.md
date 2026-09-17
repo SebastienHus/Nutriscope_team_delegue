@@ -9,112 +9,115 @@
 
 ## Principe du calendrier
 
-Le projet est cadencé sur huit mois et sept jalons numérotés (J1 à J7), chaque jalon correspondant à la validation d'un bloc fonctionnel avant de passer au suivant. Deux jalons sont déjà atteints à la date de ce document :
+Le projet est cadencé sur sept jalons datés, arbitrés avec la direction. Deux jalons sont déjà atteints à la date de ce document :
 
-- **J1 — Base de données opérationnelle (Mois 1)** : profilage complet du jeu de données, définition du périmètre data, modélisation relationnelle, construction du jeu de données maître.
-- **J2 — Pipeline de nettoyage validé (Mois 2)** *(jalon visé par le présent TP)* : normalisation des données, pipeline de nettoyage rejouable, indicateurs de complétude, segmentation des sous-ensembles de données.
+- **J1 — 1er septembre : base de données opérationnelle.** Base relationnelle modélisée et chargée, note d'exploration des données.
+- **J2 — 17 septembre : note de cadrage, backlog et plan de pilotage** *(jalon visé par le présent TP)*. Note de cadrage, backlog produit outillé, présent document de planning, outil de suivi et rituels d'équipe.
 
 Le présent document détaille les cinq jalons restants, J3 à J7, qui constituent le macro-planning à suivre à partir de maintenant.
 
 ---
 
-## Mois 3 — Modèle Nutri-Score → Jalon J3
+## Jalon J3 — 14 octobre : socle data consolidé
 
 | Travaux | Nature |
 |---|---|
-| Sélection du jeu de données complet | Phase principale |
-| Entraînement du modèle prédictif de Nutri-Score | Phase principale |
-| Validation croisée | Phase principale |
-| Analyse des biais du modèle | Phase principale |
-| Documentation du modèle | Consolidation |
+| Nettoyage et normalisation industrialisés du catalogue | Phase principale |
+| Analyse exploratoire de référence (distributions, complétude, corrélations) | Phase principale |
+| Bascule vers un format de stockage analytique adapté au volume | Phase principale |
+| Pipeline de données rejouable en une seule commande | Phase principale |
+| Tableaux de bord de suivi de la qualité des données | Consolidation |
 
-**Livrable de jalon :** modèle Nutri-Score validé.
-**Histoires du backlog concernées :** US-02 (transparence et Nutri-Score prédit), US-07 (détail explicatif de l'indice de confiance).
+**Livrable de jalon :** pipeline de données documenté, rapport d'analyse exploratoire, tableaux de bord — étiquette de version `v0.3`.
+**Histoires du backlog concernées :** US-05 (pipeline automatisé d'ingestion et de nettoyage), US-15 (tableau de bord de la qualité du catalogue).
+**Point d'attention :** les jeux d'entraînement et de test des modèles du jalon J4 sont figés à ce jalon, pas plus tard — un découpage documenté et gelé, faute de quoi les évaluations du jalon suivant ne seront pas comparables entre elles.
 
 ---
 
-## Mois 4 — Moteur de substitution → Jalon J4
+## Jalon J4 — 4 novembre : modèles d'intelligence artificielle évalués
 
 | Travaux | Nature |
 |---|---|
-| Définition des règles de substitution | Phase principale |
-| Construction du moteur de recommandation | Phase principale |
-| Tests sur plusieurs rayons | Phase principale |
-| Ajustements et documentation | Consolidation |
+| Modèle prédictif du Nutri-Score (classification), comparé à des modèles de référence simples | Phase principale |
+| Segmentation du catalogue par regroupement (identification de familles de produits comparables) | Phase principale |
+| Moteur de substitution — première version fonctionnelle | Phase principale |
+| Classifieur de catégorie de produit à partir d'une photo | Phase principale |
+| Documentation des limites de chaque modèle (biais, cas d'échec) | Consolidation |
 
-**Livrable de jalon :** moteur de substitution opérationnel — **lancement de la version publique (v1.0)**.
-**Histoires du backlog concernées :** US-03 (recommandation d'alternatives).
-**Point de vigilance porté à ce jalon :** c'est avant ce jalon que le taux de conversion vers l'abonnement Premium doit avoir été testé auprès d'un échantillon réel d'utilisateurs (200 à 300 personnes), condition de fiabilité du modèle de retour sur investissement présenté dans la note de cadrage.
+**Livrable de jalon :** modèles évalués (notebooks propres, métriques, limites documentées) — étiquette de version `v0.4`.
+**Histoires du backlog concernées :** US-02 (transparence et Nutri-Score prédit), US-07 (détail explicatif de l'indice de confiance), US-14 (segmentation du catalogue), US-03 (recommandation d'alternatives), US-12 (classification de la catégorie d'un produit à partir d'une photo).
+**Point d'attention :** chaque modèle est livré avec ses métriques, sa validation croisée et une note honnête sur ce qu'il rate. Le choix du modèle retenu pour l'application est tracé par écrit avec ses critères — performance, temps de réponse, simplicité de maintenance.
 
 ---
 
-## Mois 5 — Assistant conversationnel RAG → Jalon J5
+## Jalon J5 — 30 novembre : assistant conversationnel RAG validé
 
 | Travaux | Nature |
 |---|---|
-| Construction du corpus documentaire (catalogue et sources publiques) | Phase principale |
-| Vectorisation et indexation du corpus | Phase principale |
-| Développement de l'assistant conversationnel | Phase principale |
-| Tests de robustesse (absence d'information inventée) | Phase principale |
-| Documentation de l'assistant | Consolidation |
+| Constitution du corpus documentaire (catalogue et sources publiques de référence en nutrition) | Phase principale |
+| Chaîne de récupération et génération de réponses (RAG), avec citation systématique des sources | Phase principale |
+| Mesure de la qualité des réponses sur un jeu de questions de référence | Phase principale |
+| Garde-fous testés par des mises à l'épreuve croisées entre équipes (questions pièges, tentatives de contournement) | Phase principale |
+| Gel de la version de l'assistant avant intégration | Consolidation |
 
-**Livrable de jalon :** assistant conversationnel validé.
-**Histoires du backlog concernées :** US-04 (assistant nutritionnel conversationnel).
+**Livrable de jalon :** assistant démontrable, rapport d'évaluation, version figée — étiquette de version `v0.5`.
+**Histoire du backlog concernée :** US-04 (assistant nutritionnel conversationnel).
 **Démarrage du plan d'adoption :** premières actions de communication (avis utilisateurs, campagne de sensibilisation interne et externe).
 
 ---
 
-## Mois 6 — Interface applicative et déploiement → Jalon J6
+## Jalon J6 — 29 décembre : application stabilisée et déployée
 
 | Travaux | Nature |
 |---|---|
-| Exposition des modèles via une interface applicative | Phase principale |
-| Conteneurisation de l'application | Phase principale |
-| Déploiement en environnement de production | Phase principale |
-| Mini-application de démonstration | Phase principale |
-| Documentation technique | Consolidation |
+| Exposition des modèles via une interface applicative (API) | Phase principale |
+| Application de démonstration branchée sur l'API | Phase principale |
+| Conteneurisation et intégration continue (déploiement automatisé, sans intervention manuelle) | Phase principale |
+| Mise en ligne accessible depuis un navigateur | Phase principale |
+| Stabilisation en conditions d'autonomie d'équipe, revue de code croisée | Consolidation |
 
-**Livrable de jalon :** interface applicative et déploiement opérationnels. C'est à ce jalon que le projet atteint le niveau d'audience prévu de 231 000 utilisateurs actifs mensuels — soit déjà plus du double du seuil de 100 000 utilisateurs fixé initialement par la direction.
+**Livrable de jalon :** application déployée et accessible, chaîne d'intégration continue opérationnelle — étiquette de version `v1.0`.
+**Histoires du backlog concernées :** US-01 (scan et recherche de produit), US-06 (gestion des produits inconnus et des incertitudes).
+
+### Entre J5 et J6 — la bêta utilisateurs
+
+Une cohorte de vingt à trente bêta-testeurs est mobilisée sur l'application avant son ouverture. Cette fenêtre, qui n'est pas un jalon en soi, porte deux travaux distincts qu'il serait coûteux de repousser : les premiers retours d'usage réels, qui alimentent le plan d'adoption, et le test de l'offre payante — présentation de l'abonnement et mesure de l'intérêt réel, sans encaissement. C'est la seule occasion, avant l'ouverture au public, de confronter à des utilisateurs l'hypothèse la plus fragile du modèle économique.
 
 ---
 
-## Mois 7 — Conformité et qualité → Jalon J7
+## Jalon J7 — 14 janvier : produit final et conformité
 
 | Travaux | Nature |
 |---|---|
-| Registre des traitements RGPD | Phase principale |
-| Consolidation de l'analyse de biais | Phase principale |
-| Positionnement au regard du règlement européen sur l'intelligence artificielle (AI Act) | Phase principale |
-| Contrôle de l'accessibilité numérique (référentiel RGAA) | Phase principale |
-| Documentation de conformité | Consolidation |
+| Supervision, journaux structurés et tableau de bord d'exploitation | Phase principale |
+| Rejeu automatisé des évaluations (assistant, Nutri-Score) pour détecter une dérive | Phase principale |
+| Analyse de biais consolidée, rayon par rayon et classe par classe | Phase principale |
+| Dossier de conformité (registre RGPD, positionnement AI Act, accessibilité RGAA, licences des données) | Phase principale |
+| Documentation complète (installation, architecture, exploitation) | Phase principale |
+| Répétition puis soutenance devant la direction | Phase principale |
+| Consolidation du dossier de projet complet | Consolidation |
 
-**Livrable de jalon :** conformité validée.
+**Livrable de jalon :** produit final, documentation complète, soutenance.
+**Histoires du backlog concernées :** US-16 (supervision de l'application en production) et US-13 (attribution des sources de données) — le crédit Open Food Facts et la vérification juridique de la valorisation B2B sont à boucler avant ce jalon.
 **Plan d'adoption :** déploiement complet du dispositif d'accompagnement (formation du support client, mesure des indicateurs d'adoption, dispositif d'ancrage).
 
 ---
 
-## Mois 8 — Dossier final et soutenance
+## Ce qui suit le jalon J7
 
-| Travaux | Nature |
-|---|---|
-| Rédaction du dossier final | Phase principale |
-| Préparation de la soutenance | Phase principale |
-| Tests finaux de l'application | Phase principale |
-| Corrections et stabilisation | Consolidation |
-
-**Livrable final :** application NutriScope et dossier complet du projet.
+Une période de mise en pratique hors projet (stage) est prévue avant la dernière ligne droite : reprise des retours de la soutenance, derniers correctifs strictement techniques, répétition générale, puis constitution des dossiers de certification par bloc de compétences. Ces travaux ne modifient pas le périmètre fonctionnel du produit livré au jalon J7 ; ils en consolident la preuve pour la certification.
 
 ---
 
 ## Vue d'ensemble
 
 ```
-J1 ──── J2 ──── J3 ──── J4 ──── J5 ──── J6 ──── J7 ──── Soutenance
-M1      M2      M3      M4      M5      M6      M7      M8
-Base    Pipeline Modèle  Substi- Assis-  API +   Confor- Dossier
-SQL     validé   Nutri-  tution  tant    déploi- mité    final
-                 Score           RAG     ement
-(atteints)       └──────────── restant à livrer ────────────┘
+J1 ──── J2 ──── J3 ──── J4 ──── J5 ──── J6 ──── J7
+01/09   17/09   14/10   04/11   30/11   29/12   14/01
+Base    Cadrage Socle   Modèles Assis-  Appli   Produit
+SQL     +       data    IA      tant    déployée final +
+        backlog consolidé évalués RAG    stable  conformité
+(atteints)      └──────────── restant à livrer ────────────┘
 ```
 
 Ce planning sera revu à chaque jalon lors de la revue de fin de jalon (voir le document sur les rituels d'équipe et l'outillage) et ajusté si l'écart entre la charge réelle constatée et la charge estimée dans le backlog produit dépasse 20 %.
