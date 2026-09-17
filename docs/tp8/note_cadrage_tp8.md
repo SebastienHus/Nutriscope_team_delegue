@@ -12,8 +12,6 @@
 
 Après huit travaux pratiques de cadrage, d'exploration data, d'analyse de faisabilité et de chiffrage financier, cette note réunit dans un seul document ce qui doit désormais servir de référence unique au pilotage du projet : le besoin, le périmètre, les parties prenantes, les indicateurs de performance et de retour sur investissement, les risques avec leurs plans de mitigation, et le calendrier des prochains jalons (J3 à J7). Elle ne reformule pas les analyses détaillées déjà produites — elle les synthétise et les arbitre là où plusieurs versions coexistaient, pour qu'une seule ligne directrice reste opposable à l'équipe et à la direction.
 
-Chaque document cité dans les pages qui suivent est accessible par un lien : les travaux antérieurs sont stockés au niveau racine du projet, et les trois documents produits en même temps que cette note se trouvent dans le même dossier (`claude/`).
-
 ---
 
 ## 1. Contexte et besoin
@@ -115,7 +113,7 @@ Six indicateurs de performance (KPI — indicateur clé de performance : une mes
 | Taux de réponses de l'assistant sourcées | ≥ 90 % dès la mise en production | < 80 % |
 | Coût par requête de l'assistant | ≤ 0,02 € par conversation | > 0,03 € |
 
-Ces six indicateurs, leur baseline, leur responsable de suivi et leur lien avec les objectifs métier (fidéliser, monétiser, tenir les coûts, rassurer) sont détaillés dans l'[arbre des indicateurs NutriScope](https://claude.ai/artifact/2WDBdrS6KjEVzuRVHbcgsM) et dans la [note d'hypothèses KPI, coûts et ROI](annexes/note_hypotheses_kpi_roi.md).
+Ces six indicateurs, leur baseline, leur responsable de suivi et leur lien avec les objectifs métier (fidéliser, monétiser, tenir les coûts, rassurer) sont détaillés dans l'[arbre des indicateurs NutriScope](annexes/arbre_indicateurs_nutriscope_2.html) et dans la [note d'hypothèses KPI, coûts et ROI](annexes/note_hypotheses_kpi_roi.md).
 
 ### 4.3 Le coût du projet et son retour sur investissement
 
