@@ -68,6 +68,8 @@ Les consommateurs cherchent à adopter une alimentation plus saine, mais se heur
 
 ## 5. Analyse SWOT
 
+![image](../img/swot.jpg)
+
 ### Forces
 - Assistant conversationnel (IA/RAG) unique
 - Discours pédagogique et non culpabilisant

@@ -140,7 +140,7 @@ Le consommateur décide d'ajouter, remplacer ou non le produit a son panier.
 
 ## Carte BPMN
 
-![bpmn](../../img/bpmn.png)
+![bpmn](../img/bpmn.png)
 
 ---
 
@@ -827,12 +827,12 @@ Cette capacité d'évolution permet à l'organisation d'adapter son offre en fon
 
 # 6. Conclusion
 
-L'étude du processus actuel de prise de décision alimentaire met en évidence plusieurs limites récurrentes : difficulté à interpréter les informations nutritionnelles, temps limité lors des achats, multiplication des sources d'information et manque d'accompagnement personnalisé. Malgré l'existence d'outils spécialisés, le consommateur reste souvent responsable de l'analyse, de la comparaison et de l'interprétation des données disponibles. 【1-f1c8d9】
+L'étude du processus actuel de prise de décision alimentaire met en évidence plusieurs limites récurrentes : difficulté à interpréter les informations nutritionnelles, temps limité lors des achats, multiplication des sources d'information et manque d'accompagnement personnalisé. Malgré l'existence d'outils spécialisés, le consommateur reste souvent responsable de l'analyse, de la comparaison et de l'interprétation des données disponibles.
 
-La solution NutriScope vise à répondre à ces problématiques en centralisant les informations issues de différentes sources, puis en les enrichissant grâce à plusieurs mécanismes d'intelligence artificielle : identification des produits, analyse nutritionnelle, génération d'explications compréhensibles et recommandation d'alternatives pertinentes. Cette approche permet de transformer des données souvent complexes en informations directement exploitables lors de la décision d'achat. 【1-f1c8d9】
+La solution NutriScope vise à répondre à ces problématiques en centralisant les informations issues de différentes sources, puis en les enrichissant grâce à plusieurs mécanismes d'intelligence artificielle : identification des produits, analyse nutritionnelle, génération d'explications compréhensibles et recommandation d'alternatives pertinentes. Cette approche permet de transformer des données souvent complexes en informations directement exploitables lors de la décision d'achat.
 
-Au-delà de l'amélioration de l'expérience utilisateur, le projet ouvre également des perspectives pour l'ensemble de l'écosystème alimentaire. Il offre des opportunités de collaboration avec les professionnels de la nutrition, les distributeurs, les industriels agroalimentaires et les acteurs de la prévention santé, tout en permettant la création de nouveaux services à forte valeur ajoutée autour de la donnée nutritionnelle. 【1-f1c8d9】
+Au-delà de l'amélioration de l'expérience utilisateur, le projet ouvre également des perspectives pour l'ensemble de l'écosystème alimentaire. Il offre des opportunités de collaboration avec les professionnels de la nutrition, les distributeurs, les industriels agroalimentaires et les acteurs de la prévention santé, tout en permettant la création de nouveaux services à forte valeur ajoutée autour de la donnée nutritionnelle.
 
-Enfin, l'architecture envisagée et les cas d'usage identifiés démontrent le potentiel d'évolution de la plateforme. NutriScope ne se limite pas à un simple outil de consultation nutritionnelle mais constitue une base pouvant évoluer vers un véritable assistant d'aide à la décision alimentaire, capable d'accompagner durablement les consommateurs dans leurs choix et leurs objectifs de santé. 【1-f1c8d9】
+Enfin, l'architecture envisagée et les cas d'usage identifiés démontrent le potentiel d'évolution de la plateforme. NutriScope ne se limite pas à un simple outil de consultation nutritionnelle mais constitue une base pouvant évoluer vers un véritable assistant d'aide à la décision alimentaire, capable d'accompagner durablement les consommateurs dans leurs choix et leurs objectifs de santé.
 
 
