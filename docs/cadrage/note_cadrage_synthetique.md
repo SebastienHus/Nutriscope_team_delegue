@@ -3,8 +3,11 @@
 
 **Équipe :** Sébastien HUS / Nicolas CUSUMANO
 **Date :** 17/09/2026
-**Rédigée par :** le chef de projet, à partir des travaux déjà co-construits par l'équipe : [note de cadrage initiale](annexes/note_cadrage.md), [cahier des charges](annexes/cahier_des_charges.md), [analyse des risques](annexes/opportunite.md), [étude de faisabilité](annexes/faisabilites.md), [qualification des données](annexes/donnees.md), [benchmark concurrentiel](annexes/benchmark.md), [note KPI, coûts et ROI](note_hypotheses_kpi_roi.md), [plan d'adoption](annexes/plan_adoption.md)
 **Statut :** consolidée pour validation en revue de jalon (direction / formateur)
+
+---
+
+[TOC]
 
 ---
 
@@ -18,15 +21,15 @@ Après huit travaux pratiques de cadrage, d'exploration data, d'analyse de faisa
 
 ### 1.1 Le problème à résoudre
 
-En magasin, un consommateur qui veut comparer deux produits alimentaires perd aujourd'hui plus d'une minute par produit : l'étiquette nutritionnelle est dense, le Nutri-Score n'est renseigné que sur 44,9 % des références commercialisées en France (constat établi lors de l'[exploration du jeu de données Open Food Facts](annexes/journal.md)), et aucun outil simple ne propose une alternative plus saine au moment même du choix. Cette charge mentale touche en priorité les parents qui gèrent les courses du foyer sous contrainte de temps — le persona central du projet, **[Sophie Martin](annexes/note_cadrage.md)**, 38 ans, assistante administrative, qui réalise ses courses deux à trois fois par semaine et doit arbitrer en rayon sans disposer d'une information fiable et immédiate.
+En magasin, un consommateur qui veut comparer deux produits alimentaires perd aujourd'hui plus d'une minute par produit : l'étiquette nutritionnelle est dense, le Nutri-Score n'est renseigné que sur 44,9 % des références commercialisées en France (constat établi lors de l'[exploration du jeu de données Open Food Facts](parties/journal.md)), et aucun outil simple ne propose une alternative plus saine au moment même du choix. Cette charge mentale touche en priorité les parents qui gèrent les courses du foyer sous contrainte de temps — le persona central du projet, **[Sophie Martin](parties/note_cadrage.md)**, 38 ans, assistante administrative, qui réalise ses courses deux à trois fois par semaine et doit arbitrer en rayon sans disposer d'une information fiable et immédiate.
 
 ### 1.2 Le besoin validé par la direction
 
-Un [entretien semi-directif conduit avec la direction](annexes/recap_entretien.md) a confirmé que l'application attendue doit être intelligente, simple, personnalisée, fiable et accessible au plus grand nombre, sans jamais se substituer à un avis médical. La direction a validé Sophie Martin comme cible prioritaire du MVP (version minimale commercialisable) et a positionné quatre fonctionnalités comme indispensables dès la première version : la recherche et l'identification d'un produit (scan de code-barres ou recherche manuelle), une fiche produit synthétique compréhensible sans connaissance nutritionnelle, la comparaison de plusieurs produits, et un assistant conversationnel de recommandation. Les profils spécialisés — personnes diabétiques ou allergiques, sportifs, professionnels de santé — sont reconnus comme porteurs de valeur mais ne constituent pas la cible du MVP ; ils sont traités comme des évolutions.
+Un [entretien semi-directif conduit avec la direction](parties/recap_entretien.md) a confirmé que l'application attendue doit être intelligente, simple, personnalisée, fiable et accessible au plus grand nombre, sans jamais se substituer à un avis médical. La direction a validé Sophie Martin comme cible prioritaire du MVP (version minimale commercialisable) et a positionné quatre fonctionnalités comme indispensables dès la première version : la recherche et l'identification d'un produit (scan de code-barres ou recherche manuelle), une fiche produit synthétique compréhensible sans connaissance nutritionnelle, la comparaison de plusieurs produits, et un assistant conversationnel de recommandation. Les profils spécialisés — personnes diabétiques ou allergiques, sportifs, professionnels de santé — sont reconnus comme porteurs de valeur mais ne constituent pas la cible du MVP ; ils sont traités comme des évolutions.
 
 ### 1.3 La réponse produit
 
-NutriScope répond à ce besoin par quatre briques d'intelligence artificielle complémentaires, orientées vers l'utilisateur final et spécifiées dans le [cahier des charges](annexes/cahier_des_charges.md) : un pipeline de nettoyage qui fiabilise la base Open Food Facts, un modèle prédictif de Nutri-Score qui comble les fiches incomplètes, un moteur de substitution qui propose des alternatives plus saines dans le même rayon, et un assistant conversationnel qui vulgarise l'information sans jamais inventer de réponse (fonctionnement dit RAG — retrieval-augmented generation : le système va chercher des documents pertinents avant de générer sa réponse, pour l'ancrer sur des sources vérifiées, plutôt que de laisser le modèle de langage répondre de mémoire). Deux briques purement techniques viennent fiabiliser ces quatre-là : une segmentation du catalogue, qui regroupe automatiquement les produits réellement comparables entre eux et donne ainsi au moteur de substitution son terrain de recherche ; et un classifieur qui reconnaît la catégorie d'un produit à partir de sa photo, utilisé en interne pour compléter le catalogue lorsque la catégorie est absente ou peu fiable. Aucune de ces deux briques n'est exposée à l'utilisateur comme une fonctionnalité en soi. Le positionnement reste strictement informatif : NutriScope aide à choisir, il ne diagnostique pas et ne remplace pas un professionnel de santé — un principe rappelé par la direction elle-même comme la ligne rouge du projet.
+NutriScope répond à ce besoin par quatre briques d'intelligence artificielle complémentaires, orientées vers l'utilisateur final : un pipeline de nettoyage qui fiabilise la base Open Food Facts, un modèle prédictif de Nutri-Score qui comble les fiches incomplètes, un moteur de substitution qui propose des alternatives plus saines dans le même rayon, et un assistant conversationnel qui vulgarise l'information sans jamais inventer de réponse (fonctionnement dit RAG — retrieval-augmented generation : le système va chercher des documents pertinents avant de générer sa réponse, pour l'ancrer sur des sources vérifiées, plutôt que de laisser le modèle de langage répondre de mémoire). Deux briques purement techniques viennent fiabiliser ces quatre-là : une segmentation du catalogue, qui regroupe automatiquement les produits réellement comparables entre eux et donne ainsi au moteur de substitution son terrain de recherche ; et un classifieur qui reconnaît la catégorie d'un produit à partir de sa photo, utilisé en interne pour compléter le catalogue lorsque la catégorie est absente ou peu fiable. Aucune de ces deux briques n'est exposée à l'utilisateur comme une fonctionnalité en soi. Le positionnement reste strictement informatif : NutriScope aide à choisir, il ne diagnostique pas et ne remplace pas un professionnel de santé — un principe rappelé par la direction elle-même comme la ligne rouge du projet.
 
 ---
 
@@ -46,11 +49,11 @@ NutriScope répond à ce besoin par quatre briques d'intelligence artificielle c
 | Professionnels de santé | Faible | Moyen | À associer pour la crédibilité de l'application et pour un avis métier sur les recommandations. |
 | Open Food Facts | Faible | Faible | Fournisseur de données à informer des usages faits de sa base. |
 
-Cette cartographie prolonge celle établie dans la [note de cadrage initiale](annexes/note_cadrage.md). Deux arbitrages la structurent : le Marketing pèse davantage que son pouvoir formel ne le suggère, car la priorité des premiers mois est l'existence sur les stores ; à l'inverse, l'équipe data ne pourra peser sur les décisions produit qu'une fois une base d'utilisateurs suffisante constituée pour objectiver ses recommandations.
+Deux arbitrages la structurent : le Marketing pèse davantage que son pouvoir formel ne le suggère, car la priorité des premiers mois est l'existence sur les stores ; à l'inverse, l'équipe data ne pourra peser sur les décisions produit qu'une fois une base d'utilisateurs suffisante constituée pour objectiver ses recommandations.
 
 ### 2.2 Suite donnée en aval : le plan d'adoption
 
-Cette cartographie a été affinée dans un [plan d'adoption](annexes/plan_adoption.md) dédié, qui détaille pour onze acteurs (dont le support client, les trois profils d'utilisateurs et les financeurs) une action datée et nommée — jamais une intention générique de type « mieux communiquer ». Ce plan, aligné sur les jalons J5 à J7 du calendrier du §6, n'est pas repris intégralement ici : il reste la référence opérationnelle pour la conduite du changement et sera activé à l'approche du lancement public.
+Cette cartographie a été affinée dans un [plan d'adoption](parties/plan_adoption.md) dédié, qui détaille pour onze acteurs (dont le support client, les trois profils d'utilisateurs et les financeurs) une action datée et nommée — jamais une intention générique de type « mieux communiquer ». Ce plan, aligné sur les jalons J5 à J7 du calendrier du §6, n'est pas repris intégralement ici : il reste la référence opérationnelle pour la conduite du changement et sera activé à l'approche du lancement public.
 
 ---
 
@@ -58,7 +61,7 @@ Cette cartographie a été affinée dans un [plan d'adoption](annexes/plan_adopt
 
 ### 3.1 Ce qui est inclus dans le MVP
 
-Le périmètre du MVP, arrêté dans le [document de périmètre](annexes/perimetre.md) puis détaillé dans le [cahier des charges](annexes/cahier_des_charges.md), est restreint à cinq à huit rayons alimentaires principaux de la grande distribution, pour garantir la précision du moteur de substitution avant toute extension. Il comprend :
+Le périmètre du MVP, arrêté dans le [document de périmètre](parties/perimetre.md), est restreint à cinq à huit rayons alimentaires principaux de la grande distribution, pour garantir la précision du moteur de substitution avant toute extension. Il comprend :
 
 - le pipeline automatisé d'ingestion et de nettoyage du catalogue Open Food Facts ;
 - le scan de code-barres et la recherche textuelle instantanée d'un produit ;
@@ -98,7 +101,7 @@ Le projet s'exécute sous quatre familles de contraintes posées par la directio
 
 ### 4.1 Les indicateurs de cadrage validés par la direction
 
-Lors de l'[entretien de cadrage](annexes/recap_entretien.md), la direction a fixé quatre critères de succès pour le projet : 100 000 utilisateurs à terme, 33 % d'utilisateurs actifs mensuels, 40 % de fidélisation (réutilisation de l'application), et une note moyenne supérieure à 4,3 sur 5 sur les stores applicatifs. La [trajectoire d'acquisition](annexes/synthese_strategique_nutriscope.md) retenue pour le projet dépasse déjà largement le premier seuil dès le sixième mois (231 000 utilisateurs actifs mensuels projetés), ce qui déplace l'enjeu réel du projet de la seule acquisition vers la fidélisation et la rentabilité — les deux points que les indicateurs produit ci-dessous viennent surveiller de près.
+Lors de l'[entretien de cadrage](annexes/recap_entretien.md), la direction a fixé quatre critères de succès pour le projet : 100 000 utilisateurs à terme, 33 % d'utilisateurs actifs mensuels, 40 % de fidélisation (réutilisation de l'application), et une note moyenne supérieure à 4,3 sur 5 sur les stores applicatifs. La [trajectoire d'acquisition](parties/synthese_strategique_nutriscope.md) retenue pour le projet dépasse déjà largement le premier seuil dès le sixième mois (231 000 utilisateurs actifs mensuels projetés), ce qui déplace l'enjeu réel du projet de la seule acquisition vers la fidélisation et la rentabilité — les deux points que les indicateurs produit ci-dessous viennent surveiller de près.
 
 ### 4.2 Les six indicateurs produit et leurs seuils d'alerte
 
@@ -113,11 +116,11 @@ Six indicateurs de performance (KPI — indicateur clé de performance : une mes
 | Taux de réponses de l'assistant sourcées | ≥ 90 % dès la mise en production | < 80 % |
 | Coût par requête de l'assistant | ≤ 0,02 € par conversation | > 0,03 € |
 
-Ces six indicateurs, leur baseline, leur responsable de suivi et leur lien avec les objectifs métier (fidéliser, monétiser, tenir les coûts, rassurer) sont détaillés dans l'[arbre des indicateurs NutriScope](annexes/arbre_indicateurs_nutriscope_2.html) et dans la [note d'hypothèses KPI, coûts et ROI](annexes/note_hypotheses_kpi_roi.md).
+Ces six indicateurs, leur baseline, leur responsable de suivi et leur lien avec les objectifs métier (fidéliser, monétiser, tenir les coûts, rassurer) sont détaillés dans l'[arbre des indicateurs NutriScope](../ressources/arbre_indicateurs_nutriscope_2.html).
 
 ### 4.3 Le coût du projet et son retour sur investissement
 
-Le coût total de possession (TCO) du projet — calculé dans le [tableur de chiffrage](annexes/kpi_roi.xlsx) et documenté hypothèse par hypothèse dans la [note associée](annexes/note_hypotheses_kpi_roi.md) — est structuré en quatre familles : construction initiale, fonctionnement courant, accompagnement au changement et conformité réglementaire. Il s'établit à 260 154 € cumulés à douze mois, 554 269 € à vingt-quatre mois et 1 090 781 € à trente-six mois. Ce montant est identique dans les trois scénarios de revenus retenus : seul ce que le projet encaisse varie d'un scénario à l'autre, pas ce qu'il dépense.
+Le coût total de possession (TCO) du projet — calculé dans le [tableur de chiffrage](annexes/kpi_roi.xlsx) — est structuré en quatre familles : construction initiale, fonctionnement courant, accompagnement au changement et conformité réglementaire. Il s'établit à 260 154 € cumulés à douze mois, 554 269 € à vingt-quatre mois et 1 090 781 € à trente-six mois. Ce montant est identique dans les trois scénarios de revenus retenus : seul ce que le projet encaisse varie d'un scénario à l'autre, pas ce qu'il dépense.
 
 Le modèle de revenus repose sur un abonnement Premium à 2,99 € par mois et sur des contrats de valorisation de données anonymisées auprès de distributeurs. Le taux de conversion vers l'abonnement Premium — arbitré avec la direction par prudence, en l'absence de tout test de vente réel — est le paramètre qui pèse le plus sur la rentabilité :
 
@@ -133,7 +136,7 @@ Le modèle de revenus repose sur un abonnement Premium à 2,99 € par mois et s
 
 ## 5. Risques et plans de mitigation
 
-L'[analyse des risques](annexes/opportunite.md), complétée par la [qualification des sources de données](annexes/donnees.md) et l'[étude de faisabilité](annexes/faisabilites.md), distingue un risque critique et cinq risques importants, tous liés à la qualité, à la complétude ou à la disponibilité des données, à l'exception du risque réglementaire :
+L'[analyse des risques](parties/opportunite.md), complétée par la [qualification des sources de données](annexes/donnees.md) et l'[étude de faisabilité](parties/faisabilites.md), distingue un risque critique et cinq risques importants, tous liés à la qualité, à la complétude ou à la disponibilité des données, à l'exception du risque réglementaire :
 
 | Risque | Probabilité | Impact | Niveau | Plan de mitigation retenu |
 |---|---|---|---|---|
@@ -144,7 +147,7 @@ L'[analyse des risques](annexes/opportunite.md), complétée par la [qualificati
 | **R5 — Évolution de la réglementation sur les données sensibles** (allergies, préférences alimentaires) | Faible | Élevé | 🟠 Important | Minimisation des données collectées, consentement explicite, droit de modification et de suppression, politique de confidentialité transparente ; stockage local des données de santé sans centralisation nominative côté serveur. |
 | **R6 — Recommandations peu pertinentes** (moteur de substitution ou assistant) | Moyenne | Élevé | 🟠 Important | Priorité aux règles métier explicables sur les modèles d'apprentissage tant que l'historique de données est insuffisant ; introduction progressive de modèles prédictifs après validation de leur qualité. |
 
-La [matrice probabilité × impact](annexes/matrice-risques.jpg) associée classe ces risques selon une échelle à trois niveaux : rouge pour un plan de mitigation obligatoire avant tout passage en production, orange pour un plan à définir avant le jalon concerné, jaune pour un risque à surveiller sans action immédiate — aucun risque du projet ne se situe aujourd'hui dans cette dernière catégorie.
+La [matrice probabilité × impact](../img/matrice-risques.jpg) associée classe ces risques selon une échelle à trois niveaux : rouge pour un plan de mitigation obligatoire avant tout passage en production, orange pour un plan à définir avant le jalon concerné, jaune pour un risque à surveiller sans action immédiate — aucun risque du projet ne se situe aujourd'hui dans cette dernière catégorie.
 
 Deux risques complémentaires, de nature non technique, restent surveillés en aval de ce tableau : le risque de conflit d'intérêt lié aux partenariats de marques (mise en avant d'un produit partenaire dans une recommandation présentée comme neutre) et le risque de perte de confiance en cas d'erreur de l'assistant sur un allergène ou un profil diabétique — ce dernier étant considéré par la [direction](annexes/recap_entretien.md) comme le risque le plus grave que le projet puisse encourir, la réputation de l'application étant son actif le plus important.
 
@@ -162,7 +165,7 @@ Six principes directeurs se dégagent de cette analyse et s'appliquent à l'ense
 
 ## 6. Macro-planning : des jalons J3 à J7
 
-Le projet est structuré en sept jalons datés, validés avec la direction. Les jalons J1 (base de données opérationnelle, 1er septembre) et J2 (note de cadrage, backlog et plan de pilotage — ce jalon même) sont atteints à la clôture de ce TP8. Le calendrier ci-dessous couvre les cinq jalons restants ; son détail travaux par travaux figure dans le [plan de projet](planning.md).
+Le projet est structuré en sept jalons datés, validés avec la direction. Les jalons J1 (base de données opérationnelle, 1er septembre) et J2 (note de cadrage, backlog et plan de pilotage — ce jalon même) sont atteints à la clôture de ce TP8. Le calendrier ci-dessous couvre les cinq jalons restants ; son détail travaux par travaux figure dans le [plan de projet](parties/planning.md).
 
 | Jalon | Date | Objectif | Livrables |
 |---|---|---|---|
@@ -176,14 +179,14 @@ Chaque jalon se matérialise par une étiquette de version dans le dépôt de co
 
 Une étape n'apparaît pas dans ce tableau parce qu'elle ne constitue pas un jalon en soi, mais elle conditionne deux décisions importantes : entre les jalons J5 et J6, une cohorte de vingt à trente bêta-testeurs est mobilisée sur l'application avant son ouverture. C'est cette cohorte qui porte à la fois les premiers retours d'usage du plan d'adoption et le test de l'offre payante décrit au §4.3.
 
-Le calendrier porte enfin une décision déjà arbitrée avec la direction : le [plan d'adoption](annexes/plan_adoption.md) — communiquer, accompagner, mesurer — s'active à partir du jalon J5 pour être pleinement déployé au jalon J7.
+Le calendrier porte enfin une décision déjà arbitrée avec la direction : le [plan d'adoption](parties/plan_adoption.md) — communiquer, accompagner, mesurer — s'active à partir du jalon J5 pour être pleinement déployé au jalon J7.
 
-Le jalon J4 inclut le classifieur de catégorie de produit introduit au §1.3 et au §3.1 : il s'agit d'une brique technique interne, au service de la segmentation du catalogue et du moteur de substitution, et non d'une fonctionnalité exposée à l'utilisateur final. Son histoire est inscrite au [backlog produit](backlog_produit_tp8.md) (US-12) et son risque propre est traité au §5.
+Le jalon J4 inclut le classifieur de catégorie de produit introduit au §1.3 et au §3.1 : il s'agit d'une brique technique interne, au service de la segmentation du catalogue et du moteur de substitution, et non d'une fonctionnalité exposée à l'utilisateur final.
 
 ---
 
 ## 7. Synthèse
 
-Le projet NutriScope dispose désormais d'un cadrage complet et cohérent : un besoin validé par la direction et centré sur un persona prioritaire clairement identifié, un périmètre MVP resserré sur cinq à huit rayons, quatre briques d'intelligence artificielle et deux briques techniques, des indicateurs de performance et un modèle de retour sur investissement chiffrés sur trois scénarios, une analyse des risques assortie de plans de mitigation retenus, et un calendrier détaillé jusqu'au jalon J7. Le [backlog produit](backlog_produit_tp8.md) outillé et priorisé, le [plan de projet](planning.md) et les [rituels d'équipe et l'outil de suivi](outillage_rituels_tp8.md) font l'objet des documents qui accompagnent cette note.
+Le projet NutriScope dispose désormais d'un cadrage complet et cohérent : un besoin validé par la direction et centré sur un persona prioritaire clairement identifié, un périmètre MVP resserré sur cinq à huit rayons, quatre briques d'intelligence artificielle et deux briques techniques, des indicateurs de performance et un modèle de retour sur investissement chiffrés sur trois scénarios, une analyse des risques assortie de plans de mitigation retenus, et un calendrier détaillé jusqu'au jalon J7. Le [backlog produit](https://nicolascusumano0.atlassian.net/jira/software/projects/NSP/boards/34/backlog?atlOrigin=eyJpIjoiODk0YzVjODE3MjhhNDhhMWEzZGFjOGM4NWViYzBiZDciLCJwIjoiaiJ9) outillé et priorisé, le [plan de projet](parties/planning.md) et les [rituels d'équipe et l'outil de suivi](parties/outillage_rituels.md) font l'objet des documents qui accompagnent cette note.
 
 Le point de vigilance à porter à la connaissance de la direction lors de la revue de ce jalon reste le même que celui déjà identifié dans le chiffrage financier : la rentabilité du scénario central repose sur un taux de conversion Premium qui n'a encore jamais été testé auprès d'un utilisateur réel. Sa vérification auprès de la cohorte de bêta-testeurs, avant le jalon J6, conditionne la fiabilité de l'ensemble des projections présentées dans cette note.

@@ -1,0 +1,52 @@
+# NOTE D'HYPOTHESE - Trajectoire MAU mensuelle avec saisonnalite - NutriScope - TP7
+#
+# A QUOI SERT CE FICHIER : export en texte simple des colonnes de l'onglet MAU_mensuel du
+#   tableur kpi_roi.xlsx (mois, annee, mois calendaire, type, indice saisonnier, MAU, explication).
+#   Ce n'est pas une source d'hypothese supplementaire : le tableur reste la seule source de verite.
+#   Pratique pour consulter ou tracer la trajectoire sans ouvrir Excel. A regenerer si une hypothese
+#   change dans le tableur.
+#
+# Point de depart : les 7 jalons officiels du TP1 (trajectoire_36_mois_nutriscope.csv) ne sont pas modifies.
+# Hypothese de calendrier : Mois 1 = lancement public de l'application, fixe par convention a novembre 2026.
+# Methode : entre deux jalons, l'increment mensuel est module par un indice de saisonnalite puis recale
+#   automatiquement par segment pour retomber exactement sur le jalon suivant (les jalons ne bougent pas).
+# Indices de saisonnalite : derives d'un indice de consommation alimentaire mensuelle (base 100), detaille
+#   dans note_hypotheses_kpi_roi.md.
+#
+mois,annee,mois_calendaire,type,indice_saisonnier,MAU,explication
+1,2026,Novembre,Jalon,0,15700,Point de repère fixé au TP1 (jalon) — valeur non recalculée
+2,2026,Décembre,Interpolé,0.25,66478,Indice +25% en Décembre : Forte hausse des achats alimentaires liée aux fêtes de fin d'année
+3,2027,Janvier,Interpolé,0.1,111163,Indice +10% en Janvier : Hausse liée aux régimes et à la remise en forme après les fêtes
+4,2027,Février,Interpolé,-0.05,149755,"Indice -5% en Février : Consommation en retrait, creux hors période de fêtes"
+5,2027,Mars,Interpolé,-0.05,188346,"Indice -5% en Mars : Consommation en retrait, avant la reprise liée à Pâques"
+6,2027,Avril,Jalon,0.05,231000,Point de repère fixé au TP1 (jalon) — valeur non recalculée
+7,2027,Mai,Interpolé,0.05,301500,Indice +5% en Mai : Consommation légèrement supérieure à la moyenne annuelle
+8,2027,Juin,Interpolé,0,368643,Indice 0% en Juin : Mois de référence (indice 100)
+9,2027,Juillet,Interpolé,0.15,445857,"Indice +15% en Juillet : Hausse des boissons, glaces et produits d'extérieur (grillades, pique-nique)"
+10,2027,Août,Interpolé,0.15,523071,"Indice +15% en Août : Cœur des vacances d'été : boissons, glaces, produits d'extérieur"
+11,2027,Septembre,Interpolé,-0.05,586857,Indice -5% en Septembre : Rentrée : consommation en retrait par rapport à la moyenne annuelle
+12,2027,Octobre,Jalon,0,654000,Point de repère fixé au TP1 (jalon) — valeur non recalculée
+13,2027,Novembre,Interpolé,0,740984,Indice 0% en Novembre : Mois de référence (indice 100)
+14,2027,Décembre,Interpolé,0.25,849714,Indice +25% en Décembre : Forte hausse des achats alimentaires liée aux fêtes de fin d'année
+15,2028,Janvier,Interpolé,0.1,945397,Indice +10% en Janvier : Hausse liée aux régimes et à la remise en forme après les fêtes
+16,2028,Février,Interpolé,-0.05,1028032,"Indice -5% en Février : Consommation en retrait, creux hors période de fêtes"
+17,2028,Mars,Interpolé,-0.05,1110667,"Indice -5% en Mars : Consommation en retrait, avant la reprise liée à Pâques"
+18,2028,Avril,Jalon,0.05,1202000,Point de repère fixé au TP1 (jalon) — valeur non recalculée
+19,2028,Mai,Interpolé,0.05,1310000,Indice +5% en Mai : Consommation légèrement supérieure à la moyenne annuelle
+20,2028,Juin,Interpolé,0,1412857,Indice 0% en Juin : Mois de référence (indice 100)
+21,2028,Juillet,Interpolé,0.15,1531143,"Indice +15% en Juillet : Hausse des boissons, glaces et produits d'extérieur (grillades, pique-nique)"
+22,2028,Août,Interpolé,0.15,1649429,"Indice +15% en Août : Cœur des vacances d'été : boissons, glaces, produits d'extérieur"
+23,2028,Septembre,Interpolé,-0.05,1747143,Indice -5% en Septembre : Rentrée : consommation en retrait par rapport à la moyenne annuelle
+24,2028,Octobre,Jalon,0,1850000,Point de repère fixé au TP1 (jalon) — valeur non recalculée
+25,2028,Novembre,Interpolé,0,1966825,Indice 0% en Novembre : Mois de référence (indice 100)
+26,2028,Décembre,Interpolé,0.25,2112857,Indice +25% en Décembre : Forte hausse des achats alimentaires liée aux fêtes de fin d'année
+27,2029,Janvier,Interpolé,0.1,2241365,Indice +10% en Janvier : Hausse liée aux régimes et à la remise en forme après les fêtes
+28,2029,Février,Interpolé,-0.05,2352349,"Indice -5% en Février : Consommation en retrait, creux hors période de fêtes"
+29,2029,Mars,Interpolé,-0.05,2463333,"Indice -5% en Mars : Consommation en retrait, avant la reprise liée à Pâques"
+30,2029,Avril,Jalon,0.05,2586000,Point de repère fixé au TP1 (jalon) — valeur non recalculée
+31,2029,Mai,Interpolé,0.05,2721667,Indice +5% en Mai : Consommation légèrement supérieure à la moyenne annuelle
+32,2029,Juin,Interpolé,0,2850873,Indice 0% en Juin : Mois de référence (indice 100)
+33,2029,Juillet,Interpolé,0.15,2999460,"Indice +15% en Juillet : Hausse des boissons, glaces et produits d'extérieur (grillades, pique-nique)"
+34,2029,Août,Interpolé,0.15,3148048,"Indice +15% en Août : Cœur des vacances d'été : boissons, glaces, produits d'extérieur"
+35,2029,Septembre,Interpolé,-0.05,3270794,Indice -5% en Septembre : Rentrée : consommation en retrait par rapport à la moyenne annuelle
+36,2029,Octobre,Jalon,0,3400000,Point de repère fixé au TP1 (jalon) — valeur non recalculée

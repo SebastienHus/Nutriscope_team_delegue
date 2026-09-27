@@ -2,7 +2,7 @@
 
 **Projet :** NutriScope · **TP :** TP 7 « KPI, coûts & ROI » (Cahier des TP, p. 19) · **Date :** 15/09
 **Objectif du TP :** chiffrer le projet comme le ferait une direction financière.
-**Livrables associés :** `docs/cadrage/kpi_roi.xlsx` (tableur versionné, hypothèses apparentes), `trajectoire_36_mois_mensuelle_saisonniere_nutriscope.csv` (détail mensuel de la trajectoire MAU) et la présente note.
+**Livrables associés :** `docs/cadrage/annexes/kpi_roi.xlsx` (tableur versionné, hypothèses apparentes), `trajectoire_36_mois_mensuelle_saisonniere_nutriscope.csv` (détail mensuel de la trajectoire MAU) et la présente note.
 
 Cette note explicite les hypothèses et les résultats du tableur `kpi_roi.xlsx`. Toutes les valeurs d'entrée y figurent en **bleu sur fond jaune** (onglet *Hypotheses*) ; tout le reste est calculé par formule.
 
@@ -91,7 +91,7 @@ Un seuil d'alerte n'a d'intérêt que s'il déclenche une décision (voir §1, �
 
 Ce tableau est la donnée source du schéma publié séparément (voir lien ci-dessous) : il applique la grille de lecture du §1 (objectif business → KPI métier → KPI produit → métriques techniques) au projet NutriScope, avec pour chaque case sa baseline, sa cible, qui en assure le suivi, et — pour les KPI produit et les métriques techniques — à quoi il sert et ce qu'il montre.
 
-**Schéma :** [Arbre des indicateurs NutriScope](https://claude.ai/artifact/2WDBdrS6KjEVzuRVHbcgsM) — même contenu que le tableau ci-dessous, mis en scène comme la page 28 du module 2.4. Pour le régénérer après une modification du tableau, republier la même page.
+**Schéma :** [Arbre des indicateurs NutriScope](../../ressources/arbre_indicateurs_nutriscope_2.html) — même contenu que le tableau ci-dessous, mis en scène comme la page 28 du module 2.4. Pour le régénérer après une modification du tableau, republier la même page.
 
 | Niveau | Indicateur | Rattaché à | Baseline | Cible | Responsable du suivi | Ce qu'il montre / à quoi il sert |
 |---|---|---|---|---|---|---|
