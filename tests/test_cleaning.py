@@ -7,7 +7,7 @@ import pytest
 import pandas as pd
 import numpy as np
 from cleaning import (
-    Report,
+    Report, KJ_BY_KCAL,
     type_columns, normalize_units, limit_nutrients,
     revise_energy, unduplicate_codes, handle_empty_categories,
     clean
@@ -25,10 +25,10 @@ def df_extreme():
         "code": ["001", "002", "003", "004", "005", "006", "007", "008"],
         "product_name": ["Sucre", "Sel", "Soda", "Beurre", "Huile", "Test6", "Test7", "Test8"],
         "brands": ["Brand1", "Brand2", None, "Brand4", "Brand5", "Brand6", "Brand7", "Brand8"],
-        "main_category": ["sweets", "condiments", "beverages", "dairy", "oils", "unknown", "unknown", "unknown"],
+        "main_category": ["sweets", "condiments", "beverages", "dairy", "oils", "", "", None],
         "categories_tags": ["sweets", "condiments", "beverages", "dairy", "oils", None, "", "snacks"],
-        "energy_100g": [2000.0, 0.0, 306.0, 3200.0, 3700.0, 1500.0, np.nan, 100.0],  # 74000 g sucre en théorie
-        "energy-kcal_100g": [74000.0, 0.0, 73.0, 800.0, 900.0, 400.0, 50.0, 25.0],  # Énergies aberrantes
+        "energy_100g": [2000.0, 0.0, 306.0, 3200.0, 3700.0, 1500.0, 600.0, 100.0],  # 74000 g sucre en théorie
+        "energy-kcal_100g": [74000.0, 0.0, 73.0, 800.0, 900.0, 400.0, np.nan, 25.0],  # Énergies aberrantes
         "fat_100g": [0.0, 0.0, 0.0, 82.0, 100.0, -5.0, 150.0, 10.0],  # Négatif et > 100
         "saturated-fat_100g": [0.0, 0.0, 0.0, 50.0, 30.0, 0.0, 100.0, 2.0],
         "carbohydrates_100g": [100.0, 0.0, 11.0, 0.5, 0.0, 50.0, 80.0, 5.0],
@@ -40,6 +40,7 @@ def df_extreme():
         "nutriscore_grade": ["e", "e", "d", "d", "a", "e", "f", "a"],
         "completeness": [0.9, 0.5, 0.8, 0.95, 1.0, 0.3, 0.2, 0.7],
         "last_modified_t": [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000],
+        "pnns_groups_1": ["Sucre", "Sel", "Boisson", "Huile & Beurre", "Huile & Beurre", "unknown", "unknown", "Snacks"]
     })
 
 
@@ -71,8 +72,8 @@ class TestNormalizeUnits:
     def test_kcal_from_kj(self, df_extreme):
         """kcal dérivée de kJ si absent."""
         df, report = normalize_units(df_extreme)
-        # Row 6 : energy_100g = 1500, kcal manquant → doit être dérivée
-        assert df.loc[6, "energy-kcal_100g"] == pytest.approx(1500 / 4.184, rel=0.01)
+        # Row 6 : kcal manquant → doit être dérivée
+        assert df.loc[6, "energy-kcal_100g"] == pytest.approx(df_extreme.loc[6, "energy_100g"] / KJ_BY_KCAL, rel=0.01)
         assert report.details.get("kcal_derivees_kj", 0) > 0
 
     def test_incoherence_kj_kcal(self, df_extreme):
@@ -130,7 +131,7 @@ class TestLimitNutrients:
 # TESTS : CORRIGER ÉNERGIE
 # ============================================================================
 
-class TestReviserEnergy:
+class TestReviseEnergy:
     def test_kcal_null_recalculate(self):
         """kcal nul avec macronutriments → recalcul."""
         df = pd.DataFrame({
@@ -196,9 +197,10 @@ class TestUnduplicateCodes:
             "completeness": [0.5, 0.9],
             "last_modified_t": [1000, 2000],
         })
+        print(df)
         df, report = unduplicate_codes(df)
         assert len(df) == 1
-        assert df.loc[0, "completeness"] == 0.9
+        assert df.loc[1, "completeness"] == 0.9
 
     def test_purity(self, df_extreme):
         """L'entrée n'est pas modifiée."""
@@ -218,9 +220,10 @@ class TestHandlerEmptyCategories:
             "code": ["001"],
             "main_category": [np.nan],
             "categories_tags": ["snacks"],
+            "pnns_groups_1": ["Snacks"]
         })
         df, report = handle_empty_categories(df)
-        assert df.loc[0, "main_category"] == "unknown"
+        assert df.loc[0, "main_category"] == "snacks"
 
     def test_flag_empty_category(self):
         """Catégorie vide → drapeau."""
@@ -228,16 +231,18 @@ class TestHandlerEmptyCategories:
             "code": ["001"],
             "main_category": ["snacks"],
             "categories_tags": [np.nan],
+            "pnns_groups_1": ["Snacks"]
         })
         df, report = handle_empty_categories(df)
         assert df.loc[0, "categorie_vide"] == 1
 
     def test_exclude_unclassable(self):
-        """Pas de catégories ET rayon unknown → exclus."""
+        """Pas de catégories ET rayon undefined → exclus."""
         df = pd.DataFrame({
             "code": ["001", "002"],
-            "main_category": ["unknown", "snacks"],
+            "main_category": [np.nan, "snacks"],
             "categories_tags": [np.nan, "snacks"],
+            "pnns_groups_1": ["unknown", "Snacks"]
         })
         df, report = handle_empty_categories(df)
         assert len(df) == 1  # "001" exclus

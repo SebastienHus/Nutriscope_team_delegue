@@ -301,12 +301,12 @@ def revise_energy(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
 
     # Incohérence vs calcul 4/4/9 (si calcul ≥ 50 kcal)
     mask_with_all = (df["proteins_100g"].notna() & df["carbohydrates_100g"].notna() & df["fat_100g"].notna())
-    calc_energie = df[mask_with_all].apply(lambda r: calculate_energy(r), axis=1)
-    mask_calc_ok = calc_energie >= 50
+    df["calculated_energy"] = df[mask_with_all].apply(lambda r: calculate_energy(r), axis=1)
+    mask_calc_ok = df["calculated_energy"] >= 50
 
-    tolerance = calc_energie * 0.5  # 50% de tolérance
+    tolerance = df["calculated_energy"] * 0.5  # 50% de tolérance
     mask_incoh = mask_with_all & mask_calc_ok & (
-        (df["energy-kcal_100g"] - calc_energie).abs() > tolerance
+        (df["energy-kcal_100g"] - df["calculated_energy"]).abs() > tolerance
     ) & df["energy-kcal_100g"].notna()
 
     for idx in df[mask_incoh].index:
@@ -391,26 +391,47 @@ def handle_empty_categories(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
     lines_changed = set()
     details = {
         "rayon_rempli_unknown": 0,
+        "sous_rayon_rempli_unknown": 0,
+        "categorie_remplie_tag": 0,
         "drapeau_categorie_vide": 0,
         "inclassables_exclus": 0,
     }
 
     # Remplir rayon manquant avec "unknown"
-    if "main_category" in df.columns:
-        mask_rayon_vide = df["main_category"].isna() | (df["main_category"] == "")
-        df.loc[mask_rayon_vide, "main_category"] = "unknown"
-        details["rayon_rempli_unknown"] = mask_rayon_vide.sum()
+    if "pnns_groups_1" in df.columns:
+        mask_rayon_vide = df["pnns_groups_1"].isna() | (df["pnns_groups_1"] == "")
+        df.loc[mask_rayon_vide, "pnns_groups_1"] = "unknown"
+        details["rayon_rempli_undefined"] = mask_rayon_vide.sum()
+        lines_changed.update(df[mask_rayon_vide].index)
+
+    # Remplir sous-rayon manquant avec "unknown"
+    if "pnns_groups_2" in df.columns:
+        mask_rayon_vide = df["pnns_groups_2"].isna() | (df["pnns_groups_2"] == "")
+        df.loc[mask_rayon_vide, "pnns_groups_2"] = "unknown"
+        details["sous_rayon_rempli_unknown"] = mask_rayon_vide.sum()
         lines_changed.update(df[mask_rayon_vide].index)
 
     # Drapeau catégorie vide
     if "categories_tags" in df.columns:
-        mask_cat_vide = df["categories_tags"].isna() | (df["categories_tags"] == "")
-        df["categorie_vide"] = mask_cat_vide.astype(int)
-        details["drapeau_categorie_vide"] = mask_cat_vide.sum()
-        lines_changed.update(df[mask_cat_vide].index)
+        mask_empty_cat = df["categories_tags"].isna() | (df["categories_tags"] == "")
+        df["categorie_vide"] = mask_empty_cat.astype(int)
+        details["drapeau_categorie_vide"] = mask_empty_cat.sum()
+        lines_changed.update(df[mask_empty_cat].index)
+
+    # Remplir categorie manquante avec dernier tag de la categorie
+    if "main_category" in df.columns:
+        mask_empty_main_category = (df["main_category"].isna() | (df["main_category"] == "")) & ~df["categorie_vide"]
+        df["main_category"] = df["main_category"].astype("object") # TODO: Needs Schema and typing here
+        df.loc[mask_empty_main_category, "main_category"] = df.loc[mask_empty_main_category, "categories_tags"].apply(lambda x: x.split(",")[-1])
+        details["categorie_remplie_tag"] = mask_empty_main_category.sum()
+        lines_changed.update(df[mask_empty_main_category].index)
 
     # Exclure inclassables (pas de catégories ET rayon unknown)
-    mask_unclassable = (df["categorie_vide"] == 1) & (df["main_category"] == "unknown")
+    mask_unclassable = (
+        (df["categorie_vide"] == 1)
+        & (df["main_category"].isna() | (df["main_category"] == ""))
+        & (df["pnns_groups_1"] == "unknown")
+    )
     df = df[~mask_unclassable].copy()
     details["inclassables_exclus"] = mask_unclassable.sum()
 
@@ -496,32 +517,32 @@ def missing_strategy(df: pd.DataFrame, strategy: dict = None) -> Tuple[pd.DataFr
 # PIPELINE COMPLET
 # ============================================================================
 
-def clean(df: pd.DataFrame, strategie: dict = None) -> Tuple[pd.DataFrame, list]:
+def clean(df: pd.DataFrame, strategy: dict = None) -> Tuple[pd.DataFrame, list]:
     """
     Pipeline complet de nettoyage.
     Retourne : (DataFrame nettoyé, liste des CompteRendu)
     """
-    rapports = []
+    reports = []
 
-    df, rapport = type_columns(df)
-    rapports.append(rapport)
+    df, report = type_columns(df)
+    reports.append(report)
 
-    df, rapport = normalize_units(df)
-    rapports.append(rapport)
+    df, report = normalize_units(df)
+    reports.append(report)
 
-    df, rapport = limit_nutrients(df)
-    rapports.append(rapport)
+    df, report = limit_nutrients(df)
+    reports.append(report)
 
-    df, rapport = revise_energy(df)
-    rapports.append(rapport)
+    df, report = revise_energy(df)
+    reports.append(report)
 
-    df, rapport = unduplicate_codes(df)
-    rapports.append(rapport)
+    df, report = unduplicate_codes(df)
+    reports.append(report)
 
-    df, rapport = handle_empty_categories(df)
-    rapports.append(rapport)
+    df, report = handle_empty_categories(df)
+    reports.append(report)
 
-    df, rapport = missing_strategy(df, strategie)
-    rapports.append(rapport)
+    df, report = missing_strategy(df, strategy)
+    reports.append(report)
 
-    return df, rapports
+    return df, reports
