@@ -7,10 +7,10 @@ import pytest
 import pandas as pd
 import numpy as np
 from cleaning import (
-    CompteRendu,
-    typer_colonnes, normaliser_unites, borner_nutriments,
-    corriger_energie, dedupliquer_codes, traiter_categories_vides,
-    strategie_manquants, nettoyer
+    Report,
+    type_columns, normalize_units, limit_nutrients,
+    revise_energy, unduplicate_codes, handle_empty_categories,
+    clean
 )
 
 
@@ -19,7 +19,7 @@ from cleaning import (
 # ============================================================================
 
 @pytest.fixture
-def df_tordu():
+def df_extreme():
     """Échantillon de produits avec anomalies du TP 2."""
     return pd.DataFrame({
         "code": ["001", "002", "003", "004", "005", "006", "007", "008"],
@@ -47,81 +47,81 @@ def df_tordu():
 # TESTS : TYPAGE
 # ============================================================================
 
-class TestTyperColonnes:
-    def test_nominal(self, df_tordu):
+class TestTypeColumns:
+    def nominal_test(self, df_extreme):
         """Les types sont correctement appliqués."""
-        df, rapport = typer_colonnes(df_tordu)
+        df, report = type_columns(df_extreme)
         assert df["code"].dtype == object or df["code"].dtype == "string"
         assert df["energy_100g"].dtype == "float64"
-        assert rapport.regle == "typer_colonnes"
-        assert rapport.lignes_avant == rapport.lignes_apres  # Pas de perte
+        assert report.rule == "typer_colonnes"
+        assert report.lines_before == report.lines_after  # Pas de perte
 
-    def test_purete(self, df_tordu):
+    def purity_test(self, df_extreme):
         """L'entrée n'est pas modifiée."""
-        df_copie = df_tordu.copy()
-        df, _ = typer_colonnes(df_tordu)
-        pd.testing.assert_frame_equal(df_tordu, df_copie)
+        df_copy = df_extreme.copy()
+        type_columns(df_extreme)
+        pd.testing.assert_frame_equal(df_extreme, df_copy)
 
 
 # ============================================================================
 # TESTS : NORMALISER UNITÉS
 # ============================================================================
 
-class TestNormaliserUnites:
-    def test_kcal_depuis_kj(self, df_tordu):
+class TestNormalizeUnits:
+    def test_kcal_from_kj(self, df_extreme):
         """kcal dérivée de kJ si absent."""
-        df, rapport = normaliser_unites(df_tordu)
+        df, report = normalize_units(df_extreme)
         # Row 6 : energy_100g = 1500, kcal manquant → doit être dérivée
         assert df.loc[6, "energy-kcal_100g"] == pytest.approx(1500 / 4.184, rel=0.01)
-        assert rapport.details.get("kcal_derivees_kj", 0) > 0
+        assert report.details.get("kcal_derivees_kj", 0) > 0
 
-    def test_incohérence_kj_kcal(self, df_tordu):
+    def test_incoherence_kj_kcal(self, df_extreme):
         """Ratio kJ/kcal hors [3.9, 4.5] → recalcul."""
-        df, rapport = normaliser_unites(df_tordu)
+        df, report = normalize_units(df_extreme)
         # Row 0 : energy_100g=2000, kcal=74000 → ratio > 4.5
-        assert rapport.details.get("kcal_recalculees", 0) > 0
+        assert report.details.get("kcal_recalculees", 0) > 0
 
-    def test_sodium_depuis_sel(self, df_tordu):
+    def test_sodium_from_salt(self, df_extreme):
         """sodium dérivé depuis sel si absent."""
         df_test = pd.DataFrame({
             "code": ["001"],
             "salt_100g": [2.5],
             "sodium_100g": [np.nan],
         })
-        df, rapport = normaliser_unites(df_test)
+        df, report = normalize_units(df_test)
         assert df.loc[0, "sodium_100g"] == pytest.approx(1.0, rel=0.01)
-        assert rapport.details.get("sodium_derive_sel", 0) == 1
+        assert report.details.get("sodium_derive_sel", 0) == 1
 
 
 # ============================================================================
 # TESTS : BORNER NUTRIMENTS
 # ============================================================================
 
-class TestBornerNutriments:
-    def test_negatifs_invalides(self, df_tordu):
+class TestLimitNutrients:
+    def test_invalidate_negatives(self, df_extreme):
         """Valeurs négatives → NA."""
-        df, rapport = df_tordu.copy(), None
-        df, rapport = borner_nutriments(df)
+        df, report = df_extreme.copy(), None
+        df, report = limit_nutrients(df)
         # Row 5 : fat_100g = -5 → doit devenir NaN
         assert pd.isna(df.loc[5, "fat_100g"])
 
-    def test_over100_invalides(self, df_tordu):
+    def test_invalidate_over100(self, df_extreme):
         """Valeurs > 100 g/100g → NA."""
-        df, rapport = borner_nutriments(df_tordu)
+        df, report = limit_nutrients(df_extreme)
         # Row 6 : fat_100g = 150 → NaN, sugars_100g = 200 → NaN
         assert pd.isna(df.loc[6, "fat_100g"])
         assert pd.isna(df.loc[6, "sugars_100g"])
 
-    def test_sucres_coherence(self, df_tordu):
+    def test_sugars_coherence(self, df_extreme):
         """sugars > glucides + 0.5 → sucres NA."""
-        df, rapport = borner_nutriments(df_tordu)
+        df, report = limit_nutrients(df_extreme)
         # Row 5 : sugars=150, carbs=50 → sucres NA
         assert pd.isna(df.loc[5, "sugars_100g"])
-        assert rapport.details.get("sucres_incohérents", 0) > 0
+        assert report.details.get("sucres_incohérents", 0) > 0
 
-    def test_valeur_coherente_conservée(self, df_tordu):
+    def test_conserve_coherent_value(self, df_extreme):
         """Valeur légitime ne change pas."""
-        df, rapport = borner_nutriments(df_tordu)
+        df, report = limit_nutrients(df_extreme)
         # Row 3 : fat=82 (normal) → conservé
         assert df.loc[3, "fat_100g"] == 82.0
 
@@ -130,8 +130,8 @@ class TestBornerNutriments:
 # TESTS : CORRIGER ÉNERGIE
 # ============================================================================
 
-class TestCorrigerEnergie:
-    def test_kcal_nul_recalcul(self):
+class TestReviserEnergy:
+    def test_kcal_null_recalculate(self):
         """kcal nul avec macronutriments → recalcul."""
         df = pd.DataFrame({
             "code": ["001"],
@@ -140,12 +140,12 @@ class TestCorrigerEnergie:
             "carbohydrates_100g": [50.0],
             "fat_100g": [20.0],
         })
-        df, rapport = corriger_energie(df)
+        df, report = revise_energy(df)
         # 10*4 + 50*4 + 20*9 = 40 + 200 + 180 = 420 kcal
         assert df.loc[0, "energy-kcal_100g"] == pytest.approx(420, rel=0.01)
-        assert rapport.details.get("nulles_recalculees", 0) == 1
+        assert report.details.get("nulles_recalculees", 0) == 1
 
-    def test_over900_invalidee(self):
+    def test_invalidate_over900(self):
         """kcal > 900 → NA ou recalcul."""
         df = pd.DataFrame({
             "code": ["001"],
@@ -154,10 +154,10 @@ class TestCorrigerEnergie:
             "carbohydrates_100g": [np.nan],
             "fat_100g": [np.nan],
         })
-        df, rapport = corriger_energie(df)
+        df, report = revise_energy(df)
         assert pd.isna(df.loc[0, "energy-kcal_100g"])
 
-    def test_over900_avec_nutrients_recalcul(self):
+    def test_over900_with_nutrients_recalculate(self):
         """kcal > 900 mais nutriments OK → recalcul."""
         df = pd.DataFrame({
             "code": ["001"],
@@ -166,7 +166,7 @@ class TestCorrigerEnergie:
             "carbohydrates_100g": [60.0],
             "fat_100g": [15.0],
         })
-        df, rapport = corriger_energie(df)
+        df, report = revise_energy(df)
         # 20*4 + 60*4 + 15*9 = 80 + 240 + 135 = 455 kcal
         assert df.loc[0, "energy-kcal_100g"] == pytest.approx(455, rel=0.01)
 
@@ -175,8 +175,8 @@ class TestCorrigerEnergie:
 # TESTS : DÉDUPLIQUER
 # ============================================================================
 
-class TestDedupliquerCodes:
-    def test_exclure_sans_code(self):
+class TestUnduplicateCodes:
+    def test_exclude_without_code(self):
         """Lignes sans code → exclues."""
         df = pd.DataFrame({
             "code": ["001", np.nan, "003"],
@@ -184,11 +184,11 @@ class TestDedupliquerCodes:
             "completeness": [0.9, 0.5, 0.8],
             "last_modified_t": [1000, 2000, 3000],
         })
-        df, rapport = dedupliquer_codes(df)
+        df, report = unduplicate_codes(df)
         assert len(df) == 2
-        assert rapport.details.get("sans_code_exclus", 0) == 1
+        assert report.details.get("sans_code_exclus", 0) == 1
 
-    def test_doublons_supprimes(self):
+    def test_duplicates_drop(self):
         """Doublons → garder le plus complet."""
         df = pd.DataFrame({
             "code": ["001", "001"],
@@ -196,52 +196,52 @@ class TestDedupliquerCodes:
             "completeness": [0.5, 0.9],
             "last_modified_t": [1000, 2000],
         })
-        df, rapport = dedupliquer_codes(df)
+        df, report = unduplicate_codes(df)
         assert len(df) == 1
         assert df.loc[0, "completeness"] == 0.9
 
-    def test_purete(self, df_tordu):
+    def test_purity(self, df_extreme):
         """L'entrée n'est pas modifiée."""
-        df_copie = df_tordu.copy()
-        df, _ = dedupliquer_codes(df_tordu)
-        pd.testing.assert_frame_equal(df_tordu, df_copie)
+        df_copy = df_extreme.copy()
+        unduplicate_codes(df_extreme)
+        pd.testing.assert_frame_equal(df_extreme, df_copy)
 
 
 # ============================================================================
 # TESTS : TRAITER CATÉGORIES
 # ============================================================================
 
-class TestTraiterCategoriesVides:
-    def test_rayon_vide_rempli(self):
+class TestHandlerEmptyCategories:
+    def test_empty_group_filled(self):
         """Rayon vide → "unknown"."""
         df = pd.DataFrame({
             "code": ["001"],
             "main_category": [np.nan],
             "categories_tags": ["snacks"],
         })
-        df, rapport = traiter_categories_vides(df)
+        df, report = handle_empty_categories(df)
         assert df.loc[0, "main_category"] == "unknown"
 
-    def test_drapeau_categorie_vide(self):
+    def test_flag_empty_category(self):
         """Catégorie vide → drapeau."""
         df = pd.DataFrame({
             "code": ["001"],
             "main_category": ["snacks"],
             "categories_tags": [np.nan],
         })
-        df, rapport = traiter_categories_vides(df)
+        df, report = handle_empty_categories(df)
         assert df.loc[0, "categorie_vide"] == 1
 
-    def test_exclure_inclassables(self):
+    def test_exclude_unclassable(self):
         """Pas de catégories ET rayon unknown → exclus."""
         df = pd.DataFrame({
             "code": ["001", "002"],
             "main_category": ["unknown", "snacks"],
             "categories_tags": [np.nan, "snacks"],
         })
-        df, rapport = traiter_categories_vides(df)
+        df, report = handle_empty_categories(df)
         assert len(df) == 1  # "001" exclus
-        assert rapport.details.get("inclassables_exclus", 0) == 1
+        assert report.details.get("inclassables_exclus", 0) == 1
 
 
 # ============================================================================
@@ -249,29 +249,29 @@ class TestTraiterCategoriesVides:
 # ============================================================================
 
 class TestIdempotence:
-    def test_idempotence_typage(self, df_tordu):
+    def test_typing_idempotence(self, df_extreme):
         """Appliquer deux fois donne le même résultat."""
-        df1, r1 = typer_colonnes(df_tordu)
-        df2, r2 = typer_colonnes(df1)
+        df1, r1 = type_columns(df_extreme)
+        df2, r2 = type_columns(df1)
         pd.testing.assert_frame_equal(df1, df2)
-        assert r2.lignes_touchees == 0
+        assert r2.lines_changed == 0
 
-    def test_idempotence_normaliser(self, df_tordu):
+    def test_normalize_idempotence(self, df_extreme):
         """Appliquer deux fois ne change rien."""
-        df1, r1 = normaliser_unites(df_tordu)
-        df2, r2 = normaliser_unites(df1)
-        pd.testing.assert_frame_equal(df1, df2)
-
-    def test_idempotence_borner(self, df_tordu):
-        """Appliquer deux fois ne change rien."""
-        df1, r1 = borner_nutriments(df_tordu)
-        df2, r2 = borner_nutriments(df1)
+        df1, r1 = normalize_units(df_extreme)
+        df2, r2 = normalize_units(df1)
         pd.testing.assert_frame_equal(df1, df2)
 
-    def test_idempotence_dedupliquer(self, df_tordu):
+    def test_limit_idempotence(self, df_extreme):
         """Appliquer deux fois ne change rien."""
-        df1, r1 = dedupliquer_codes(df_tordu)
-        df2, r2 = dedupliquer_codes(df1)
+        df1, r1 = limit_nutrients(df_extreme)
+        df2, r2 = limit_nutrients(df1)
+        pd.testing.assert_frame_equal(df1, df2)
+
+    def test_unduplicate_idempotence(self, df_extreme):
+        """Appliquer deux fois ne change rien."""
+        df1, r1 = unduplicate_codes(df_extreme)
+        df2, r2 = unduplicate_codes(df1)
         pd.testing.assert_frame_equal(df1, df2)
 
 
@@ -279,26 +279,26 @@ class TestIdempotence:
 # TESTS : PIPELINE COMPLET
 # ============================================================================
 
-class TestPipelineComplet:
-    def test_pipeline_structure(self, df_tordu):
+class TestCleaningPipeline:
+    def test_pipeline_structure(self, df_extreme):
         """Le pipeline retourne (DataFrame, liste de rapports)."""
-        df, rapports = nettoyer(df_tordu)
+        df, reports = clean(df_extreme)
         assert isinstance(df, pd.DataFrame)
-        assert isinstance(rapports, list)
-        assert len(rapports) > 0
-        assert all(isinstance(r, CompteRendu) for r in rapports)
+        assert isinstance(reports, list)
+        assert len(reports) > 0
+        assert all(isinstance(r, Report) for r in reports)
 
-    def test_pipeline_qualite(self, df_tordu):
+    def test_pipeline_quality(self, df_extreme):
         """Après nettoyage, données plus robustes."""
-        df_avant = df_tordu.copy()
-        df_apres, _ = nettoyer(df_tordu)
+        df_before = df_extreme.copy()
+        df_after, _ = clean(df_extreme)
 
         # Moins de valeurs aberrantes
-        assert (df_apres["energy-kcal_100g"] <= 900).all() or df_apres["energy-kcal_100g"].isna().all()
+        assert (df_after["energy-kcal_100g"] <= 900).all() or df_after["energy-kcal_100g"].isna().all()
 
         # Cohérence sucres < glucides
-        mask = df_apres["sugars_100g"].notna() & df_apres["carbohydrates_100g"].notna()
-        assert (df_apres.loc[mask, "sugars_100g"] <= df_apres.loc[mask, "carbohydrates_100g"] + 0.5).all()
+        mask = df_after["sugars_100g"].notna() & df_after["carbohydrates_100g"].notna()
+        assert (df_after.loc[mask, "sugars_100g"] <= df_after.loc[mask, "carbohydrates_100g"] + 0.5).all()
 
 
 if __name__ == "__main__":
