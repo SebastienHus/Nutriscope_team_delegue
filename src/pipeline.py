@@ -9,13 +9,10 @@ import sys
 from pathlib import Path
 from cleaning import clean, DEFAULT_STRATEGY
 from report import generate_report
+import argparse
 
 
-def main(
-    csv_in: str = "data/echantillon_france.csv",
-    csv_out: str = "data/echantillon_france_propre.csv",
-    report_path: str = "docs/data/rapport_nettoyage.md"
-):
+def main(csv_in: str, csv_out: str, report_path: str):
     """
     Pipeline complet de nettoyage.
 
@@ -61,7 +58,7 @@ def main(
     # Étape 3 : Rapport
     print("\n[3/4] Génération du rapport...")
     try:
-        report_text = generate_report(df_rough, df_clean, reports, report_path)
+        report_text = generate_report(df_rough, df_clean, reports)
         print(f"  ✓ Rapport généré ({len(report_text)} caractères)")
     except Exception as e:
         print(f"  ✗ Erreur: {e}")
@@ -72,6 +69,7 @@ def main(
     print("\n[4/4] Export des données et rapport...")
     try:
         # CSV nettoyé
+        Path(csv_out).parent.mkdir(parents=True, exist_ok=True)
         df_clean.to_csv(csv_out, index=False)
         print(f"  ✓ CSV exporté: {csv_out}")
 
@@ -106,11 +104,29 @@ if __name__ == "__main__":
     # Utilisation
     # python pipeline.py [chemin_entree] [chemin_sortie] [chemin_rapport]
 
-    if len(sys.argv) > 1:
-        csv_in = sys.argv[1]
-        csv_out = sys.argv[2] if len(sys.argv) > 2 else "data/echantillon_france_propre.csv"
-        report_path = sys.argv[3] if len(sys.argv) > 3 else "data/docs/rapport_nettoyage.md"
-        sys.exit(main(csv_in, csv_out, report_path))
-    else:
-        # Valeurs par défaut
-        sys.exit(main())
+    parser = argparse.ArgumentParser(
+        description="Nettoyage des données CSV."
+    )
+
+    # csv_in est optionnel si main() sans argument sait quoi faire par défaut
+    parser.add_argument(
+        "csv_in",
+        nargs="?",
+        default="./data-nutriscope/echantillon_france.csv",
+        help="Chemin du fichier CSV d'entrée",
+    )
+    parser.add_argument(
+        "csv_out",
+        nargs="?",
+        default="./data/clean/echantillon_france.csv",
+        help="Chemin du fichier CSV de sortie",
+    )
+    parser.add_argument(
+        "report_path",
+        nargs="?",
+        default="./data/docs/rapport_nettoyage.md",
+        help="Chemin du rapport Markdown",
+    )
+
+    args = parser.parse_args()
+    sys.exit(main(args.csv_in, args.csv_out, args.report_path))

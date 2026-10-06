@@ -106,8 +106,8 @@ def generate_report(
     # Répartition par rayon
     report_text += "\n---\n\n## Répartition par Rayon (Après)\n\n"
 
-    if "main_category" in df_after.columns:
-        group_dist = df_after["main_category"].value_counts()
+    if "pnns_groups_1" in df_after.columns:
+        group_dist = df_after["pnns_groups_1"].value_counts()
         report_text += "| Rayon | Produits | % |\n|-------|----------|----|\n"
         for group, count in group_dist.items():
             pct = (count / len(df_after) * 100)
@@ -134,8 +134,8 @@ def generate_report(
 
 ## Notes
 
-- Ce rapport est **généré automatiquement** par `python -m src.report`
-- Les décisions de nettoyage sont documentées dans `docs/data/strategie_manquants.md`
+- Ce rapport est **généré automatiquement** par `python -m src.pipeline`
+- Les décisions de nettoyage sont documentées dans `docs/data/parties/strategie_manquants.md`
 - Le pipeline peut être rejoué sans intervention manuelle
 - Les données brutes originales sont archivées
 
