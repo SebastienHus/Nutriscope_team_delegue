@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Tuple
+import schema
 
 
 # ============================================================================
@@ -487,15 +488,15 @@ def missing_strategy(df: pd.DataFrame, strategy: dict = None) -> Tuple[pd.DataFr
         if decision == "garder":
             pass  # Rien à faire
         elif decision == "drapeau":
-            flag_col = f"{col}_manquant"
+            flag_col = f"{col}_missing"
             mask = df[col].isna()
             df[flag_col] = mask.astype(int)
-            details[f"{col}_drapeauté"] = mask.sum()
+            details[f"{col}_flagged"] = mask.sum()
             lines_changed.update(df[mask].index)
         elif decision == "supprimer_colonne":
             if col in df.columns:
                 df = df.drop(columns=[col])
-                details[f"{col}_supprimé"] = True
+                details[f"{col}_removed"] = True
         else:
             raise ValueError(f"Décision inconnue pour {col}: {decision}")
 
@@ -523,6 +524,11 @@ def clean(df: pd.DataFrame, strategy: dict = None) -> Tuple[pd.DataFrame, list]:
     Retourne : (DataFrame nettoyé, liste des CompteRendu)
     """
     reports = []
+
+    # TODO: utiliser les cas d'échecs pour le nettoyage.
+    _, failure_cases = schema.check_schema(df)
+    if failure_cases is not None:
+        print(schema.sumup(failure_cases).to_dict("records"))
 
     df, report = type_columns(df)
     reports.append(report)
