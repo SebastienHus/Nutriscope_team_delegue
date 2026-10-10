@@ -1,46 +1,80 @@
 """
-Nettoyage industrialisé du catalogue NutriScope — TP 9
-Module de nettoyage des données Open Food Facts avec règles pures et rejouables.
+Nettoyage industrialisé du catalogue NutriScope — TP 9.
+
+Chaque règle est une fonction pure `rule(df) -> (DataFrame, Report)` :
+
+- elle ne modifie jamais `df` (copie explicite) ;
+- elle documente sa règle et ses seuils dans sa docstring ;
+- ses seuils sont des constantes nommées, définies dans `schema.py` (source unique) ;
+- son compte rendu compte des lignes : une ligne touchée par plusieurs sous-règles compte
+  une fois dans `lines_changed` et une fois par sous-règle dans `details`.
+
+Les règles qui invalident des valeurs (codes, grades, bornes, cohérences) s'appuient sur
+les sous-schémas pandera de `schema.py` : pandera pointe les lignes fautives, la règle
+décide de la correction (valeur → NA ou ligne écartée). Les règles qui recalculent
+(unités, énergie) utilisent les mêmes fonctions de contrôle que le schéma.
+
+`clean()` enchaîne les règles puis vérifie que la sortie respecte `schema.OUTPUT_SCHEMA`.
 """
 
-import pandas as pd
-import numpy as np
 from dataclasses import dataclass, field
-from typing import Tuple
+
+import numpy as np
+import pandas as pd
+
 import schema
+from schema import (
+    ALCOHOL_GROUP,
+    KCAL_MAX,
+    KJ_KCAL_RATIO_RANGE,
+    KJ_PER_KCAL,
+    PNNS_GROUPS,
+    SALT_PER_SODIUM,
+    SALT_SODIUM_TOLERANCE_G,
+    UNKNOWN_GROUP,
+)
 
 
 # ============================================================================
-# CONSTANTES MÉTIER
+# CONSTANTES DU MODULE
 # ============================================================================
 
-KCAL_MAX = 900.0
-KCAL_MIN = 0.0
-KJ_BY_KCAL = 4.184
-SALT_BY_SODIUM = 2.5
-ENERGY_KJ_MAX = 3000.0  # kJ très aberrant
+NUTRIENT_SUFFIX = "_100g"
+INTEGER_COLUMNS = ("nutriscore_score", "nova_group", "additives_n")
+TIMESTAMP_COLUMNS = ("created_t", "last_modified_t")   # timestamps Unix en secondes
+FLOAT_COLUMNS = ("completeness",)
+GRADE_COLUMNS = ("nutriscore_grade", "environmental_score_grade")
+PNNS_COLUMNS = ("pnns_groups_1", "pnns_groups_2")
+TAG_SEPARATOR = ","
+ENERGY_DECIMALS = 2
 
-NUTRIENTS_LIMITS = {
-    "fat_100g": (0, 100),
-    "saturated-fat_100g": (0, 100),
-    "carbohydrates_100g": (0, 100),
-    "sugars_100g": (0, 100),
-    "fiber_100g": (0, 100),
-    "proteins_100g": (0, 100),
-    "salt_100g": (0, 100),
-    "sodium_100g": (0, 100),
-    "energy-kcal_100g": (0, 900),
-    "energy_100g": (0, 3500),  # kJ (900 kcal ≈ 3765 kJ)
+KCAL = "energy-kcal_100g"
+KJ = "energy_100g"
+SALT = "salt_100g"
+SODIUM = "sodium_100g"
+
+# Check de cohérence pandera → colonne invalidée lorsqu'il échoue
+CONSISTENCY_TARGETS = {
+    "sugars_within_carbohydrates": "sugars_100g",
+    "saturated_within_fat": "saturated-fat_100g",
 }
+
+# Vocabulaire fermé de la stratégie de manquants
+KEEP = "keep"
+FLAG = "flag"
+DROP_COLUMN = "drop_column"
+CONSTANT_PREFIX = "constant:"
+MISSING_FLAG_SUFFIX = "_missing"
+
 
 @dataclass
 class Report:
-    """Rapport d'exécution d'une règle de nettoyage."""
+    """Compte rendu d'exécution d'une règle de nettoyage."""
     rule: str
     lines_before: int
     lines_after: int
     lines_changed: int
-    details: dict = field(default_factory=dict)
+    details: dict[str, int] = field(default_factory=dict)
 
     def __str__(self):
         return (
@@ -50,500 +84,548 @@ class Report:
 
 
 # ============================================================================
+# OUTILS INTERNES
+# ============================================================================
+
+def _is_blank(series: pd.Series) -> pd.Series:
+    """Valeur manquante ou chaîne vide (après suppression des espaces)."""
+    return series.isna() | series.astype("string").str.strip().eq("").fillna(False).astype(bool)
+
+
+def _changed_rows(before: pd.DataFrame, after: pd.DataFrame, columns=None) -> pd.Series:
+    """Lignes de `after` dont au moins une valeur diffère de `before` (NA ↔ valeur compte)."""
+    columns = before.columns if columns is None else columns
+    changed = pd.Series(False, index=after.index)
+    for column in columns:
+        if column not in before.columns or column not in after.columns:
+            continue
+        old = before.loc[after.index, column]
+        new = after[column]
+        same = (old == new).fillna(False).astype(bool) | (old.isna() & new.isna())
+        changed |= ~same
+    return changed
+
+
+def _counts(details: dict) -> dict[str, int]:
+    """Convertit les compteurs numpy en entiers Python (rapport lisible et sérialisable)."""
+    return {key: int(value) for key, value in details.items()}
+
+
+def _report(rule: str, before: pd.DataFrame, after: pd.DataFrame,
+            changed: pd.Series, details: dict) -> Report:
+    """Compte rendu standard : lignes modifiées parmi les conservées + lignes écartées."""
+    removed = len(before) - len(after)
+    return Report(
+        rule=rule,
+        lines_before=len(before),
+        lines_after=len(after),
+        lines_changed=int(changed.sum()) + removed,
+        details=_counts(details),
+    )
+
+
+def _to_text(series: pd.Series) -> pd.Series:
+    """Colonne texte : les valeurs non manquantes deviennent des `str`, les manquants restent NA."""
+    if series.dtype == object or isinstance(series.dtype, pd.StringDtype):
+        return series
+    return series.where(series.isna(), series.astype(str)).astype(object)
+
+
+# ============================================================================
 # RÈGLE 1 : TYPAGE DES COLONNES
 # ============================================================================
 
-def type_columns(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
+def type_columns(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
     """
     Typage cohérent des colonnes.
-    - code : string (code-barres)
-    - compteurs numériques : Int64 (nullable)
-    - nutriments : float64
+
+    - nutriments (`*_100g`) et `completeness` : float64 ;
+    - `nutriscore_score`, `nova_group`, `additives_n` : Int64 (entier nullable) ;
+    - `created_t`, `last_modified_t` : timestamps Unix (secondes) → datetime ;
+    - autres colonnes (dont `code`) : texte, manquants conservés.
+
+    Une valeur non convertible devient NA ; ces conversions sont comptées dans
+    `details["coerced_to_na"]` et ce sont les seules lignes considérées comme touchées.
     """
-    df = df.copy()
+    out = df.copy()
 
-    # Codes-barres en string
-    if "code" in df.columns:
-        df["code"] = df["code"].astype(str)
+    for column in out.columns:
+        if column.endswith(NUTRIENT_SUFFIX) or column in FLOAT_COLUMNS:
+            out[column] = pd.to_numeric(out[column], errors="coerce").astype(float)
+        elif column in INTEGER_COLUMNS:
+            out[column] = pd.to_numeric(out[column], errors="coerce").astype("Int64")
+        elif column in TIMESTAMP_COLUMNS:
+            if not pd.api.types.is_datetime64_any_dtype(out[column]):
+                seconds = pd.to_numeric(out[column], errors="coerce")
+                out[column] = pd.to_datetime(seconds, unit="s", errors="coerce")
+        else:
+            out[column] = _to_text(out[column])
 
-    # Nutriments en float64
-    cols_nutriments = [c for c in df.columns if c.endswith("_100g")]
-    for col in cols_nutriments:
-        df[col] = pd.to_numeric(df[col], errors="coerce").astype(float)
-
-    # Scores / indices
-    for col in ["nutriscore_score", "nova_group", "additives_n"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
-
-    # Timestamps
-    for col in ["created_t", "last_modified_t"]:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors="coerce")
-
-    # Complétude
-    if "completeness" in df.columns:
-        df["completeness"] = pd.to_numeric(df["completeness"], errors="coerce").astype(float)
-
-    lines_changed = 0  # Juste typage
-
-    return df, Report(
-        rule="typer_colonnes",
-        lines_before=len(df),
-        lines_after=len(df),
-        lines_changed=lines_changed,
-        details={"colonnes_typées": len(cols_nutriments)}
-    )
+    coerced = (df.notna() & out.isna()).any(axis=1)
+    return out, _report("type_columns", df, out, coerced, {"coerced_to_na": coerced.sum()})
 
 
 # ============================================================================
-# RÈGLE 2 : NORMALISER LES UNITÉS
+# RÈGLE 2 : NORMALISATION DES TEXTES
 # ============================================================================
 
-def normalize_units(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
+def normalize_texts(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
     """
-    Normalisation des unités :
-    - kJ → kcal (si absent ou ratio kJ/kcal hors [3.9, 4.5])
-    - sel ↔ sodium (si incohérent)
+    Normalisation des textes.
+
+    - `product_name` : espaces de bord retirés, nom vide → NA ;
+    - grades Nutri-Score et environnemental : minuscules sans espaces, puis toute valeur
+      hors `schema.NUTRISCORE_GRADES` / `schema.ENVIRONMENTAL_SCORE_GRADES` → NA
+      (dont `unknown`). Les valeurs fautives sont pointées par `schema.GRADES_SCHEMA`.
     """
-    df = df.copy()
-    details = {
-        "kcal_derivees_kj": 0,
-        "kcal_recalculees": 0,
-        "sel_derive_sodium": 0,
-        "sodium_derive_sel": 0,
-        "sodium_recalcule": 0,
-    }
-
-    # Calcul kcal depuis kJ
-    if "energy_100g" in df.columns and "energy-kcal_100g" in df.columns:
-        mask_kj_present = df["energy_100g"].notna() & (df["energy_100g"] > 0)
-        mask_kcal_missing = df["energy-kcal_100g"].isna()
-
-        # Cas 1 : kJ présent, kcal absent → dériver kcal
-        derive = mask_kj_present & mask_kcal_missing
-        df.loc[derive, "energy-kcal_100g"] = (df.loc[derive, "energy_100g"] / KJ_BY_KCAL).round(2)
-        details["kcal_derivees_kj"] = derive.sum()
-
-        # Cas 2 : les deux présents, ratio hors [3.9, 4.5] → recalculer kcal
-        mask_both = df["energy_100g"].notna() & df["energy-kcal_100g"].notna()
-        mask_both &= (df["energy_100g"] > 0) & (df["energy-kcal_100g"] > 0)
-
-        ratio = df.loc[mask_both, "energy_100g"] / df.loc[mask_both, "energy-kcal_100g"]
-        mask_incoherent = mask_both & ((ratio < 3.9) | (ratio > 4.5))
-
-        df.loc[mask_incoherent, "energy-kcal_100g"] = (
-            df.loc[mask_incoherent, "energy_100g"] / KJ_BY_KCAL
-        ).round(2)
-        details["kcal_recalculees"] = mask_incoherent.sum()
-
-    # Relation sel / sodium
-    if "salt_100g" in df.columns and "sodium_100g" in df.columns:
-        # Sodium théorique = sel / 2.5
-        mask_salt = df["salt_100g"].notna() & (df["salt_100g"] > 0)
-        mask_sodium = df["sodium_100g"].notna() & (df["sodium_100g"] > 0)
-
-        # Dériver sodium depuis sel si absent
-        derive_sodium = mask_salt & df["sodium_100g"].isna()
-        df.loc[derive_sodium, "sodium_100g"] = (df.loc[derive_sodium, "salt_100g"] / SALT_BY_SODIUM).round(4)
-        details["sodium_derive_sel"] = derive_sodium.sum()
-
-        # Dériver sel depuis sodium si absent
-        derived_salt = mask_sodium & df["salt_100g"].isna()
-        df.loc[derived_salt, "salt_100g"] = (df.loc[derived_salt, "sodium_100g"] * SALT_BY_SODIUM).round(4)
-        details["sel_derive_sodium"] = derived_salt.sum()
-
-        # Recalculer sodium s'il est incohérent
-        mask_both = mask_salt & mask_sodium
-        expected_sodium = df.loc[mask_both, "salt_100g"] / SALT_BY_SODIUM
-        mask_incoherent = mask_both & (np.abs(df.loc[mask_both, "sodium_100g"] - expected_sodium) > 0.1)
-
-        df.loc[mask_incoherent, "sodium_100g"] = (
-            df.loc[mask_incoherent, "salt_100g"] / SALT_BY_SODIUM
-        ).round(4)
-        details["sodium_recalcule"] = mask_incoherent.sum()
-
-    lines_changed = sum([v for k, v in details.items() if isinstance(v, (int, np.integer))])
-
-    return df, Report(
-        rule="normaliser_unites",
-        lines_before=len(df),
-        lines_after=len(df),
-        lines_changed=lines_changed,
-        details=details
-    )
-
-
-# ============================================================================
-# RÈGLE 3 : BORNER LES NUTRIMENTS
-# ============================================================================
-
-def limit_nutrients(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
-    """
-    Bornes métier sur les nutriments :
-    - Négatifs → NA
-    - > 100 g/100g → NA
-    - sucres > glucides + 0.5 → sucres NA
-    - saturés > lipides + 0.5 → saturés NA
-    """
-    df = df.copy()
-    lines_changed = set()
+    out = df.copy()
     details = {}
 
-    # Règle générale : négatives ou > 100 g
-    # TODO: use NUTRIENTS_LIMITS
-    for col in ["fat_100g", "saturated-fat_100g", "carbohydrates_100g", "sugars_100g",
-                "fiber_100g", "proteins_100g", "salt_100g", "sodium_100g"]:
-        if col in df.columns:
-            mask_neg = (df[col] < 0) & df[col].notna()
-            mask_over = (df[col] > 100) & df[col].notna()
+    if "product_name" in out.columns:
+        blank = _is_blank(out["product_name"]) & out["product_name"].notna()
+        out["product_name"] = out["product_name"].str.strip().mask(blank)
+        details["product_name_blank"] = blank.sum()
 
-            mask = mask_neg | mask_over
-            lines_changed.update(df[mask].index)
+    grades = [column for column in GRADE_COLUMNS if column in out.columns]
+    for column in grades:
+        out[column] = out[column].str.strip().str.lower()
 
-            df.loc[mask, col] = np.nan
-            details[f"{col}_invalides"] = mask.sum()
+    failures = schema.find_failures(out[grades], schema.GRADES_SCHEMA)
+    for column in grades:
+        index = failures.get(f"{column}:allowed_value", pd.Index([]))
+        out.loc[index, column] = np.nan
+        details[f"{column}_invalidated"] = len(index)
 
-    # Cohérence sucres < glucides
-    if "sugars_100g" in df.columns and "carbohydrates_100g" in df.columns:
-        mask = (df["sugars_100g"] > df["carbohydrates_100g"] + 0.5) & df["sugars_100g"].notna()
-        lines_changed.update(df[mask].index)
-        df.loc[mask, "sugars_100g"] = np.nan
-        details["sucres_incohérents"] = mask.sum()
-
-    # Cohérence saturés < lipides
-    if "saturated-fat_100g" in df.columns and "fat_100g" in df.columns:
-        mask = (df["saturated-fat_100g"] > df["fat_100g"] + 0.5) & df["saturated-fat_100g"].notna()
-        lines_changed.update(df[mask].index)
-        df.loc[mask, "saturated-fat_100g"] = np.nan
-        details["saturés_incohérents"] = mask.sum()
-
-    return df, Report(
-        rule="borner_nutriments",
-        lines_before=len(df),
-        lines_after=len(df),
-        lines_changed=len(lines_changed),
-        details=details
-    )
+    changed = _changed_rows(df, out, ["product_name", *grades])
+    return out, _report("normalize_texts", df, out, changed, details)
 
 
 # ============================================================================
-# RÈGLE 4 : CORRIGER L'ÉNERGIE
+# RÈGLE 3 : CODES-BARRES OFFICIELS
 # ============================================================================
 
-def revise_energy(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
+def filter_codes(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
     """
-    Correction de l'énergie :
-    - kcal nulles avec macronutriments → recalcul
-    - kcal > 900 → recalcul ou NA
-    - kcal incohérente vs calcul 4/4/9 → recalcul ou NA
-    Exception : Alcoholic beverages (alcool apporte énergie)
+    Ne garde que les produits à code-barres officiel.
+
+    - tous les espaces du code sont retirés (« 301 762 042 2003 » → « 3017620422003 ») ;
+    - lignes sans code écartées ;
+    - lignes dont le code n'a pas 8, 12 ou 13 chiffres (`schema.VALID_CODE_LENGTHS`), ou n'est
+      qu'un chiffre répété, écartées ;
+    - lignes à code interne magasin (préfixe GS1 200-299, `schema.IN_STORE_PREFIX_RANGE`) écartées.
+
+    Les codes fautifs sont pointés par `schema.CODE_SCHEMA`. Un code qui échoue aux deux
+    contrôles compte dans les deux détails mais n'est écarté qu'une fois.
     """
-    df = df.copy()
-    lines_changed = set()
+    out = df.copy()
+    code = out["code"].astype("string").str.replace(r"\s+", "", regex=True)
+    code = code.mask(code.eq("").fillna(False).astype(bool))
+    out["code"] = code.astype(object).where(code.notna(), np.nan)
+
+    missing = out["code"].isna()
+    failures = schema.find_failures(out.loc[~missing, ["code"]], schema.CODE_SCHEMA)
+    invalid_length = failures.get("code:official_length", pd.Index([]))
+    in_store = failures.get("code:not_in_store", pd.Index([]))
+
+    removed = missing | out.index.isin(invalid_length.union(in_store))
+    out = out[~removed]
+
     details = {
-        "nulles_recalculees": 0,
-        "over900_recalculees": 0,
-        "over900_invalidees": 0,
-        "incohérentes_recalculees": 0,
-        "incohérentes_invalidees": 0,
+        "missing_code_removed": missing.sum(),
+        "invalid_length_removed": len(invalid_length),
+        "in_store_removed": len(in_store),
     }
-
-    if "energy-kcal_100g" not in df.columns:
-        return df, Report(
-            rule="corriger_energie",
-            lines_before=len(df),
-            lines_after=len(df),
-            lines_changed=0,
-            details=details
-        )
-
-    # Fonction de recalcul 4/4/9
-    def calculate_energy(row):
-        prot = row.get("proteins_100g", 0) or 0
-        carb = row.get("carbohydrates_100g", 0) or 0
-        fat = row.get("fat_100g", 0) or 0
-        return max(0, prot * 4 + carb * 4 + fat * 9)
-
-    # kcal nulles avec nutriments
-    mask_null = df["energy-kcal_100g"].isna()
-    mask_with_nutrients = (df["proteins_100g"].notna() | df["carbohydrates_100g"].notna() | df["fat_100g"].notna())
-    mask_recalc = mask_null & mask_with_nutrients
-
-    for idx in df[mask_recalc].index:
-        df.loc[idx, "energy-kcal_100g"] = calculate_energy(df.loc[idx])
-    details["nulles_recalculees"] = mask_recalc.sum()
-    lines_changed.update(df[mask_recalc].index)
-
-    # kcal > 900
-    mask_over900 = (df["energy-kcal_100g"] > KCAL_MAX) & df["energy-kcal_100g"].notna()
-
-    # Essayer recalcul si nutriments disponibles
-    mask_with_nut = mask_over900 & mask_with_nutrients
-    for idx in df[mask_with_nut].index:
-        calc = calculate_energy(df.loc[idx])
-        if calc <= KCAL_MAX:
-            df.loc[idx, "energy-kcal_100g"] = calc
-            details["over900_recalculees"] += 1
-        else:
-            df.loc[idx, "energy-kcal_100g"] = np.nan
-            details["over900_invalidees"] += 1
-
-    # Sans nutriments, juste invalider
-    mask_invalid = mask_over900 & ~mask_with_nut
-    df.loc[mask_invalid, "energy-kcal_100g"] = np.nan
-    details["over900_invalidees"] += mask_invalid.sum()
-    lines_changed.update(df[mask_over900].index)
-
-    # Incohérence vs calcul 4/4/9 (si calcul ≥ 50 kcal)
-    mask_with_all = (df["proteins_100g"].notna() & df["carbohydrates_100g"].notna() & df["fat_100g"].notna())
-    df["calculated_energy"] = df[mask_with_all].apply(lambda r: calculate_energy(r), axis=1)
-    mask_calc_ok = df["calculated_energy"] >= 50
-
-    tolerance = df["calculated_energy"] * 0.5  # 50% de tolérance
-    mask_incoh = mask_with_all & mask_calc_ok & (
-        (df["energy-kcal_100g"] - df["calculated_energy"]).abs() > tolerance
-    ) & df["energy-kcal_100g"].notna()
-
-    for idx in df[mask_incoh].index:
-        calc = calculate_energy(df.loc[idx])
-        if calc <= KCAL_MAX:
-            df.loc[idx, "energy-kcal_100g"] = calc
-            details["incohérentes_recalculees"] += 1
-        else:
-            df.loc[idx, "energy-kcal_100g"] = np.nan
-            details["incohérentes_invalidees"] += 1
-    lines_changed.update(df[mask_incoh].index)
-
-    return df, Report(
-        rule="corriger_energie",
-        lines_before=len(df),
-        lines_after=len(df),
-        lines_changed=len(lines_changed),
-        details=details
-    )
+    changed = _changed_rows(df, out, ["code"])
+    return out, _report("filter_codes", df, out, changed, details)
 
 
 # ============================================================================
-# RÈGLE 5 : DÉDUPLIQUER LES CODES
+# RÈGLE 4 : DÉDUPLICATION DES CODES
 # ============================================================================
 
-def unduplicate_codes(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
+def deduplicate_codes(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
     """
-    Déduplication sur code-barres :
-    - Normaliser (espaces)
-    - Exclure lignes sans code
-    - Une fiche par code : la plus complète, puis la plus récente
+    Une seule fiche par code-barres.
+
+    Parmi les doublons, on garde la fiche la plus complète (`completeness`), puis la plus
+    récente (`last_modified_t`) ; tri stable, l'ordre d'origine des lignes conservées est
+    préservé pour que la sortie soit reproductible. S'applique après `filter_codes`, qui
+    normalise les codes et écarte les lignes sans code.
     """
-    df = df.copy()
+    out = df.copy()
+    sort_columns = [column for column in ("completeness", "last_modified_t") if column in out.columns]
 
-    # Normaliser codes (supprimer espaces)
-    if "code" in df.columns:
-        df["code"] = df["code"].astype(str).str.strip()
+    ranked = out.sort_values(sort_columns, ascending=False, na_position="last", kind="stable") \
+        if sort_columns else out
+    kept = ranked.drop_duplicates(subset="code", keep="first").index
+    duplicated_codes = out.loc[out["code"].duplicated(keep=False), "code"].nunique()
+    out = out[out.index.isin(kept)]
 
-    lines_before = len(df)
-
-    # Exclure sans code
-    mask_with_code = df["code"].notna() & (df["code"] != "") & (df["code"] != "nan")
-    without_code = (~mask_with_code).sum()
-    df = df[mask_with_code].copy()
-
-    # Dédupliquer
-    if "completeness" not in df.columns:
-        # Si pas de completeness, utiliser last_modified_t
-        df = df.sort_values("last_modified_t", ascending=False, na_position="last").drop_duplicates(subset=["code"], keep="first")
-    else:
-        # Trier par complétude (desc) puis date (desc)
-        df = df.sort_values(
-            ["completeness", "last_modified_t"],
-            ascending=[False, False],
-            na_position="last"
-        ).drop_duplicates(subset=["code"], keep="first")
-
-    lignes_after = len(df)
-    lines_changed = lines_before - lignes_after
-
-    return df, Report(
-        rule="dedupliquer_codes",
-        lines_before=lines_before,
-        lines_after=lignes_after,
-        lines_changed=lines_changed,
-        details={"sans_code_exclus": without_code, "doublons_supprimés": lines_changed - without_code}
-    )
-
-
-# ============================================================================
-# RÈGLE 6 : TRAITER LES CATÉGORIES VIDES
-# ============================================================================
-
-def handle_empty_categories(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
-    """
-    Gestion des catégories manquantes :
-    - Rayon manquant → "unknown"
-    - Drapeau pour catégorie vide
-    - Exclure produits sans catégorie ET rayon unknown
-    """
-    df = df.copy()
-    lines_changed = set()
     details = {
-        "rayon_rempli_unknown": 0,
-        "sous_rayon_rempli_unknown": 0,
-        "categorie_remplie_tag": 0,
-        "drapeau_categorie_vide": 0,
-        "inclassables_exclus": 0,
+        "duplicates_removed": len(df) - len(out),
+        "duplicated_codes": duplicated_codes,
     }
-
-    # Remplir rayon manquant avec "unknown"
-    if "pnns_groups_1" in df.columns:
-        mask_rayon_vide = df["pnns_groups_1"].isna() | (df["pnns_groups_1"] == "")
-        df.loc[mask_rayon_vide, "pnns_groups_1"] = "unknown"
-        details["rayon_rempli_undefined"] = mask_rayon_vide.sum()
-        lines_changed.update(df[mask_rayon_vide].index)
-
-    # Remplir sous-rayon manquant avec "unknown"
-    if "pnns_groups_2" in df.columns:
-        mask_rayon_vide = df["pnns_groups_2"].isna() | (df["pnns_groups_2"] == "")
-        df.loc[mask_rayon_vide, "pnns_groups_2"] = "unknown"
-        details["sous_rayon_rempli_unknown"] = mask_rayon_vide.sum()
-        lines_changed.update(df[mask_rayon_vide].index)
-
-    # Drapeau catégorie vide
-    if "categories_tags" in df.columns:
-        mask_empty_cat = df["categories_tags"].isna() | (df["categories_tags"] == "")
-        df["categorie_vide"] = mask_empty_cat.astype(int)
-        details["drapeau_categorie_vide"] = mask_empty_cat.sum()
-        lines_changed.update(df[mask_empty_cat].index)
-
-    # Remplir categorie manquante avec dernier tag de la categorie
-    if "main_category" in df.columns:
-        mask_empty_main_category = (df["main_category"].isna() | (df["main_category"] == "")) & ~df["categorie_vide"]
-        df["main_category"] = df["main_category"].astype("object") # TODO: Needs Schema and typing here
-        df.loc[mask_empty_main_category, "main_category"] = df.loc[mask_empty_main_category, "categories_tags"].apply(lambda x: x.split(",")[-1])
-        details["categorie_remplie_tag"] = mask_empty_main_category.sum()
-        lines_changed.update(df[mask_empty_main_category].index)
-
-    # Exclure inclassables (pas de catégories ET rayon unknown)
-    mask_unclassable = (
-        (df["categorie_vide"] == 1)
-        & (df["main_category"].isna() | (df["main_category"] == ""))
-        & (df["pnns_groups_1"] == "unknown")
-    )
-    df = df[~mask_unclassable].copy()
-    details["inclassables_exclus"] = mask_unclassable.sum()
-
-    return df, Report(
-        rule="traiter_categories_vides",
-        lines_before=len(df) + details["inclassables_exclus"],
-        lines_after=len(df),
-        lines_changed=len(lines_changed),
-        details=details
-    )
+    return out, _report("deduplicate_codes", df, out, pd.Series(False, index=out.index), details)
 
 
 # ============================================================================
-# RÈGLE 7 : STRATÉGIE MANQUANTS (OPTIONNEL)
+# RÈGLE 5 : NORMALISATION DES UNITÉS
+# ============================================================================
+
+def normalize_units(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
+    """
+    Normalisation des unités d'énergie et du couple sel / sodium.
+
+    - kcal ← kJ / 4,184 (`schema.KJ_PER_KCAL`) si les kcal manquent ;
+    - kcal ← kJ / 4,184 si le rapport kJ / kcal sort de [3,9 ; 4,5] (`schema.KJ_KCAL_RATIO_RANGE`) ;
+    - sodium ← sel / 2,5 et sel ← sodium × 2,5 (`schema.SALT_PER_SODIUM`) si l'un manque ;
+    - sodium ← sel / 2,5 si |sel − sodium × 2,5| > 0,1 g (`schema.SALT_SODIUM_TOLERANCE_G`) :
+      le sel, affiché sur l'étiquette, fait foi.
+
+    Les kcal recalculées sont arrondies à 2 décimales. S'applique avant le bornage :
+    une valeur dérivée aberrante est ensuite bornée.
+    """
+    out = df.copy()
+    details = {}
+
+    if {KCAL, KJ} <= set(out.columns):
+        kcal_from_kj = (out[KJ] / KJ_PER_KCAL).round(ENERGY_DECIMALS)
+        derive = out[KCAL].isna() & out[KJ].notna()
+        ratio = out[KJ] / out[KCAL]
+        low, high = KJ_KCAL_RATIO_RANGE
+        out_of_range = (out[KJ] > 0) & (out[KCAL] > 0) & ~ratio.between(low, high)
+        out[KCAL] = out[KCAL].mask(derive | out_of_range, kcal_from_kj)
+        details["kcal_derived"] = derive.sum()
+        details["kcal_recalculated"] = out_of_range.sum()
+
+    if {SALT, SODIUM} <= set(out.columns):
+        derive_sodium = out[SODIUM].isna() & out[SALT].notna()
+        derive_salt = out[SALT].isna() & out[SODIUM].notna()
+        gap = (out[SALT] - SALT_PER_SODIUM * out[SODIUM]).abs()
+        recalculate_sodium = gap > SALT_SODIUM_TOLERANCE_G
+        out[SODIUM] = out[SODIUM].mask(derive_sodium | recalculate_sodium, out[SALT] / SALT_PER_SODIUM)
+        out[SALT] = out[SALT].mask(derive_salt, out[SODIUM] * SALT_PER_SODIUM)
+        details["sodium_derived"] = derive_sodium.sum()
+        details["salt_derived"] = derive_salt.sum()
+        details["sodium_recalculated"] = recalculate_sodium.sum()
+
+    changed = _changed_rows(df, out, [KCAL, KJ, SALT, SODIUM])
+    return out, _report("normalize_units", df, out, changed, details)
+
+
+# ============================================================================
+# RÈGLE 6 : BORNAGE DES NUTRIMENTS
+# ============================================================================
+
+def bound_nutrients(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
+    """
+    Bornes métier sur les nutriments en g/100 g.
+
+    1. Toute valeur hors `schema.NUTRIENT_BOUNDS` (0–100 g, sodium 0–40 g) devient NA :
+       une valeur impossible ne se tronque pas (74 000 g de sucres ne sont pas 100 g).
+    2. Sur les valeurs restantes : sucres > glucides + 0,5 g → sucres NA ;
+       saturés > lipides + 0,5 g → saturés NA (`schema.ROUNDING_TOLERANCE_G`).
+
+    Les cellules fautives sont pointées par `schema.NUTRIENT_BOUNDS_SCHEMA` puis par
+    `schema.NUTRIENT_CONSISTENCY_SCHEMA`. L'énergie est traitée par `fix_energy`.
+    """
+    out = df.copy()
+    details = {}
+
+    bounded = [column for column in schema.NUTRIENT_BOUNDS if column in out.columns]
+    failures = schema.find_failures(out[bounded], schema.NUTRIENT_BOUNDS_SCHEMA)
+    for column in bounded:
+        below = failures.get(f"{column}:min_bound", pd.Index([]))
+        above = failures.get(f"{column}:max_bound", pd.Index([]))
+        out.loc[below.union(above), column] = np.nan
+        details[f"{column}_below_min"] = len(below)
+        details[f"{column}_above_max"] = len(above)
+
+    consistency_columns = [column for column in
+                           ("sugars_100g", "carbohydrates_100g", "saturated-fat_100g", "fat_100g")
+                           if column in out.columns]
+    failures = schema.find_failures(out[consistency_columns], schema.NUTRIENT_CONSISTENCY_SCHEMA)
+    for check, column in CONSISTENCY_TARGETS.items():
+        index = failures.get(check, pd.Index([]))
+        out.loc[index, column] = np.nan
+        details[f"{check}_invalidated"] = len(index)
+
+    changed = _changed_rows(df, out, bounded)
+    return out, _report("bound_nutrients", df, out, changed, details)
+
+
+# ============================================================================
+# RÈGLE 7 : CORRECTION DE L'ÉNERGIE
+# ============================================================================
+
+def fix_energy(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
+    """
+    Correction de l'énergie à partir du calcul 4 / 4 / 9 (`schema.compute_energy_kcal`).
+
+    Le calcul n'est utilisable que s'il est disponible (protéines, glucides et lipides
+    renseignés) et plausible (≤ 900 kcal, `schema.KCAL_MAX`).
+
+    - kcal négatives → NA ;
+    - kcal manquantes ou nulles alors que le calcul est positif → calcul ;
+    - kcal > 900 → calcul s'il est utilisable, sinon NA ;
+    - kcal à plus de 50 % du calcul, lorsque celui-ci vaut au moins 50 kcal
+      (`schema.kcal_matches_macronutrients`) → calcul s'il est utilisable, sinon NA ;
+    - kJ incohérents avec les kcal (`schema.kj_matches_kcal`) ou hors bornes (0–3 766 kJ)
+      réalignés sur kcal × 4,184, et NA lorsque les kcal sont NA.
+
+    Exception : le rayon `Alcoholic beverages` n'est jamais recalculé ni complété par le
+    calcul, l'alcool apportant une énergie que les macronutriments n'expliquent pas.
+    S'applique après le bornage : le calcul s'appuie sur des macronutriments plausibles.
+    """
+    out = df.copy()
+    details = {}
+    if KCAL not in out.columns:
+        return out, _report("fix_energy", df, out, pd.Series(False, index=out.index), details)
+
+    computed = schema.compute_energy_kcal(out).round(ENERGY_DECIMALS)
+    usable = computed.notna() & computed.between(0, KCAL_MAX)
+    alcohol = out["pnns_groups_1"].eq(ALCOHOL_GROUP).fillna(False).astype(bool) \
+        if "pnns_groups_1" in out.columns else pd.Series(False, index=out.index)
+    kcal = out[KCAL]
+
+    negative = kcal < 0
+    kcal = kcal.mask(negative)
+
+    missing_or_zero = (kcal.isna() | kcal.eq(0)) & ~negative & usable & (computed > 0) & ~alcohol
+    kcal = kcal.mask(missing_or_zero, computed)
+
+    over_max = kcal > KCAL_MAX
+    kcal = kcal.mask(over_max & usable, computed).mask(over_max & ~usable)
+
+    check_frame = out.assign(**{KCAL: kcal})
+    incoherent = ~schema.kcal_matches_macronutrients(check_frame)
+    kcal = kcal.mask(incoherent & usable, computed).mask(incoherent & ~usable)
+    out[KCAL] = kcal
+
+    details.update({
+        "negative_invalidated": negative.sum(),
+        "missing_or_zero_recalculated": missing_or_zero.sum(),
+        "over_max_recalculated": (over_max & usable).sum(),
+        "over_max_invalidated": (over_max & ~usable).sum(),
+        "incoherent_recalculated": (incoherent & usable).sum(),
+        "incoherent_invalidated": (incoherent & ~usable).sum(),
+    })
+
+    if KJ in out.columns:
+        low, high = schema.ENERGY_BOUNDS[KJ]
+        orphan_kj = out[KCAL].isna() & out[KJ].notna()
+        out_of_bounds = ~out[KJ].between(low, high) & out[KJ].notna()
+        misaligned = (~schema.kj_matches_kcal(out) | out_of_bounds) & ~orphan_kj
+        aligned_kj = (out[KCAL] * KJ_PER_KCAL).round(ENERGY_DECIMALS)
+        out[KJ] = out[KJ].mask(misaligned, aligned_kj).mask(orphan_kj)
+        details["kj_realigned"] = misaligned.sum()
+        details["kj_invalidated"] = orphan_kj.sum()
+
+    changed = _changed_rows(df, out, [KCAL, KJ])
+    return out, _report("fix_energy", df, out, changed, details)
+
+
+# ============================================================================
+# RÈGLE 8 : CATÉGORIES VIDES
+# ============================================================================
+
+def _canonical_group(value: str) -> str:
+    return value.strip().lower().replace("-", " ")
+
+
+_PNNS_LOOKUP = {_canonical_group(group): group for group in PNNS_GROUPS}
+
+
+def handle_empty_categories(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
+    """
+    Traitement des catégories vides.
+
+    - rayons PNNS (`pnns_groups_1`, `pnns_groups_2`) manquants → `unknown` ;
+    - `pnns_groups_1` ramené à sa graphie officielle (« sugary-snacks » → « Sugary snacks »),
+      toute valeur hors `schema.PNNS_GROUPS` → `unknown` ;
+    - drapeau booléen `empty_category` lorsque `categories_tags` est vide ;
+    - `main_category` manquante → dernier tag de `categories_tags` (le plus précis) ;
+    - produits sans catégorie, sans catégorie principale **et** de rayon `unknown` : hors
+      périmètre, écartés (ils ne peuvent être comparés à aucun autre produit).
+    """
+    out = df.copy()
+    details = {}
+
+    for column in PNNS_COLUMNS:
+        if column in out.columns:
+            blank = _is_blank(out[column])
+            out[column] = out[column].mask(blank, UNKNOWN_GROUP)
+            details[f"{column}_filled_unknown"] = blank.sum()
+
+    if "pnns_groups_1" in out.columns:
+        lookup = {value: _PNNS_LOOKUP.get(_canonical_group(value), UNKNOWN_GROUP)
+                  for value in out["pnns_groups_1"].unique()}
+        canonical = out["pnns_groups_1"].map(lookup)
+        unrecognized = canonical.eq(UNKNOWN_GROUP) & out["pnns_groups_1"].ne(UNKNOWN_GROUP)
+        details["pnns_groups_1_unrecognized"] = unrecognized.sum()
+        out["pnns_groups_1"] = canonical
+
+    empty_category = _is_blank(out["categories_tags"]) if "categories_tags" in out.columns \
+        else pd.Series(True, index=out.index)
+    out["empty_category"] = empty_category
+    details["empty_category_flagged"] = empty_category.sum()
+
+    if "main_category" in out.columns and "categories_tags" in out.columns:
+        missing_main = _is_blank(out["main_category"]) & ~empty_category
+        last_tag = out["categories_tags"].astype("string").str.split(TAG_SEPARATOR).str[-1].str.strip()
+        out["main_category"] = out["main_category"].mask(missing_main, last_tag.astype(object))
+        details["main_category_from_tags"] = missing_main.sum()
+
+    no_main = _is_blank(out["main_category"]) if "main_category" in out.columns \
+        else pd.Series(True, index=out.index)
+    unclassifiable = empty_category & no_main & out["pnns_groups_1"].eq(UNKNOWN_GROUP) \
+        if "pnns_groups_1" in out.columns else pd.Series(False, index=out.index)
+    out = out[~unclassifiable]
+    details["unclassifiable_removed"] = unclassifiable.sum()
+
+    changed = _changed_rows(df, out, [*PNNS_COLUMNS, "main_category"])
+    return out, _report("handle_empty_categories", df, out, changed, details)
+
+
+# ============================================================================
+# RÈGLE 9 : STRATÉGIE DE VALEURS MANQUANTES
 # ============================================================================
 
 DEFAULT_STRATEGY = {
-    "code": "garder",
-    "product_name": "garder",
-    "brands": "garder",
-    "main_category": "garder",
-    "categories_tags": "garder",
-    "energy_100g": "garder",
-    "energy-kcal_100g": "garder",
-    "fat_100g": "drapeau",
-    "saturated-fat_100g": "drapeau",
-    "carbohydrates_100g": "drapeau",
-    "sugars_100g": "drapeau",
-    "fiber_100g": "drapeau",
-    "proteins_100g": "drapeau",
-    "salt_100g": "drapeau",
-    "sodium_100g": "drapeau",
-    "nutriscore_grade": "garder",
-    "completeness": "garder",
+    "code": KEEP,
+    "product_name": KEEP,
+    "brands": KEEP,
+    "brands_tags": KEEP,
+    "main_category": KEEP,
+    "categories_tags": KEEP,
+    "energy_100g": KEEP,
+    "energy-kcal_100g": KEEP,
+    "fat_100g": FLAG,
+    "saturated-fat_100g": FLAG,
+    "carbohydrates_100g": FLAG,
+    "sugars_100g": FLAG,
+    "fiber_100g": FLAG,
+    "proteins_100g": FLAG,
+    "salt_100g": FLAG,
+    "sodium_100g": FLAG,
+    "fruits-vegetables-legumes_100g": FLAG,
+    "nutriscore_grade": KEEP,
+    "completeness": KEEP,
 }
 
-def missing_strategy(df: pd.DataFrame, strategy: dict = None) -> Tuple[pd.DataFrame, Report]:
-    """
-    Stratégie de traitement des valeurs manquantes.
-    Vocabulaire fermé : garder, drapeau, supprimer_colonne
-    """
-    df = df.copy()
-    if strategy is None:
-        strategy = DEFAULT_STRATEGY
 
-    details = {}
-    lines_changed = set()
-
-    for col, decision in strategy.items():
-        if col not in df.columns:
+def _check_strategy(strategy: dict[str, str]) -> None:
+    for column, decision in strategy.items():
+        if decision in (KEEP, FLAG, DROP_COLUMN) or decision.startswith(CONSTANT_PREFIX):
             continue
+        raise ValueError(f"Décision inconnue pour {column} : {decision!r}")
 
-        if decision == "garder":
-            pass  # Rien à faire
-        elif decision == "drapeau":
-            flag_col = f"{col}_missing"
-            mask = df[col].isna()
-            df[flag_col] = mask.astype(int)
-            details[f"{col}_flagged"] = mask.sum()
-            lines_changed.update(df[mask].index)
-        elif decision == "supprimer_colonne":
-            if col in df.columns:
-                df = df.drop(columns=[col])
-                details[f"{col}_removed"] = True
-        else:
-            raise ValueError(f"Décision inconnue pour {col}: {decision}")
 
-    # Exclure lignes sans aucun nutriment clé
-    mask_no_nutrients = ~df[["energy_100g", "energy-kcal_100g", "proteins_100g", "carbohydrates_100g"]].notna().any(axis=1)
-    df = df[~mask_no_nutrients].copy()
-    details["lignes_sans_nutriments_exclus"] = mask_no_nutrients.sum()
+def apply_missing_strategy(df: pd.DataFrame, strategy: dict[str, str] | None = None
+                           ) -> tuple[pd.DataFrame, Report]:
+    """
+    Stratégie de valeurs manquantes, par colonne et par usage.
 
-    return df, Report(
-        rule="strategie_manquants",
-        lines_before=len(df) + mask_no_nutrients.sum(),
-        lines_after=len(df),
-        lines_changed=len(lines_changed),
-        details=details
-    )
+    Vocabulaire fermé (toute autre décision lève `ValueError`) :
+    - `keep` : manquants conservés tels quels ;
+    - `flag` : manquants conservés + colonne booléenne `<colonne>_missing` (manquants MNAR) ;
+    - `constant:<valeur>` : manquants remplacés par la valeur (convertie en nombre pour
+      une colonne numérique) ;
+    - `drop_column` : colonne supprimée.
+
+    Les produits dont moins de 50 % des nutriments clés sont renseignés
+    (`schema.key_nutrients_completeness`) sont écartés. Aucune imputation statistique
+    (médiane, KNN) n'est faite ici : elle appartient au pipeline ML, après le split.
+    Les drapeaux ne comptent pas comme lignes touchées (seules les valeurs remplacées et
+    les lignes écartées comptent), ce qui garde la règle idempotente.
+    """
+    strategy = DEFAULT_STRATEGY if strategy is None else strategy
+    _check_strategy(strategy)
+
+    out = df.copy()
+    insufficient = ~schema.key_nutrients_completeness(out)
+    out = out[~insufficient]
+    details = {"insufficient_key_nutrients_removed": insufficient.sum(), "columns_dropped": 0}
+
+    for column, decision in strategy.items():
+        if column not in out.columns:
+            continue
+        missing = out[column].isna()
+        if decision == FLAG:
+            out[f"{column}{MISSING_FLAG_SUFFIX}"] = missing
+            details[f"{column}_flagged"] = missing.sum()
+        elif decision.startswith(CONSTANT_PREFIX):
+            value = decision.removeprefix(CONSTANT_PREFIX)
+            if pd.api.types.is_numeric_dtype(out[column]):
+                value = float(value)
+            out[column] = out[column].mask(missing, value)
+            details[f"{column}_filled"] = missing.sum()
+        elif decision == DROP_COLUMN:
+            out = out.drop(columns=column)
+            details["columns_dropped"] += 1
+
+    changed = _changed_rows(df, out)
+    return out, _report("apply_missing_strategy", df, out, changed, details)
+
+
+# ============================================================================
+# CONTRAT DE SORTIE
+# ============================================================================
+
+def validate_output(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
+    """
+    Vérifie que `df` respecte `schema.OUTPUT_SCHEMA` (types, bornes, valeurs autorisées,
+    unicité des codes, cohérences entre nutriments, complétude).
+
+    Ne modifie rien : lève `ValueError` avec le nombre de lignes fautives par check si le
+    contrat n'est pas respecté. Une sortie qui échoue signale une règle manquante ou fausse.
+    """
+    failures = schema.find_failures(df, schema.OUTPUT_SCHEMA)
+    if failures:
+        raise ValueError(
+            "La sortie du nettoyage ne respecte pas le schéma : "
+            f"{schema.count_failures(failures)}"
+        )
+    checks = sum(len(column.checks) for column in schema.OUTPUT_SCHEMA.columns.values())
+    checks += len(schema.OUTPUT_SCHEMA.checks)
+    return df, _report("validate_output", df, df, pd.Series(False, index=df.index),
+                       {"checks_passed": checks})
 
 
 # ============================================================================
 # PIPELINE COMPLET
 # ============================================================================
 
-def clean(df: pd.DataFrame, strategy: dict = None) -> Tuple[pd.DataFrame, list]:
+CLEANING_RULES = (
+    type_columns,
+    normalize_texts,
+    filter_codes,
+    deduplicate_codes,
+    normalize_units,
+    bound_nutrients,
+    fix_energy,
+    handle_empty_categories,
+)
+
+
+def clean(df: pd.DataFrame, strategy: dict[str, str] | None = None
+          ) -> tuple[pd.DataFrame, list[Report]]:
     """
-    Pipeline complet de nettoyage.
-    Retourne : (DataFrame nettoyé, liste des CompteRendu)
+    Pipeline complet de nettoyage, dans l'ordre conseillé par le TP :
+    types, textes, codes, doublons, unités, bornes, énergie, catégories, manquants,
+    puis validation de la sortie contre `schema.OUTPUT_SCHEMA`.
+
+    Retourne le DataFrame nettoyé et la liste des comptes rendus (un par règle).
     """
     reports = []
+    for rule in CLEANING_RULES:
+        df, report = rule(df)
+        reports.append(report)
 
-    # TODO: utiliser les cas d'échecs pour le nettoyage.
-    _, failure_cases = schema.check_schema(df)
-    if failure_cases is not None:
-        print(schema.sumup(failure_cases).to_dict("records"))
-
-    df, report = type_columns(df)
+    df, report = apply_missing_strategy(df, strategy)
     reports.append(report)
 
-    df, report = normalize_units(df)
-    reports.append(report)
-
-    df, report = limit_nutrients(df)
-    reports.append(report)
-
-    df, report = revise_energy(df)
-    reports.append(report)
-
-    df, report = unduplicate_codes(df)
-    reports.append(report)
-
-    df, report = handle_empty_categories(df)
-    reports.append(report)
-
-    df, report = missing_strategy(df, strategy)
+    df, report = validate_output(df)
     reports.append(report)
 
     return df, reports

@@ -178,11 +178,15 @@ CREATE TABLE products (
 
     ingredients_text TEXT,
 
-    -- completeness NUMERIC(10,2),
+    main_category VARCHAR(255),
 
-    -- no_nutrition_data BOOLEAN,
+    pnns_group_1 VARCHAR(64) NOT NULL,
 
-    -- nutriscore_data_complete BOOLEAN,
+    pnns_group_2 VARCHAR(255),
+
+    created_at TIMESTAMP NOT NULL,
+
+    last_modified_at TIMESTAMP NOT NULL,
 
     image_url TEXT,
 
@@ -194,7 +198,18 @@ CREATE TABLE products (
 
     image_nutrition_url TEXT,
 
-    image_nutrition_small_url TEXT
+    image_nutrition_small_url TEXT,
+
+    -- Code-barres officiel : EAN-8, UPC-A ou EAN-13 (cf. src/schema.py)
+    CONSTRAINT chk_product_code
+        CHECK (code ~ '^([0-9]{8}|[0-9]{12}|[0-9]{13})$'),
+
+    CONSTRAINT chk_product_pnns_group_1
+        CHECK (pnns_group_1 IN (
+            'Beverages', 'Cereals and potatoes', 'Composite foods', 'Fat and sauces',
+            'Fish Meat Eggs', 'Fruits and vegetables', 'Milk and dairy products',
+            'Salty snacks', 'Sugary snacks', 'Alcoholic beverages', 'Baby foods', 'unknown'
+        ))
 
 );
 
@@ -210,9 +225,13 @@ CREATE TABLE nutrition (
 
     energy_100g NUMERIC(12,4),
 
+    energy_kcal_100g NUMERIC(12,4),
+
     fat_100g NUMERIC(12,4),
 
     saturated_fat_100g NUMERIC(12,4),
+
+    carbohydrates_100g NUMERIC(12,4),
 
     sugars_100g NUMERIC(12,4),
 
@@ -222,11 +241,28 @@ CREATE TABLE nutrition (
 
     salt_100g NUMERIC(12,4),
 
+    sodium_100g NUMERIC(12,4),
+
     fruits_vegetables_legumes_100g NUMERIC(12,4),
 
     CONSTRAINT fk_nutrition_produit
         FOREIGN KEY (product_code)
-        REFERENCES products(code)
+        REFERENCES products(code),
+
+    -- Bornes métier (cf. src/schema.py) : la base refuse ce que le nettoyage aurait laissé passer
+    CONSTRAINT chk_energy CHECK (energy_100g BETWEEN 0 AND 3765.6),
+    CONSTRAINT chk_energy_kcal CHECK (energy_kcal_100g BETWEEN 0 AND 900),
+    CONSTRAINT chk_fat CHECK (fat_100g BETWEEN 0 AND 100),
+    CONSTRAINT chk_saturated_fat CHECK (saturated_fat_100g BETWEEN 0 AND 100),
+    CONSTRAINT chk_carbohydrates CHECK (carbohydrates_100g BETWEEN 0 AND 100),
+    CONSTRAINT chk_sugars CHECK (sugars_100g BETWEEN 0 AND 100),
+    CONSTRAINT chk_fiber CHECK (fiber_100g BETWEEN 0 AND 100),
+    CONSTRAINT chk_proteins CHECK (proteins_100g BETWEEN 0 AND 100),
+    CONSTRAINT chk_salt CHECK (salt_100g BETWEEN 0 AND 100),
+    CONSTRAINT chk_sodium CHECK (sodium_100g BETWEEN 0 AND 40),
+    CONSTRAINT chk_fruits_vegetables_legumes CHECK (fruits_vegetables_legumes_100g BETWEEN 0 AND 100),
+    CONSTRAINT chk_sugars_within_carbohydrates CHECK (sugars_100g <= carbohydrates_100g + 0.5),
+    CONSTRAINT chk_saturated_within_fat CHECK (saturated_fat_100g <= fat_100g + 0.5)
 
 );
 
@@ -242,15 +278,21 @@ CREATE TABLE score (
 
     nutriscore INTEGER,
 
-    nutriscore_grade CHAR(1),
+    nutriscore_grade VARCHAR(16),
 
     nova_group SMALLINT,
 
-    environmental_score_grade CHAR(1),
+    environmental_score_grade VARCHAR(16),
 
     CONSTRAINT fk_product_score
         FOREIGN KEY (product_code)
-        REFERENCES products(code)
+        REFERENCES products(code),
+
+    CONSTRAINT chk_nutriscore_grade
+        CHECK (nutriscore_grade IN ('a', 'b', 'c', 'd', 'e', 'not-applicable')),
+
+    CONSTRAINT chk_environmental_score_grade
+        CHECK (environmental_score_grade IN ('a-plus', 'a', 'b', 'c', 'd', 'e', 'f', 'not-applicable'))
 
 );
 
@@ -491,4 +533,4 @@ ON food_groups(name);
 
 /* =====================================================
    FIN DU SCRIPT
-   ===================================================== */
+   ===================================================== */

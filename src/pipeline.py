@@ -1,159 +1,128 @@
 """
-Pipeline complet de nettoyage — TP 9
-Exécution end-to-end : lecture → nettoyage → rapport → export
+Pipeline complet — TP 9.
+
+Exécution de bout en bout : lecture → nettoyage → rapport → export → base (optionnelle).
+
+    python src/pipeline.py                                   # échantillon, sans base
+    python src/pipeline.py data/en.openfoodfacts.org.products.csv -s "\\t" --load-db
 """
 
-import pandas as pd
-import traceback
-import sys
-from pathlib import Path
-from cleaning import clean, DEFAULT_STRATEGY
-from report import generate_report
 import argparse
+import getpass
 import os
-from options import DATA_PATH, CONFIG
+import sys
+import traceback
+from pathlib import Path
 
-def main(csv_in: os.PathLike, csv_out: os.PathLike, report_path: os.PathLike, sep: str = ","):
+from cleaning import DEFAULT_STRATEGY, clean
+from create_database import init_database, load_products
+from options import CONFIG, DATA_PATH
+from reader import read_products
+from report import generate_report
+
+STEPS = 5
+
+
+def step(number: int, title: str) -> None:
+    print(f"\n[{number}/{STEPS}] {title}")
+
+
+def main(csv_in: os.PathLike, csv_out: os.PathLike | None, report_path: os.PathLike,
+         sep: str = ",", database: dict | None = None) -> int:
     """
-    Pipeline complet de nettoyage.
+    Pipeline complet.
 
     Args:
-        chemin_entree : CSV brut
-        chemin_sortie : CSV nettoyé
-        chemin_rapport : Rapport Markdown
-    """
+        csv_in : export Open Food Facts brut
+        csv_out : CSV nettoyé (par défaut `data/clean/<nom du fichier d'entrée>`)
+        report_path : rapport Markdown
+        sep : séparateur de l'export brut (le CSV nettoyé utilise la virgule)
+        database : identifiants PostgreSQL (`username`, `password`, `host`, `port`) ;
+            `None` pour ne pas charger la base
 
+    Retourne 0 si tout s'est bien passé, 1 sinon.
+    """
     csv_in = Path(csv_in)
-    if csv_out is None:
-       csv_out = DATA_PATH / "clean" / csv_in.name
-    else:
-        csv_out = Path(csv_out)
+    csv_out = DATA_PATH / "clean" / csv_in.name if csv_out is None else Path(csv_out)
     report_path = Path(report_path)
 
     print("=" * 80)
     print("PIPELINE NETTOYAGE — NutriScope TP 9")
     print("=" * 80)
 
-    # Étape 1 : Lecture
-    print(f"\n[1/4] Lecture de {csv_in}...")
-    usecols = lambda c: c in CONFIG["columns"]
+    step(1, f"Lecture de {csv_in}...")
     try:
-        df_rough = pd.concat(
-            pd.read_csv(
-                csv_in,
-                usecols=usecols,
-                on_bad_lines="warn",
-                sep=sep,
-                iterator=True,
-                chunksize=1000
-            ),
-            ignore_index=True
-        )
-        print(f"  ✓ {len(df_rough):,} lignes chargées")
-        print(f"  ✓ {len(df_rough.columns)} colonnes")
+        df_raw = read_products(csv_in, CONFIG["columns"], sep=sep)
+        print(f"  ✓ {len(df_raw):,} lignes, {len(df_raw.columns)} colonnes")
     except FileNotFoundError:
-        print(f"  ✗ Fichier introuvable: {csv_in}")
-        return 1
-    except Exception as e:
-        print(f"  ✗ Erreur: {e!r}")
+        print(f"  ✗ Fichier introuvable : {csv_in}")
         return 1
 
-    # Étape 2 : Nettoyage
-    print("\n[2/4] Nettoyage appliqué...")
+    step(2, "Nettoyage...")
     try:
-        df_clean, reports = clean(df_rough, DEFAULT_STRATEGY)
-        print(f"  ✓ Pipeline exécuté: {len(reports)} règles appliquées")
-
-        for report in reports:
-            status = "✓" if report.lines_changed == 0 else "○"
-            print(f"    {status} {report.rule}: {report.lines_changed} lignes touchées")
-
-        print(f"  ✓ Résultat: {len(df_clean):,} lignes ({len(df_clean)/len(df_rough)*100:.1f}%)")
-    except Exception as e:
-        print(f"  ✗ Erreur: {e}")
-        traceback.print_exc()
+        df_clean, reports = clean(df_raw, DEFAULT_STRATEGY)
+    except ValueError as error:
+        print(f"  ✗ {error}")
         return 1
+    for report in reports:
+        status = "✓" if report.lines_changed == 0 else "○"
+        print(f"    {status} {report}")
+    print(f"  ✓ {len(df_clean):,} lignes conservées ({len(df_clean) / len(df_raw):.1%}), schéma respecté")
 
-    # Étape 3 : Rapport
-    print("\n[3/4] Génération du rapport...")
-    try:
-        report_text = generate_report(df_rough, df_clean, reports)
-        print(f"  ✓ Rapport généré ({len(report_text)} caractères)")
-    except Exception as e:
-        print(f"  ✗ Erreur: {e}")
-        traceback.print_exc()
-        return 1
+    step(3, "Rapport...")
+    report_text = generate_report(df_raw, df_clean, reports, source=csv_in.name)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(report_text, encoding="utf-8")
+    print(f"  ✓ {report_path}")
 
-    # Étape 4 : Export
-    print("\n[4/4] Export des données et rapport...")
-    try:
-        # CSV nettoyé
-        Path(csv_out).parent.mkdir(parents=True, exist_ok=True)
-        df_clean.to_csv(csv_out, index=False)
-        print(f"  ✓ CSV exporté: {csv_out}")
+    step(4, "Export du CSV nettoyé...")
+    csv_out.parent.mkdir(parents=True, exist_ok=True)
+    df_clean.to_csv(csv_out, index=False)
+    print(f"  ✓ {csv_out}")
 
-        # Rapport
-        Path(report_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(report_path, "w", encoding="utf-8") as f:
-            f.write(report_text)
-        print(f"  ✓ Rapport exporté: {report_path}")
-    except Exception as e:
-        print(f"  ✗ Erreur: {e}")
-        return 1
+    step(5, "Chargement de la base...")
+    if database is None:
+        print("  - ignoré (option --load-db absente)")
+    else:
+        try:
+            engine = init_database(CONFIG, **database)
+            for table, count in load_products(engine, df_clean).items():
+                print(f"    {table}: {count:,} lignes")
+        except Exception:
+            traceback.print_exc()
+            return 1
 
-    # Résumé final
     print("\n" + "=" * 80)
-    print("✅ PIPELINE COMPLÉTÉ AVEC SUCCÈS")
+    print("✅ PIPELINE TERMINÉ")
     print("=" * 80)
-    print(f"  • Données brutes: {len(df_rough):,} lignes")
-    print(f"  • Données nettoyées: {len(df_clean):,} lignes ({len(df_clean)/len(df_rough)*100:.1f}%)")
-    print(f"  • Colonnes: {len(df_rough.columns)} → {len(df_clean.columns)}")
-    print(f"\n  Fichiers générés:")
-    print(f"    - {csv_out}")
-    print(f"    - {report_path}")
-    print("\nCommandes de test:")
-    print(f"  $ head {csv_out}")
-    print(f"  $ cat {report_path}")
-    print("=" * 80)
-
     return 0
 
 
 if __name__ == "__main__":
-    # Utilisation
-    # python pipeline.py [chemin_entree] [chemin_sortie] [chemin_rapport]
-
-    parser = argparse.ArgumentParser(
-        description="Nettoyage des données CSV."
-    )
-
-    # csv_in est optionnel si main() sans argument sait quoi faire par défaut
-    parser.add_argument(
-        "csv_in",
-        nargs="?",
-        default="./data-nutriscope/echantillon_france.csv",
-        help="Chemin du fichier CSV d'entrée",
-    )
-    parser.add_argument(
-        "csv_out",
-        nargs="?",
-        default=None,
-        help="Chemin du fichier CSV de sortie",
-    )
-    parser.add_argument(
-        "report_path",
-        nargs="?",
-        default="./data/docs/rapport_nettoyage.md",
-        help="Chemin du rapport Markdown",
-    )
-    parser.add_argument(
-        "-s",
-        "--separator",
-        default=",",
-        help="Séparateur du csv à lire. Le csv de sortie sera sauvegardé avec le séparateur par défaut."
-    )
-
+    parser = argparse.ArgumentParser(description="Nettoyage de l'export Open Food Facts et chargement de la base.")
+    parser.add_argument("csv_in", nargs="?", default="./data-nutriscope/echantillon_france.csv",
+                        help="Chemin du fichier CSV d'entrée")
+    parser.add_argument("csv_out", nargs="?", default=None, help="Chemin du fichier CSV de sortie")
+    parser.add_argument("report_path", nargs="?", default="./data/docs/rapport_nettoyage.md",
+                        help="Chemin du rapport Markdown")
+    parser.add_argument("-s", "--separator", default=",",
+                        help="Séparateur du CSV à lire. Le CSV de sortie utilise la virgule.")
+    parser.add_argument("--load-db", action="store_true", help="Recrée et charge la base PostgreSQL")
+    parser.add_argument("-u", "--username", default="postgres")
+    parser.add_argument("-pwd", "--password", default=None,
+                        help="Mot de passe ; demandé de façon masquée s'il est omis")
+    parser.add_argument("--host", default="localhost")
+    parser.add_argument("--port", type=int, default=5432)
     args = parser.parse_args()
-    # Traite les caractères d'échappement
-    args.separator = args.separator.encode().decode('unicode-escape')
-    sys.exit(main(args.csv_in, args.csv_out, args.report_path, sep=args.separator))
+
+    # Traite les caractères d'échappement (ex. "\t")
+    separator = args.separator.encode().decode("unicode-escape")
+    database = None
+    if args.load_db:
+        database = {
+            "username": args.username,
+            "password": args.password or getpass.getpass("Mot de passe PostgreSQL : "),
+            "host": args.host,
+            "port": args.port,
+        }
+    sys.exit(main(args.csv_in, args.csv_out, args.report_path, sep=separator, database=database))

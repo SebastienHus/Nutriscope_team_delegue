@@ -5,6 +5,7 @@ Rapport avant/après structuré et committable.
 
 import pandas as pd
 from datetime import datetime
+import schema
 from cleaning import Report, type_columns
 
 
@@ -12,14 +13,16 @@ def generate_report(
     df_before: pd.DataFrame,
     df_after: pd.DataFrame,
     reports: list[Report],
+    source: str = "Open Food Facts",
 ) -> str:
     """
     Génère un rapport Markdown complet du nettoyage.
 
     Args:
-        df_avant : DataFrame avant nettoyage
-        df_apres : DataFrame après nettoyage
-        rapports : liste de Report
+        df_before : DataFrame avant nettoyage (brut)
+        df_after : DataFrame après nettoyage
+        reports : liste des comptes rendus de `cleaning.clean()`
+        source : fichier source, affiché en en-tête
 
     Returns:
         Contenu du rapport (str)
@@ -30,7 +33,7 @@ def generate_report(
     # En-tête
     report_text = f"""# Rapport de Nettoyage du Catalogue NutriScope
 **Date** : {now}
-**Source** : Open Food Facts (France)
+**Source** : {source}
 **Crédit** : © Open Food Facts contributors — Licence ODbL
 
 ---
@@ -52,8 +55,7 @@ def generate_report(
 """
 
     # Complétude par colonne
-    nutrients_keys = ["energy_100g", "energy-kcal_100g", "fat_100g", "carbohydrates_100g", "sugars_100g", "salt_100g", "proteins_100g"]
-    for col in nutrients_keys:
+    for col in ["energy_100g", *schema.KEY_NUTRIENTS]:
         if col in df_before.columns and col in df_after.columns:
             compl_before = (df_before[col].notna().sum() / len(df_before) * 100) if len(df_before) > 0 else 0
             compl_after = (df_after[col].notna().sum() / len(df_after) * 100) if len(df_after) > 0 else 0
@@ -84,25 +86,18 @@ def generate_report(
 
         report_text += "\n"
 
-    # Anomalies métier
-    report_text += "---\n\n## Anomalies Métier Détectées\n\n"
-
-    report_text += "### Avant Nettoyage\n\n"
-    df_typed, _ = type_columns(df_before) # Besoin de typer avant de détecter les anomalies
-    anomalies_before = detect_anomalies(df_typed)
-    if anomalies_before:
-        for anomaly in anomalies_before:
-            report_text += f"- {anomaly}\n"
-    else:
-        report_text += "- Aucune anomalie détectée\n"
-
-    report_text += "\n### Après Nettoyage\n\n"
-    anomalies_after = detect_anomalies(df_after)
-    if anomalies_after:
-        for anomaly in anomalies_after:
-            report_text += f"- {anomaly}\n"
-    else:
-        report_text += "- ✅ Aucune anomalie résiduelle\n"
+    # Anomalies métier : mêmes définitions que le contrat de sortie (schema.OUTPUT_SCHEMA)
+    report_text += "---\n\n## Anomalies Métier (contrôles du schéma)\n\n"
+    df_typed, _ = type_columns(df_before)  # le brut doit être typé pour être contrôlé
+    anomalies_before = schema.count_anomalies(df_typed)
+    anomalies_after = schema.count_anomalies(df_after)
+    report_text += "| Contrôle | Avant | Après |\n|----------|-------|-------|\n"
+    for check, count_before in anomalies_before.items():
+        count_after = anomalies_after.get(check, 0)
+        if count_before or count_after:
+            report_text += f"| {check} | {count_before:,} | {count_after:,} |\n"
+    if not any(anomalies_after.values()):
+        report_text += "\n✅ Aucune anomalie résiduelle : la sortie respecte le schéma.\n"
 
     # Répartition par rayon
     report_text += "\n---\n\n## Répartition par Rayon (Après)\n\n"
@@ -135,8 +130,7 @@ def generate_report(
 
 ## Notes
 
-- Ce rapport est **généré automatiquement** par `python -m src.pipeline`
-- Les décisions de nettoyage sont documentées dans `docs/data/parties/strategie_manquants.md`
+- Ce rapport est **généré automatiquement** par `python src/pipeline.py`
 - Le pipeline peut être rejoué sans intervention manuelle
 - Les données brutes originales sont archivées
 
@@ -144,51 +138,4 @@ def generate_report(
 """
 
     return report_text
-
-
-def detect_anomalies(df: pd.DataFrame) -> list:
-    """
-    Détecte les anomalies métier dans un DataFrame.
-    """
-    anomalies = []
-
-    if len(df) == 0:
-        return ["DataFrame vide"]
-
-    # Énergies aberrantes
-    if "energy-kcal_100g" in df.columns:
-        mask_over900 = (df["energy-kcal_100g"] > 900) & df["energy-kcal_100g"].notna()
-        if mask_over900.sum() > 0:
-            anomalies.append(f"{mask_over900.sum()} produits avec kcal > 900")
-
-    # Sucres > glucides
-    if "sugars_100g" in df.columns and "carbohydrates_100g" in df.columns:
-        mask = (df["sugars_100g"] > df["carbohydrates_100g"] + 0.5) & df["sugars_100g"].notna()
-        if mask.sum() > 0:
-            anomalies.append(f"{mask.sum()} produits avec sucres > glucides + 0.5")
-
-    # Saturés > lipides
-    if "saturated-fat_100g" in df.columns and "fat_100g" in df.columns:
-        mask = (df["saturated-fat_100g"] > df["fat_100g"] + 0.5) & df["saturated-fat_100g"].notna()
-        if mask.sum() > 0:
-            anomalies.append(f"{mask.sum()} produits avec saturés > lipides + 0.5")
-
-    # Doublons
-    if "code" in df.columns:
-        duplicates = df["code"].duplicated().sum()
-        if duplicates > 0:
-            anomalies.append(f"{duplicates} doublons détectés")
-
-    # Valeurs aberrantes
-    if "fat_100g" in df.columns:
-        mask = ((df["fat_100g"] < 0) | (df["fat_100g"] > 100)) & df["fat_100g"].notna()
-        if mask.sum() > 0:
-            anomalies.append(f"{mask.sum()} valeurs aberrantes pour fat_100g")
-
-    if "salt_100g" in df.columns:
-        mask = ((df["salt_100g"] < 0) | (df["salt_100g"] > 100)) & df["salt_100g"].notna()
-        if mask.sum() > 0:
-            anomalies.append(f"{mask.sum()} valeurs aberrantes pour salt_100g")
-
-    return anomalies
 

@@ -1,310 +1,416 @@
 """
-Tests pytest pour le module de nettoyage — TP 9
-Couverture : nominal, cas tordus, pureté, idempotence
+Tests pytest du module de nettoyage — TP 9.
+
+Pour chaque règle : un test nominal (la règle fait ce que dit sa docstring, le compte
+rendu compte juste), des cas tordus relevés au TP 2 (la valeur impossible est traitée,
+la valeur voisine légitime ne l'est pas), la pureté (entrée intacte) et l'idempotence
+sur l'échantillon réel (second passage identique, zéro ligne touchée).
 """
 
-import pytest
-import pandas as pd
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
+import pytest
+
+import schema
 from cleaning import (
-    Report, KJ_BY_KCAL,
-    type_columns, normalize_units, limit_nutrients,
-    revise_energy, unduplicate_codes, handle_empty_categories,
-    clean
+    CLEANING_RULES,
+    DEFAULT_STRATEGY,
+    Report,
+    apply_missing_strategy,
+    bound_nutrients,
+    clean,
+    deduplicate_codes,
+    filter_codes,
+    fix_energy,
+    handle_empty_categories,
+    normalize_texts,
+    normalize_units,
+    type_columns,
+    validate_output,
 )
 
+SAMPLE_PATH = Path(__file__).parent.parent / "data-nutriscope" / "echantillon_france.csv"
+ALL_RULES = (*CLEANING_RULES, apply_missing_strategy)
+
 
 # ============================================================================
-# FIXTURE : PRODUITS TORDUS (CAS DE TEST)
+# FIXTURES
 # ============================================================================
+
+BASE_PRODUCT = {
+    "code": "3017620422003",
+    "product_name": "Biscuit",
+    "brands": "Marque",
+    "categories_tags": "en:snacks,en:biscuits",
+    "main_category": "en:biscuits",
+    "pnns_groups_1": "Sugary snacks",
+    "pnns_groups_2": "Biscuits and cakes",
+    "nutriscore_grade": "d",
+    "environmental_score_grade": "c",
+    "energy-kcal_100g": 322.0,       # 8 × 4 + 50 × 4 + 10 × 9
+    "energy_100g": 1347.25,
+    "fat_100g": 10.0,
+    "saturated-fat_100g": 2.0,
+    "carbohydrates_100g": 50.0,
+    "sugars_100g": 10.0,
+    "fiber_100g": 3.0,
+    "proteins_100g": 8.0,
+    "salt_100g": 1.0,
+    "sodium_100g": 0.4,
+    "fruits-vegetables-legumes_100g": np.nan,
+    "completeness": 0.8,
+    "created_t": 1_600_000_000,       # 2020-09-13
+    "last_modified_t": 1_700_000_000,
+}
+
+
+def make_products(*overrides: dict) -> pd.DataFrame:
+    """DataFrame de produits sains, chacun modifié par son dictionnaire d'écarts."""
+    return pd.DataFrame([{**BASE_PRODUCT, **override} for override in overrides])
+
 
 @pytest.fixture
-def df_extreme():
-    """Échantillon de produits avec anomalies du TP 2."""
-    return pd.DataFrame({
-        "code": ["001", "002", "003", "004", "005", "006", "007", "008"],
-        "product_name": ["Sucre", "Sel", "Soda", "Beurre", "Huile", "Test6", "Test7", "Test8"],
-        "brands": ["Brand1", "Brand2", None, "Brand4", "Brand5", "Brand6", "Brand7", "Brand8"],
-        "main_category": ["sweets", "condiments", "beverages", "dairy", "oils", "", "", None],
-        "categories_tags": ["sweets", "condiments", "beverages", "dairy", "oils", None, "", "snacks"],
-        "energy_100g": [2000.0, 0.0, 306.0, 3200.0, 3700.0, 1500.0, 600.0, 100.0],  # 74000 g sucre en théorie
-        "energy-kcal_100g": [74000.0, 0.0, 73.0, 800.0, 900.0, 400.0, np.nan, 25.0],  # Énergies aberrantes
-        "fat_100g": [0.0, 0.0, 0.0, 82.0, 100.0, -5.0, 150.0, 10.0],  # Négatif et > 100
-        "saturated-fat_100g": [0.0, 0.0, 0.0, 50.0, 30.0, 0.0, 100.0, 2.0],
-        "carbohydrates_100g": [100.0, 0.0, 11.0, 0.5, 0.0, 50.0, 80.0, 5.0],
-        "sugars_100g": [100.0, 0.0, 11.0, 5.0, 0.0, 150.0, 200.0, 1.0],  # 74000 g sucre, > glucides
-        "fiber_100g": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-        "proteins_100g": [0.0, 60.0, 0.0, 0.7, 0.0, 15.0, 5.0, 2.0],
-        "salt_100g": [0.0, 5000.0, 0.025, 1.5, 0.0, 0.5, 1.0, 0.1],  # 5000 g sel aberrant
-        "sodium_100g": [0.0, 2000.0, 0.01, 0.6, 0.0, 0.2, 0.4, 0.04],
-        "nutriscore_grade": ["e", "e", "d", "d", "a", "e", "f", "a"],
-        "completeness": [0.9, 0.5, 0.8, 0.95, 1.0, 0.3, 0.2, 0.7],
-        "last_modified_t": [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000],
-        "pnns_groups_1": ["Sucre", "Sel", "Boisson", "Huile & Beurre", "Huile & Beurre", "unknown", "unknown", "Snacks"]
-    })
+def tricky():
+    """Un cas tordu par règle, tiré du TP 2."""
+    return make_products(
+        {"code": "3017620422003", "sugars_100g": 74_000.0},                          # 0 sucres impossibles
+        {"code": "3274080005003", "energy-kcal_100g": 24_000.0, "energy_100g": 100_416.0},  # 1 énergie
+        {"code": "3228857000166", "salt_100g": 5_000.0, "sodium_100g": 2_000.0},     # 2 sel impossible
+        {"code": "3560 0700 48185"},                                                 # 3 code avec espaces
+        {"code": "5449000000996", "completeness": 0.4},                              # 4 doublon peu complet
+        {"code": "5449000000996", "completeness": 0.9},                              # 5 doublon complet
+        {"code": "7622210449283", "product_name": "   ", "nutriscore_grade": "unknown"},  # 6 textes
+        {"code": "3045140105502", "pnns_groups_1": np.nan, "categories_tags": np.nan,
+         "main_category": np.nan},                                                   # 7 inclassable
+        {"code": "8000500310427", **{c: np.nan for c in schema.KEY_NUTRIENTS},
+         "energy_100g": np.nan, "sodium_100g": np.nan},                              # 8 sans nutriment
+        {"code": "2000000151619"},                                                   # 9 code interne
+        {"code": "30383354190402"},                                                  # 10 code à 14 chiffres
+        {"code": "3017620425035", "fat_100g": 100.0, "saturated-fat_100g": 10.0,
+         "carbohydrates_100g": 0.0, "sugars_100g": 0.0, "proteins_100g": 0.0,
+         "energy-kcal_100g": 900.0, "energy_100g": 3765.6},                          # 11 900 kcal légitimes
+        {"code": "3245990250203", "pnns_groups_1": "Alcoholic beverages",
+         "energy-kcal_100g": 300.0, "energy_100g": 1255.2, "fat_100g": 0.0,
+         "saturated-fat_100g": 0.0, "carbohydrates_100g": 30.0, "sugars_100g": 30.0,
+         "proteins_100g": 0.0},                                                      # 12 liqueur
+    )
+
+
+@pytest.fixture(scope="module")
+def sample():
+    if not SAMPLE_PATH.exists():
+        pytest.skip(f"Échantillon absent : {SAMPLE_PATH}")
+    return pd.read_csv(SAMPLE_PATH, dtype={"code": str})
+
+
+@pytest.fixture(scope="module")
+def sample_inputs(sample):
+    """Entrée de chaque règle sur l'échantillon : la sortie des règles qui la précèdent."""
+    inputs, df = {}, sample
+    for rule in ALL_RULES:
+        inputs[rule.__name__] = df
+        df, _ = rule(df)
+    return inputs
 
 
 # ============================================================================
-# TESTS : TYPAGE
+# CONTRAT COMMUN : PURETÉ ET IDEMPOTENCE
+# ============================================================================
+
+@pytest.mark.parametrize("rule", ALL_RULES, ids=lambda rule: rule.__name__)
+def test_rule_is_pure(rule, tricky):
+    original = tricky.copy()
+    df, report = rule(tricky)
+    pd.testing.assert_frame_equal(tricky, original)
+    assert isinstance(report, Report) and report.rule == rule.__name__
+
+
+@pytest.mark.parametrize("rule", ALL_RULES, ids=lambda rule: rule.__name__)
+def test_rule_is_idempotent(rule, sample_inputs):
+    once, _ = rule(sample_inputs[rule.__name__])
+    twice, report = rule(once)
+    pd.testing.assert_frame_equal(once, twice)
+    assert report.lines_changed == 0
+
+
+# ============================================================================
+# RÈGLE : TYPAGE
 # ============================================================================
 
 class TestTypeColumns:
-    def nominal_test(self, df_extreme):
-        """Les types sont correctement appliqués."""
-        df, report = type_columns(df_extreme)
-        assert df["code"].dtype == object or df["code"].dtype == "string"
-        assert df["energy_100g"].dtype == "float64"
-        assert report.rule == "typer_colonnes"
-        assert report.lines_before == report.lines_after  # Pas de perte
+    def test_types(self, tricky):
+        df, report = type_columns(tricky)
+        assert df["code"].map(type).eq(str).all()
+        assert df["fat_100g"].dtype == "float64"
+        assert df["created_t"].dt.year.iloc[0] == 2020    # timestamps Unix en secondes
+        assert report.lines_before == report.lines_after == len(tricky)
 
-    def purity_test(self, df_extreme):
-        """L'entrée n'est pas modifiée."""
-        df_copy = df_extreme.copy()
-        type_columns(df_extreme)
-        pd.testing.assert_frame_equal(df_extreme, df_copy)
+    def test_unconvertible_value_counted(self):
+        df, report = type_columns(make_products({"fat_100g": "abc"}, {}))
+        assert pd.isna(df.loc[0, "fat_100g"])
+        assert report.details["coerced_to_na"] == 1
+        assert report.lines_changed == 1
 
 
 # ============================================================================
-# TESTS : NORMALISER UNITÉS
+# RÈGLE : TEXTES
+# ============================================================================
+
+class TestNormalizeTexts:
+    def test_blank_name_and_unknown_grade(self, tricky):
+        df, report = normalize_texts(tricky)
+        assert pd.isna(df.loc[6, "product_name"])
+        assert pd.isna(df.loc[6, "nutriscore_grade"])
+        assert report.details["product_name_blank"] == 1
+        assert report.details["nutriscore_grade_invalidated"] == 1
+
+    def test_legitimate_grades_kept(self):
+        products = make_products(
+            {"nutriscore_grade": " A ", "environmental_score_grade": "a-plus"},
+            {"nutriscore_grade": "not-applicable", "environmental_score_grade": "f"},
+        )
+        df, _ = normalize_texts(products)
+        assert df["nutriscore_grade"].tolist() == ["a", "not-applicable"]
+        assert df["environmental_score_grade"].tolist() == ["a-plus", "f"]
+
+
+# ============================================================================
+# RÈGLE : CODES
+# ============================================================================
+
+class TestFilterCodes:
+    def test_spaces_removed(self, tricky):
+        df, _ = filter_codes(tricky)
+        assert df.loc[3, "code"] == "3560070048185"
+
+    def test_unofficial_codes_removed(self, tricky):
+        df, report = filter_codes(tricky)
+        assert {9, 10}.isdisjoint(df.index)
+        assert report.details["in_store_removed"] == 1
+        assert report.details["invalid_length_removed"] == 1
+        assert report.lines_after == len(tricky) - 2
+
+    def test_missing_and_repeated_codes_removed(self):
+        products = make_products({"code": np.nan}, {"code": "  "}, {"code": "00000000"}, {})
+        df, report = filter_codes(products)
+        assert df.index.tolist() == [3]
+        assert report.details["missing_code_removed"] == 2
+        assert report.details["invalid_length_removed"] == 1
+
+
+# ============================================================================
+# RÈGLE : DOUBLONS
+# ============================================================================
+
+class TestDeduplicateCodes:
+    def test_keeps_most_complete(self, tricky):
+        df, report = deduplicate_codes(tricky)
+        assert 4 not in df.index and 5 in df.index
+        assert report.details == {"duplicates_removed": 1, "duplicated_codes": 1}
+
+    def test_tie_keeps_most_recent_and_preserves_order(self):
+        products = make_products(
+            {"code": "5449000000996", "last_modified_t": 1},
+            {"code": "3017620422003"},
+            {"code": "5449000000996", "last_modified_t": 2},
+        )
+        df, _ = deduplicate_codes(products)
+        assert df.index.tolist() == [1, 2]
+
+
+# ============================================================================
+# RÈGLE : UNITÉS
 # ============================================================================
 
 class TestNormalizeUnits:
-    def test_kcal_from_kj(self, df_extreme):
-        """kcal dérivée de kJ si absent."""
-        df, report = normalize_units(df_extreme)
-        # Row 6 : kcal manquant → doit être dérivée
-        assert df.loc[6, "energy-kcal_100g"] == pytest.approx(df_extreme.loc[6, "energy_100g"] / KJ_BY_KCAL, rel=0.01)
-        assert report.details.get("kcal_derivees_kj", 0) > 0
+    def test_kcal_derived_from_kj(self):
+        df, report = normalize_units(make_products({"energy-kcal_100g": np.nan, "energy_100g": 418.4}))
+        assert df.loc[0, "energy-kcal_100g"] == pytest.approx(100.0)
+        assert report.details["kcal_derived"] == 1
 
-    def test_incoherence_kj_kcal(self, df_extreme):
-        """Ratio kJ/kcal hors [3.9, 4.5] → recalcul."""
-        df, report = normalize_units(df_extreme)
-        # Row 0 : energy_100g=2000, kcal=74000 → ratio > 4.5
-        assert report.details.get("kcal_recalculees", 0) > 0
+    def test_kcal_recalculated_when_ratio_out_of_range(self):
+        products = make_products({"energy-kcal_100g": 74_000.0, "energy_100g": 2000.0}, {})
+        df, report = normalize_units(products)
+        assert df.loc[0, "energy-kcal_100g"] == pytest.approx(2000 / schema.KJ_PER_KCAL, abs=0.01)
+        assert df.loc[1, "energy-kcal_100g"] == 322.0    # rapport 4,18 : plausible, inchangé
+        assert report.details["kcal_recalculated"] == 1
 
-    def test_sodium_from_salt(self, df_extreme):
-        """sodium dérivé depuis sel si absent."""
-        df_test = pd.DataFrame({
-            "code": ["001"],
-            "salt_100g": [2.5],
-            "sodium_100g": [np.nan],
-        })
-        df, report = normalize_units(df_test)
-        assert df.loc[0, "sodium_100g"] == pytest.approx(1.0, rel=0.01)
-        assert report.details.get("sodium_derive_sel", 0) == 1
+    def test_eu_ratio_kept(self):
+        """Facteurs de l'étiquetage européen : 4,2 kJ/kcal est légitime."""
+        df, report = normalize_units(make_products({"energy-kcal_100g": 100.0, "energy_100g": 420.0}))
+        assert df.loc[0, "energy-kcal_100g"] == 100.0
+        assert report.details["kcal_recalculated"] == 0
 
-
-# ============================================================================
-# TESTS : BORNER NUTRIMENTS
-# ============================================================================
-
-class TestLimitNutrients:
-    def test_invalidate_negatives(self, df_extreme):
-        """Valeurs négatives → NA."""
-        df, report = df_extreme.copy(), None
-        df, report = limit_nutrients(df)
-        # Row 5 : fat_100g = -5 → doit devenir NaN
-        assert pd.isna(df.loc[5, "fat_100g"])
-
-    def test_invalidate_over100(self, df_extreme):
-        """Valeurs > 100 g/100g → NA."""
-        df, report = limit_nutrients(df_extreme)
-        # Row 6 : fat_100g = 150 → NaN, sugars_100g = 200 → NaN
-        assert pd.isna(df.loc[6, "fat_100g"])
-        assert pd.isna(df.loc[6, "sugars_100g"])
-
-    def test_sugars_coherence(self, df_extreme):
-        """sugars > glucides + 0.5 → sucres NA."""
-        df, report = limit_nutrients(df_extreme)
-        # Row 5 : sugars=150, carbs=50 → sucres NA
-        assert pd.isna(df.loc[5, "sugars_100g"])
-        assert report.details.get("sucres_incohérents", 0) > 0
-
-    def test_conserve_coherent_value(self, df_extreme):
-        """Valeur légitime ne change pas."""
-        df, report = limit_nutrients(df_extreme)
-        # Row 3 : fat=82 (normal) → conservé
-        assert df.loc[3, "fat_100g"] == 82.0
+    def test_salt_and_sodium(self):
+        products = make_products(
+            {"salt_100g": 2.5, "sodium_100g": np.nan},
+            {"salt_100g": np.nan, "sodium_100g": 0.4},
+            {"salt_100g": 1.0, "sodium_100g": 1.0},
+        )
+        df, report = normalize_units(products)
+        assert df["sodium_100g"].tolist() == pytest.approx([1.0, 0.4, 0.4])
+        assert df["salt_100g"].tolist() == pytest.approx([2.5, 1.0, 1.0])
+        assert report.details["sodium_derived"] == 1
+        assert report.details["salt_derived"] == 1
+        assert report.details["sodium_recalculated"] == 1
+        assert report.lines_changed == 3
 
 
 # ============================================================================
-# TESTS : CORRIGER ÉNERGIE
+# RÈGLE : BORNES
 # ============================================================================
 
-class TestReviseEnergy:
-    def test_kcal_null_recalculate(self):
-        """kcal nul avec macronutriments → recalcul."""
-        df = pd.DataFrame({
-            "code": ["001"],
-            "energy-kcal_100g": [np.nan],
-            "proteins_100g": [10.0],
-            "carbohydrates_100g": [50.0],
-            "fat_100g": [20.0],
-        })
-        df, report = revise_energy(df)
-        # 10*4 + 50*4 + 20*9 = 40 + 200 + 180 = 420 kcal
-        assert df.loc[0, "energy-kcal_100g"] == pytest.approx(420, rel=0.01)
-        assert report.details.get("nulles_recalculees", 0) == 1
+class TestBoundNutrients:
+    def test_impossible_values_to_na(self, tricky):
+        df, report = bound_nutrients(tricky)
+        assert pd.isna(df.loc[0, "sugars_100g"])
+        assert pd.isna(df.loc[2, "salt_100g"]) and pd.isna(df.loc[2, "sodium_100g"])
+        assert report.details["sugars_100g_above_max"] == 1
+        assert report.details["sodium_100g_above_max"] == 1
 
-    def test_invalidate_over900(self):
-        """kcal > 900 → NA ou recalcul."""
-        df = pd.DataFrame({
-            "code": ["001"],
-            "energy-kcal_100g": [1000.0],
-            "proteins_100g": [np.nan],
-            "carbohydrates_100g": [np.nan],
-            "fat_100g": [np.nan],
-        })
-        df, report = revise_energy(df)
-        assert pd.isna(df.loc[0, "energy-kcal_100g"])
+    def test_bounds_are_inclusive(self, tricky):
+        df, _ = bound_nutrients(tricky)
+        assert df.loc[11, "fat_100g"] == 100.0           # 100 g est à la borne, pas au-delà
 
-    def test_over900_with_nutrients_recalculate(self):
-        """kcal > 900 mais nutriments OK → recalcul."""
-        df = pd.DataFrame({
-            "code": ["001"],
-            "energy-kcal_100g": [1200.0],
-            "proteins_100g": [20.0],
-            "carbohydrates_100g": [60.0],
-            "fat_100g": [15.0],
-        })
-        df, report = revise_energy(df)
-        # 20*4 + 60*4 + 15*9 = 80 + 240 + 135 = 455 kcal
-        assert df.loc[0, "energy-kcal_100g"] == pytest.approx(455, rel=0.01)
+    def test_negative_and_inconsistent_values(self):
+        products = make_products(
+            {"fat_100g": -5.0},
+            {"sugars_100g": 60.0, "carbohydrates_100g": 50.0},
+            {"sugars_100g": 50.4, "carbohydrates_100g": 50.0},   # dans la tolérance de 0,5 g
+            {"saturated-fat_100g": 12.0, "fat_100g": 10.0},
+        )
+        df, report = bound_nutrients(products)
+        assert pd.isna(df.loc[0, "fat_100g"])
+        assert pd.isna(df.loc[1, "sugars_100g"])
+        assert df.loc[2, "sugars_100g"] == 50.4
+        assert pd.isna(df.loc[3, "saturated-fat_100g"])
+        assert report.details["fat_100g_below_min"] == 1
+        assert report.details["sugars_within_carbohydrates_invalidated"] == 1
+        assert report.details["saturated_within_fat_invalidated"] == 1
+        assert report.lines_changed == 3
 
 
 # ============================================================================
-# TESTS : DÉDUPLIQUER
+# RÈGLE : ÉNERGIE
 # ============================================================================
 
-class TestUnduplicateCodes:
-    def test_exclude_without_code(self):
-        """Lignes sans code → exclues."""
-        df = pd.DataFrame({
-            "code": ["001", np.nan, "003"],
-            "product_name": ["A", "B", "C"],
-            "completeness": [0.9, 0.5, 0.8],
-            "last_modified_t": [1000, 2000, 3000],
-        })
-        df, report = unduplicate_codes(df)
-        assert len(df) == 2
-        assert report.details.get("sans_code_exclus", 0) == 1
+class TestFixEnergy:
+    def test_over_max_recalculated(self, tricky):
+        df, report = fix_energy(tricky)
+        assert df.loc[1, "energy-kcal_100g"] == pytest.approx(322.0)
+        assert df.loc[1, "energy_100g"] == pytest.approx(322.0 * schema.KJ_PER_KCAL, abs=0.01)
+        assert report.details["over_max_recalculated"] == 1
 
-    def test_duplicates_drop(self):
-        """Doublons → garder le plus complet."""
-        df = pd.DataFrame({
-            "code": ["001", "001"],
-            "product_name": ["A", "A"],
-            "completeness": [0.5, 0.9],
-            "last_modified_t": [1000, 2000],
-        })
-        print(df)
-        df, report = unduplicate_codes(df)
-        assert len(df) == 1
-        assert df.loc[1, "completeness"] == 0.9
+    def test_max_kept_and_alcohol_exempted(self, tricky):
+        df, _ = fix_energy(tricky)
+        assert df.loc[11, "energy-kcal_100g"] == 900.0
+        assert df.loc[12, "energy-kcal_100g"] == 300.0   # 120 kcal calculées, l'alcool n'est pas compté
 
-    def test_purity(self, df_extreme):
-        """L'entrée n'est pas modifiée."""
-        df_copy = df_extreme.copy()
-        unduplicate_codes(df_extreme)
-        pd.testing.assert_frame_equal(df_extreme, df_copy)
+    def test_over_max_without_macronutrients_invalidated(self):
+        products = make_products({"energy-kcal_100g": 1000.0, "energy_100g": 4184.0,
+                                  "proteins_100g": np.nan})
+        df, report = fix_energy(products)
+        assert pd.isna(df.loc[0, "energy-kcal_100g"]) and pd.isna(df.loc[0, "energy_100g"])
+        assert report.details["over_max_invalidated"] == 1
+        assert report.details["kj_invalidated"] == 1
 
-
-# ============================================================================
-# TESTS : TRAITER CATÉGORIES
-# ============================================================================
-
-class TestHandlerEmptyCategories:
-    def test_empty_group_filled(self):
-        """Rayon vide → "unknown"."""
-        df = pd.DataFrame({
-            "code": ["001"],
-            "main_category": [np.nan],
-            "categories_tags": ["snacks"],
-            "pnns_groups_1": ["Snacks"]
-        })
-        df, report = handle_empty_categories(df)
-        assert df.loc[0, "main_category"] == "snacks"
-
-    def test_flag_empty_category(self):
-        """Catégorie vide → drapeau."""
-        df = pd.DataFrame({
-            "code": ["001"],
-            "main_category": ["snacks"],
-            "categories_tags": [np.nan],
-            "pnns_groups_1": ["Snacks"]
-        })
-        df, report = handle_empty_categories(df)
-        assert df.loc[0, "categorie_vide"] == 1
-
-    def test_exclude_unclassable(self):
-        """Pas de catégories ET rayon undefined → exclus."""
-        df = pd.DataFrame({
-            "code": ["001", "002"],
-            "main_category": [np.nan, "snacks"],
-            "categories_tags": [np.nan, "snacks"],
-            "pnns_groups_1": ["unknown", "Snacks"]
-        })
-        df, report = handle_empty_categories(df)
-        assert len(df) == 1  # "001" exclus
-        assert report.details.get("inclassables_exclus", 0) == 1
+    def test_zero_and_incoherent_recalculated(self):
+        products = make_products(
+            {"energy-kcal_100g": 0.0, "energy_100g": 0.0},
+            {"energy-kcal_100g": 100.0, "energy_100g": 418.4},   # calcul : 322 kcal
+        )
+        df, report = fix_energy(products)
+        assert df["energy-kcal_100g"].tolist() == pytest.approx([322.0, 322.0])
+        assert report.details["missing_or_zero_recalculated"] == 1
+        assert report.details["incoherent_recalculated"] == 1
+        assert report.details["kj_realigned"] == 2
 
 
 # ============================================================================
-# TESTS : IDEMPOTENCE
+# RÈGLE : CATÉGORIES
 # ============================================================================
 
-class TestIdempotence:
-    def test_typing_idempotence(self, df_extreme):
-        """Appliquer deux fois donne le même résultat."""
-        df1, r1 = type_columns(df_extreme)
-        df2, r2 = type_columns(df1)
-        pd.testing.assert_frame_equal(df1, df2)
-        assert r2.lines_changed == 0
+class TestHandleEmptyCategories:
+    def test_unclassifiable_removed(self, tricky):
+        df, report = handle_empty_categories(tricky)
+        assert 7 not in df.index
+        assert report.details["unclassifiable_removed"] == 1
+        assert report.details["pnns_groups_1_filled_unknown"] == 1
 
-    def test_normalize_idempotence(self, df_extreme):
-        """Appliquer deux fois ne change rien."""
-        df1, r1 = normalize_units(df_extreme)
-        df2, r2 = normalize_units(df1)
-        pd.testing.assert_frame_equal(df1, df2)
+    def test_group_canonicalized_and_flag(self):
+        products = make_products(
+            {"pnns_groups_1": "sugary-snacks"},
+            {"pnns_groups_1": "Pizza"},
+            {"categories_tags": np.nan},
+        )
+        df, report = handle_empty_categories(products)
+        assert df["pnns_groups_1"].tolist() == ["Sugary snacks", "unknown", "Sugary snacks"]
+        assert df["empty_category"].tolist() == [False, False, True]
+        assert report.details["pnns_groups_1_unrecognized"] == 1
 
-    def test_limit_idempotence(self, df_extreme):
-        """Appliquer deux fois ne change rien."""
-        df1, r1 = limit_nutrients(df_extreme)
-        df2, r2 = limit_nutrients(df1)
-        pd.testing.assert_frame_equal(df1, df2)
-
-    def test_unduplicate_idempotence(self, df_extreme):
-        """Appliquer deux fois ne change rien."""
-        df1, r1 = unduplicate_codes(df_extreme)
-        df2, r2 = unduplicate_codes(df1)
-        pd.testing.assert_frame_equal(df1, df2)
+    def test_main_category_from_last_tag(self):
+        df, report = handle_empty_categories(make_products({"main_category": np.nan}))
+        assert df.loc[0, "main_category"] == "en:biscuits"
+        assert report.details["main_category_from_tags"] == 1
 
 
 # ============================================================================
-# TESTS : PIPELINE COMPLET
+# RÈGLE : MANQUANTS
 # ============================================================================
 
-class TestCleaningPipeline:
-    def test_pipeline_structure(self, df_extreme):
-        """Le pipeline retourne (DataFrame, liste de rapports)."""
-        df, reports = clean(df_extreme)
-        assert isinstance(df, pd.DataFrame)
-        assert isinstance(reports, list)
-        assert len(reports) > 0
-        assert all(isinstance(r, Report) for r in reports)
+class TestApplyMissingStrategy:
+    def test_default_strategy(self, tricky):
+        df, report = apply_missing_strategy(tricky)
+        assert 8 not in df.index
+        assert df["fiber_100g_missing"].dtype == bool
+        assert report.details["insufficient_key_nutrients_removed"] == 1
+        assert report.lines_changed == 1      # les drapeaux ne comptent pas
 
-    def test_pipeline_quality(self, df_extreme):
-        """Après nettoyage, données plus robustes."""
-        df_before = df_extreme.copy()
-        df_after, _ = clean(df_extreme)
+    def test_constant_and_drop_column(self):
+        products = make_products({"fiber_100g": np.nan}, {})
+        strategy = {"fiber_100g": "constant:0", "brands": "drop_column"}
+        df, report = apply_missing_strategy(products, strategy)
+        assert df["fiber_100g"].tolist() == [0.0, 3.0]
+        assert "brands" not in df.columns
+        assert report.details["fiber_100g_filled"] == 1
+        assert report.details["columns_dropped"] == 1
 
-        # Moins de valeurs aberrantes
-        assert (df_after["energy-kcal_100g"] <= 900).all() or df_after["energy-kcal_100g"].isna().all()
+    def test_unknown_decision_raises(self, tricky):
+        with pytest.raises(ValueError):
+            apply_missing_strategy(tricky, {"fiber_100g": "median"})
 
-        # Cohérence sucres < glucides
-        mask = df_after["sugars_100g"].notna() & df_after["carbohydrates_100g"].notna()
-        assert (df_after.loc[mask, "sugars_100g"] <= df_after.loc[mask, "carbohydrates_100g"] + 0.5).all()
+    def test_default_strategy_vocabulary(self):
+        assert set(DEFAULT_STRATEGY.values()) <= {"keep", "flag", "drop_column"}
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v", "--tb=short"])
+# ============================================================================
+# CONTRAT DE SORTIE ET PIPELINE
+# ============================================================================
+
+class TestValidateOutput:
+    def test_raw_data_rejected(self, tricky):
+        typed, _ = type_columns(tricky)
+        with pytest.raises(ValueError, match="sugars_100g:max_bound"):
+            validate_output(typed)
+
+    def test_duplicate_code_rejected(self):
+        typed, _ = type_columns(make_products({}, {}))
+        with pytest.raises(ValueError, match="field_uniqueness"):
+            validate_output(typed)
+
+
+class TestClean:
+    def test_tricky_products(self, tricky):
+        df, reports = clean(tricky)
+        assert [report.rule for report in reports] == [
+            *(rule.__name__ for rule in ALL_RULES), "validate_output"
+        ]
+        # écartés : doublon (4), inclassable (7), sans nutriment (8), code interne (9), code à 14 chiffres (10)
+        assert sorted(df.index) == [0, 1, 2, 3, 5, 6, 11, 12]
+
+    def test_sample_passes_schema(self, sample):
+        df, reports = clean(sample)
+        assert schema.find_failures(df, schema.OUTPUT_SCHEMA) == {}
+        assert reports[-1].lines_after == len(df)
