@@ -1,0 +1,1 @@
+la base relationnelle sert l'application, les Parquet servent l'analyse et le ML — qui lit quoi

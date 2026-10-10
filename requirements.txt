@@ -10,3 +10,4 @@ pytest
 scikit-learn
 pandera
 nbconvert
+duckdb
