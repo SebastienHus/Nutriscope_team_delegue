@@ -9,3 +9,4 @@ psycopg
 pytest
 scikit-learn
 pandera
+nbconvert

@@ -1,0 +1,1 @@
+Point de contrôle 0 : `jupyter nbconvert --to notebook --execute --inplace notebooks/eda_reference.ipynb` passe sur l'ossature (cellules vides ou presque) ; `python -m pytest -q` passe avec un test.
