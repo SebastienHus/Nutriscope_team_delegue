@@ -10,9 +10,10 @@ from pathlib import Path
 from cleaning import clean, DEFAULT_STRATEGY
 from report import generate_report
 import argparse
+import os
+from options import DATA_PATH, CONFIG
 
-
-def main(csv_in: str, csv_out: str, report_path: str):
+def main(csv_in: os.PathLike, csv_out: os.PathLike, report_path: os.PathLike, sep: str = ","):
     """
     Pipeline complet de nettoyage.
 
@@ -22,21 +23,39 @@ def main(csv_in: str, csv_out: str, report_path: str):
         chemin_rapport : Rapport Markdown
     """
 
+    csv_in = Path(csv_in)
+    if csv_out is None:
+       csv_out = DATA_PATH / "clean" / csv_in.name
+    else:
+        csv_out = Path(csv_out)
+    report_path = Path(report_path)
+
     print("=" * 80)
     print("PIPELINE NETTOYAGE — NutriScope TP 9")
     print("=" * 80)
 
     # Étape 1 : Lecture
     print(f"\n[1/4] Lecture de {csv_in}...")
+    usecols = lambda c: c in CONFIG["columns"]
     try:
-        df_rough = pd.read_csv(csv_in)
+        df_rough = pd.concat(
+            pd.read_csv(
+                csv_in,
+                usecols=usecols,
+                on_bad_lines="warn",
+                sep=sep,
+                iterator=True,
+                chunksize=1000
+            ),
+            ignore_index=True
+        )
         print(f"  ✓ {len(df_rough):,} lignes chargées")
         print(f"  ✓ {len(df_rough.columns)} colonnes")
     except FileNotFoundError:
         print(f"  ✗ Fichier introuvable: {csv_in}")
         return 1
     except Exception as e:
-        print(f"  ✗ Erreur: {e}")
+        print(f"  ✗ Erreur: {e!r}")
         return 1
 
     # Étape 2 : Nettoyage
@@ -118,7 +137,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "csv_out",
         nargs="?",
-        default="./data/clean/echantillon_france.csv",
+        default=None,
         help="Chemin du fichier CSV de sortie",
     )
     parser.add_argument(
@@ -127,6 +146,14 @@ if __name__ == "__main__":
         default="./data/docs/rapport_nettoyage.md",
         help="Chemin du rapport Markdown",
     )
+    parser.add_argument(
+        "-s",
+        "--separator",
+        default=",",
+        help="Séparateur du csv à lire. Le csv de sortie sera sauvegardé avec le séparateur par défaut."
+    )
 
     args = parser.parse_args()
-    sys.exit(main(args.csv_in, args.csv_out, args.report_path))
+    # Traite les caractères d'échappement
+    args.separator = args.separator.encode().decode('unicode-escape')
+    sys.exit(main(args.csv_in, args.csv_out, args.report_path, sep=args.separator))

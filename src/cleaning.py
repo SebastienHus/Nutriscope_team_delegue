@@ -33,11 +33,6 @@ NUTRIENTS_LIMITS = {
     "energy_100g": (0, 3500),  # kJ (900 kcal ≈ 3765 kJ)
 }
 
-COMPLETUDE_THRESHOLD = 0.5  # 50% de complétude minimal pour nutriments clés
-NUTRIENTS = ["energy_100g", "energy-kcal_100g", "fat_100g", "sugars_100g", "salt_100g"]
-
-EXCLUDED_GROUPS = ["unknown", "no-category", ""]
-
 @dataclass
 class Report:
     """Rapport d'exécution d'une règle de nettoyage."""
@@ -72,10 +67,9 @@ def type_columns(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
         df["code"] = df["code"].astype(str)
 
     # Nutriments en float64
-    cols_nutriments = [c for c in df.columns if any(x in c for x in ["energy", "fat", "carb", "sugars", "fiber", "proteins", "salt", "sodium"])]
+    cols_nutriments = [c for c in df.columns if c.endswith("_100g")]
     for col in cols_nutriments:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype(float)
 
     # Scores / indices
     for col in ["nutriscore_score", "nova_group", "additives_n"]:
@@ -85,11 +79,11 @@ def type_columns(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
     # Timestamps
     for col in ["created_t", "last_modified_t"]:
         if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+            df[col] = pd.to_datetime(df[col], errors="coerce")
 
     # Complétude
     if "completeness" in df.columns:
-        df["completeness"] = pd.to_numeric(df["completeness"], errors="coerce").astype("float64")
+        df["completeness"] = pd.to_numeric(df["completeness"], errors="coerce").astype(float)
 
     lines_changed = 0  # Juste typage
 
@@ -197,6 +191,7 @@ def limit_nutrients(df: pd.DataFrame) -> Tuple[pd.DataFrame, Report]:
     details = {}
 
     # Règle générale : négatives ou > 100 g
+    # TODO: use NUTRIENTS_LIMITS
     for col in ["fat_100g", "saturated-fat_100g", "carbohydrates_100g", "sugars_100g",
                 "fiber_100g", "proteins_100g", "salt_100g", "sodium_100g"]:
         if col in df.columns:

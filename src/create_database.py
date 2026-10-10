@@ -1,23 +1,12 @@
 import argparse
 import os
 import sqlparse
-import configparser
 import pandas as pd
 from sqlalchemy import create_engine, URL
 from sqlalchemy_utils import database_exists, create_database
-from sqlalchemy.schema import CreateTable
 
+from options import read_database_options
 from clean_data import read_products_data, clean_products_data
-
-def read_database_options(filename):
-    config_obj = configparser.ConfigParser(allow_no_value=True) # Requis pour autoriser les listes sans valeur
-    config_obj.read(filename)
-
-    # convert to dict
-    config = {s:dict(config_obj.items(s)) for s in config_obj.sections()}
-    config["database"]["categories"] = [category.strip() for category in config["database"]["categories"].split(",")]
-
-    return config
 
 def init_database(config, username, password):
     url = URL.create(

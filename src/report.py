@@ -5,7 +5,7 @@ Rapport avant/après structuré et committable.
 
 import pandas as pd
 from datetime import datetime
-from cleaning import Report
+from cleaning import Report, type_columns
 
 
 def generate_report(
@@ -88,7 +88,8 @@ def generate_report(
     report_text += "---\n\n## Anomalies Métier Détectées\n\n"
 
     report_text += "### Avant Nettoyage\n\n"
-    anomalies_before = detect_anomalies(df_before)
+    df_typed, _ = type_columns(df_before) # Besoin de typer avant de détecter les anomalies
+    anomalies_before = detect_anomalies(df_typed)
     if anomalies_before:
         for anomaly in anomalies_before:
             report_text += f"- {anomaly}\n"
