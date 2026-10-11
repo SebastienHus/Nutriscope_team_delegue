@@ -111,7 +111,7 @@ def is_official_length(codes: pd.Series) -> pd.Series:
     text = codes.astype("string")
     digits_only = text.str.fullmatch(r"\d+")
     valid_length = text.str.len().isin(VALID_CODE_LENGTHS)
-    repeated_digit = text.str.fullmatch(r"(\d)\1*")
+    repeated_digit = text.str.fullmatch(r"0+|1+|2+|3+|4+|5+|6+|7+|8+|9+")
     return (digits_only & valid_length & ~repeated_digit).fillna(False).astype(bool)
 
 
