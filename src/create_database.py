@@ -16,6 +16,7 @@ nettoyage puis chargement) :
 import argparse
 import getpass
 import os
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -232,12 +233,14 @@ def main(args):
     engine = init_database(config, args.username, password, args.host, args.port)
 
     if not args.data_path:
-        return
+        return 1
 
     raw = read_products(args.data_path, config["columns"], sep=args.separator)
     df, _ = clean(raw)
     for table, count in load_products(engine, df).items():
         print(f"  {table}: {count:,} lignes")
+        
+    return 0
 
 
 if __name__ == "__main__":
@@ -256,4 +259,4 @@ if __name__ == "__main__":
                         help="Séparateur de l'export (tabulation pour l'export complet)")
     args = parser.parse_args()
     args.separator = args.separator.encode().decode("unicode-escape")
-    main(args)
+    sys.exit(main(args))

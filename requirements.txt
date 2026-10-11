@@ -11,3 +11,5 @@ scikit-learn
 pandera
 nbconvert
 duckdb
+umap-learn
+pyarrow

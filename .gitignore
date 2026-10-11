@@ -1,6 +1,7 @@
 .vscode
-data
+/data/
 work
+tree.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

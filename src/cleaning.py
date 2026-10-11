@@ -60,7 +60,7 @@ CONSISTENCY_TARGETS = {
 }
 
 # Vocabulaire fermé de la stratégie de manquants
-KEEP = "keep"
+KEEP = "keep"  # TODO: utiliser Enum
 FLAG = "flag"
 DROP_COLUMN = "drop_column"
 CONSTANT_PREFIX = "constant:"
@@ -429,6 +429,7 @@ def fix_energy(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
 # RÈGLE 8 : CATÉGORIES VIDES
 # ============================================================================
 
+# TOASK: Est-ce vraiment nécessaire ?
 def _canonical_group(value: str) -> str:
     return value.strip().lower().replace("-", " ")
 

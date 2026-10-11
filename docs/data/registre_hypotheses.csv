@@ -1,0 +1,5 @@
+hypothesis,method,result,decision
+"H1 : les produits A ont moins de sucres que les E, dans tous les rayons","médianes, d de Cohen, Mann-Whitney bilatéral, stratifié par rayon (≥ 10 produits par grade)","vérifiée dans 5 rayons sur 8 ; contre-exemples : Fat and sauces, Milk and dairy products, Salty snacks",à compléter
+H2 : le sel est plus lié au score dans un rayon que tous rayons confondus,Spearman sel × score par rayon (≥ 30 paires) comparé au Spearman global,rho global 0.38 ; rayons où rho > global : 6 sur 9,à compléter
+H3 : à formuler,à compléter,à compléter,à compléter
+H4 : à formuler,à compléter,à compléter,à compléter
