@@ -1,0 +1,25 @@
+# Briques réutilisables, importées avec "extends" (voir compose.yml et monitoring/compose.yml).
+services:
+
+  # Durcissement complet : système de fichiers en lecture seule + aucune capability Linux
+  hardened:
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Durcissement allégé : pour les images qui doivent écrire dans leur système de fichiers
+  hardened-lite:
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

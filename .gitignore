@@ -3,6 +3,11 @@
 work
 tree.txt
 
+# For Docker secrets and backup
+secrets/*.txt
+backups/*
+!backups/.gitkeep
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
