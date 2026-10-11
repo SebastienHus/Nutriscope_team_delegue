@@ -1,355 +1,337 @@
+"""
+Export d'entraînement figé pour la prédiction du Nutri-Score — TP 12.
+
+Lit le Parquet partitionné produit par `convert_parquet.py`, ne garde que les produits
+utilisables pour prédire le Nutri-Score, et écrit :
+
+- `data/exports/features_nutriscore_<AAAAMMJJ>.parquet` : identifiant, rayon, nutriments,
+  `additives_n`, `nova_group`, trois ratios, `nutriscore_score` et la cible `nutriscore_grade` ;
+- `data/exports/features_nutriscore_<AAAAMMJJ>.schema.json` : le contrat de cet export
+  (date de gel, source, commit, nombre de lignes, SHA-256, filtres, répartition de la cible,
+  description et politique de manquants de chaque colonne, licence, usage prévu).
+
+Un produit est utilisable si son grade est a-e, si ses sept nutriments clés sont présents
+et s'il respecte les cohérences du nettoyage (`schema.sugars_within_carbohydrates`,
+`schema.saturated_within_fat`, même marge de 0,5 g) avec une énergie strictement positive.
+
+L'export est figé : il refuse d'écraser un fichier existant (`FileExistsError`), sauf avec
+`--force`. Les lignes sont triées par code et écrites sur un seul thread : relancer avec
+`--force` sur le même Parquet produit la même empreinte SHA-256. Le split train / test
+n'est pas fait ici (TP 13).
+
+    python src/storage/export_features.py
+    python src/storage/export_features.py -i data/parquet/products -o data/exports --force
+
+Données : © Open Food Facts contributors — ODbL.
+"""
+
 import argparse
 import hashlib
 import json
-import os
 import subprocess
 import sys
-from datetime import datetime
-import pandas as pd
+from dataclasses import dataclass
+from datetime import date
+from pathlib import Path
 
-# 7 nutriments clés requis
-NUTRIENT_COLS = [
-    "energy-kcal_100g",
-    "fat_100g",
-    "saturated-fat_100g",
-    "carbohydrates_100g",
-    "sugars_100g",
-    "proteins_100g",
-    "salt_100g",
-]
+import duckdb
 
-TARGET_GRADE = "nutriscore_grade"
-TARGET_SCORE = "nutriscore_score"
-ID_COL = "code"
-CATEGORY_COL = "group"
+# Les scripts de `src/` s'importent à plat (`import schema`), comme dans `pipeline.py`
+SRC_PATH = Path(__file__).resolve().parents[1]
+if str(SRC_PATH) not in sys.path:
+    sys.path.insert(0, str(SRC_PATH))
+
+from options import DATA_PATH  # noqa: E402
+from schema import KCAL_PER_GRAM, KEY_NUTRIENTS, NUTRISCORE_GRADES, ROUNDING_TOLERANCE_G  # noqa: E402
+from storage.convert_parquet import (  # noqa: E402
+    DEFAULT_DESTINATION,
+    LICENSE,
+    PARTITION_COLUMN,
+    ROOT_PATH,
+    VIEW_NAME,
+    open_products,
+    relative_path,
+    sql_identifier,
+    sql_string,
+)
+
+# ============================================================================
+# CONSTANTES
+# ============================================================================
+
+DEFAULT_SOURCE = DEFAULT_DESTINATION                 # le Parquet partitionné de la conversion
+DEFAULT_OUTPUT_DIR = DATA_PATH / "exports"
+FILE_PREFIX = "features_nutriscore_"
+SCHEMA_SUFFIX = ".schema.json"
+COMPRESSION = "zstd"
+HASH_BLOCK_SIZE = 1 << 20                            # 1 Mo par lecture pour le SHA-256
+
+ID_COLUMN = "code"
+TARGET = "nutriscore_grade"
+SCORE = "nutriscore_score"
+TARGET_GRADES = tuple(grade for grade in NUTRISCORE_GRADES if grade != "not-applicable")
+
+KCAL = "energy-kcal_100g"
+FAT_KCAL_PER_GRAM = KCAL_PER_GRAM["fat_100g"]
+
+INTENDED_USE = ("Entraînement et évaluation des modèles de prédiction du Nutri-Score "
+                "(classification du grade, régression du score) — TP 13 (split) et TP 14.")
+NO_MISSING = "Aucun manquant : filtré à l'export."
 
 
-def get_git_commit():
-    """Récupère le hash du commit Git courant si disponible."""
+@dataclass(frozen=True)
+class Feature:
+    """Colonne de l'export : son unité, sa description, sa politique de manquants et,
+    pour une colonne calculée, son expression SQL."""
+    name: str
+    unit: str | None
+    description: str
+    missing_policy: str
+    expression: str | None = None
+
+
+def _ratio(numerator: str, denominator: str, factor: float = 1.0) -> str:
+    """Ratio en FLOAT, 0 si le dénominateur est nul."""
+    num, den = sql_identifier(numerator), sql_identifier(denominator)
+    scaled = f"{num} * {factor!r}" if factor != 1.0 else num
+    return f"CAST(CASE WHEN {den} > 0 THEN {scaled} / {den} ELSE 0 END AS FLOAT)"
+
+
+NUTRIENT_DESCRIPTIONS = {
+    "energy-kcal_100g": ("kcal/100 g", "Énergie."),
+    "fat_100g": ("g/100 g", "Lipides."),
+    "saturated-fat_100g": ("g/100 g", "Acides gras saturés."),
+    "carbohydrates_100g": ("g/100 g", "Glucides."),
+    "sugars_100g": ("g/100 g", "Sucres."),
+    "proteins_100g": ("g/100 g", "Protéines."),
+    "salt_100g": ("g/100 g", "Sel."),
+}
+
+# Ordre des colonnes de l'export (le schéma JSON suit le même ordre)
+FEATURES = (
+    Feature(ID_COLUMN, None, "Code-barres du produit : identifiant, pas une feature.",
+            "Aucun manquant : identifiant obligatoire et unique."),
+    Feature(PARTITION_COLUMN, None, "Rayon : slug de `pnns_groups_1`, clé de partition du Parquet.",
+            "Aucun manquant : `unknown` posé à la conversion. Encodage catégoriel au TP 14."),
+    *(Feature(name, *NUTRIENT_DESCRIPTIONS[name], NO_MISSING) for name in KEY_NUTRIENTS),
+    Feature("additives_n", "nombre", "Nombre d'additifs déclarés.",
+            "Manquants possibles (liste d'ingrédients absente) : indicateur de manquant et "
+            "imputation au TP 14, calculée sur le train après le split."),
+    Feature("nova_group", "groupe 1-4", "Groupe NOVA de transformation.",
+            "Manquants possibles : modalité dédiée « inconnu » au TP 14."),
+    Feature("ratio_sugars_carbs", "ratio", "Part des sucres dans les glucides (sucres / glucides), "
+            "0 si glucides nuls. Peut dépasser 1 de peu (marge de 0,5 g du nettoyage).",
+            "Aucun manquant : calculé sur des nutriments présents.",
+            _ratio("sugars_100g", "carbohydrates_100g")),
+    Feature("ratio_satfat_fat", "ratio", "Part des saturés dans les lipides (saturés / lipides), "
+            "0 si lipides nuls. Peut dépasser 1 de peu (marge de 0,5 g du nettoyage).",
+            "Aucun manquant : calculé sur des nutriments présents.",
+            _ratio("saturated-fat_100g", "fat_100g")),
+    Feature("ratio_energy_fat", "ratio", "Part de l'énergie venant des lipides (lipides × 9 / kcal).",
+            "Aucun manquant : énergie strictement positive.",
+            _ratio("fat_100g", KCAL, FAT_KCAL_PER_GRAM)),
+    Feature(SCORE, "points", "Score Nutri-Score officiel : cible secondaire (régression).",
+            "Manquants possibles : lignes écartées pour la régression. Ne pas l'utiliser comme "
+            "feature pour prédire le grade : le grade en est dérivé (fuite de cible)."),
+    Feature(TARGET, "grade a-e", "Grade Nutri-Score : cible principale (classification).", NO_MISSING),
+)
+
+FILTERS = (
+    f"`{TARGET}` dans {list(TARGET_GRADES)}",
+    f"sept nutriments clés présents : {list(KEY_NUTRIENTS)}",
+    f"sucres ≤ glucides + {ROUNDING_TOLERANCE_G} g (schema.sugars_within_carbohydrates)",
+    f"saturés ≤ lipides + {ROUNDING_TOLERANCE_G} g (schema.saturated_within_fat)",
+    f"`{KCAL}` > 0",
+)
+
+
+# ============================================================================
+# REQUÊTE
+# ============================================================================
+
+def required_columns() -> list[str]:
+    """Colonnes que le Parquet source doit contenir."""
+    return [feature.name for feature in FEATURES if feature.expression is None]
+
+
+def features_query() -> str:
+    """Requête de l'export : filtres de `FILTERS`, colonnes de `FEATURES`, tri par code."""
+    columns = ",\n    ".join(
+        f"{feature.expression} AS {sql_identifier(feature.name)}" if feature.expression
+        else sql_identifier(feature.name)
+        for feature in FEATURES
+    )
+    grades = ", ".join(sql_string(grade) for grade in TARGET_GRADES)
+    present = "\n  AND ".join(f"{sql_identifier(column)} IS NOT NULL" for column in KEY_NUTRIENTS)
+    tolerance = repr(ROUNDING_TOLERANCE_G)
+    return f"""
+SELECT
+    {columns}
+FROM {VIEW_NAME}
+WHERE {sql_identifier(TARGET)} IN ({grades})
+  AND {present}
+  AND "sugars_100g" <= "carbohydrates_100g" + {tolerance}
+  AND "saturated-fat_100g" <= "fat_100g" + {tolerance}
+  AND {sql_identifier(KCAL)} > 0
+ORDER BY {sql_identifier(ID_COLUMN)}
+"""
+
+
+# ============================================================================
+# MÉTADONNÉES
+# ============================================================================
+
+def sha256(path: Path) -> str:
+    """Empreinte SHA-256 d'un fichier."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as file:
+        for block in iter(lambda: file.read(HASH_BLOCK_SIZE), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _git(*args: str) -> str:
+    return subprocess.run(["git", *args], cwd=ROOT_PATH, capture_output=True,
+                          text=True, check=True).stdout.strip()
+
+
+def git_commit() -> str:
+    """Commit Git courant du dépôt, suffixé de `-dirty` si l'arbre de travail est modifié."""
     try:
-        commit = (
-            subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL
-            )
-            .decode("ascii")
-            .strip()
-        )
-        return commit
-    except Exception:
+        commit = _git("rev-parse", "HEAD")
+        return f"{commit}-dirty" if _git("status", "--porcelain") else commit
+    except (OSError, subprocess.CalledProcessError):
         return "unknown"
 
 
-def compute_sha256(filepath):
-    """Calcule le hash SHA-256 du fichier généré."""
-    sha256_hash = hashlib.sha256()
-    with open(filepath, "rb") as f:
-        for byte_block in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(byte_block)
-    return sha256_hash.hexdigest()
+def export_paths(output_dir: Path, freeze_date: date) -> tuple[Path, Path]:
+    """Chemins du Parquet daté et de son schéma."""
+    parquet_path = Path(output_dir) / f"{FILE_PREFIX}{freeze_date:%Y%m%d}.parquet"
+    return parquet_path, parquet_path.with_suffix(SCHEMA_SUFFIX)
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Export de features filtrées et nettoyées pour la prédiction du Nutri-Score."
-    )
-    parser.add_argument(
-        "--input",
-        "-i",
-        required=True,
-        help="Chemin vers le fichier ou dossier Parquet d'entrée.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        "-o",
-        default=".",
-        help="Dossier de destination pour le fichier parquet et schema.json.",
-    )
-    parser.add_argument(
-        "--force",
-        "-f",
-        action="store_true",
-        help="Force l'écrasement si le fichier destination existe déjà.",
-    )
+def describe_export(con: duckdb.DuckDBPyConnection, parquet_path: Path, source: Path,
+                    freeze_date: date) -> dict:
+    """Contrat de l'export, relu dans le Parquet écrit (types, manquants, répartition de la cible)."""
+    relation = f"read_parquet({sql_string(parquet_path)})"
+    described = con.execute(f"DESCRIBE SELECT * FROM {relation}").fetchall()
+    names = [row[0] for row in described]
+    expected = [feature.name for feature in FEATURES]
+    if names != expected:
+        raise RuntimeError(f"Exported columns {names} differ from the declared features {expected}")
 
+    counts = con.execute(
+        "SELECT count(*), " + ", ".join(f"count({sql_identifier(name)})" for name in names)
+        + f" FROM {relation}"
+    ).fetchone()
+    row_count, present = counts[0], counts[1:]
+    distribution = dict(con.execute(
+        f"SELECT {sql_identifier(TARGET)}, count(*) FROM {relation} GROUP BY 1 ORDER BY 1"
+    ).fetchall())
+
+    def percent(count: int) -> float:
+        return round(100 * count / row_count, 2) if row_count else 0.0
+
+    columns = [
+        {
+            "name": feature.name,
+            "type": sql_type,
+            "unit": feature.unit,
+            "description": feature.description,
+            "missing_pct": percent(row_count - count),
+            "missing_policy": feature.missing_policy,
+        }
+        for feature, (_, sql_type, *_details), count in zip(FEATURES, described, present)
+    ]
+
+    return {
+        "name": parquet_path.name,
+        "freeze_date": freeze_date.isoformat(),
+        "source": relative_path(source),
+        "git_commit": git_commit(),
+        "row_count": row_count,
+        "sha256": sha256(parquet_path),
+        "target": TARGET,
+        "identifier": ID_COLUMN,
+        "filters": list(FILTERS),
+        "target_distribution": {
+            grade: {"count": distribution.get(grade, 0), "pct": percent(distribution.get(grade, 0))}
+            for grade in TARGET_GRADES
+        },
+        "columns": columns,
+        "license": LICENSE,
+        "intended_use": INTENDED_USE,
+    }
+
+
+# ============================================================================
+# EXPORT
+# ============================================================================
+
+def export_features(source: Path = DEFAULT_SOURCE, output_dir: Path = DEFAULT_OUTPUT_DIR,
+                    force: bool = False, freeze_date: date | None = None) -> tuple[Path, Path]:
+    """
+    Écrit l'export daté et son schéma ; retourne leurs chemins.
+
+    Lève `FileExistsError` si l'export du jour existe déjà et que `force` est faux,
+    `FileNotFoundError` si le Parquet source manque, `ValueError` s'il lui manque une colonne.
+    """
+    source, output_dir = Path(source), Path(output_dir)
+    freeze_date = date.today() if freeze_date is None else freeze_date
+    parquet_path, schema_path = export_paths(output_dir, freeze_date)
+
+    if parquet_path.exists() and not force:
+        raise FileExistsError(f"{parquet_path} already exists (use --force to overwrite)")
+    if not source.is_dir() or not any(source.rglob("*.parquet")):
+        raise FileNotFoundError(f"No Parquet dataset found in {source}")
+
+    con = duckdb.connect()
+    try:
+        con.execute("SET threads = 1")           # écriture déterministe : même SHA-256 à chaque exécution
+        open_products(con, source)
+        available = {row[0] for row in con.execute(f"DESCRIBE {VIEW_NAME}").fetchall()}
+        missing = [column for column in required_columns() if column not in available]
+        if missing:
+            raise ValueError(f"Missing columns in {source}: {missing}")
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        parquet_path.unlink(missing_ok=True)
+        con.execute(f"COPY ({features_query()}) TO {sql_string(parquet_path)} "
+                    f"(FORMAT PARQUET, COMPRESSION {COMPRESSION.upper()})")
+
+        contract = describe_export(con, parquet_path, source, freeze_date)
+    finally:
+        con.close()
+
+    schema_path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return parquet_path, schema_path
+
+
+# ============================================================================
+# POINT D'ENTRÉE
+# ============================================================================
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Frozen, dated training export for Nutri-Score prediction.")
+    parser.add_argument("--input", "-i", type=Path, default=DEFAULT_SOURCE,
+                        help="Partitioned Parquet folder (output of convert_parquet.py)")
+    parser.add_argument("--output-dir", "-o", type=Path, default=DEFAULT_OUTPUT_DIR,
+                        help="Destination folder of the export and its schema")
+    parser.add_argument("--force", "-f", action="store_true",
+                        help="Overwrite today's export if it already exists")
     args = parser.parse_args()
 
-    date_str = datetime.now().strftime("%Y%m%d")
-    output_filename = f"features_nutriscore_{date_str}.parquet"
-    output_parquet_path = os.path.join(args.output_dir, output_filename)
-    output_schema_path = os.path.join(args.output_dir, "schema.json")
+    try:
+        parquet_path, schema_path = export_features(args.input, args.output_dir, args.force)
+    except (FileExistsError, FileNotFoundError, ValueError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
 
-    # Vérification de l'existence du fichier
-    if os.path.exists(output_parquet_path) and not args.force:
-        print(
-            f"Erreur : Le fichier '{output_parquet_path}' existe déjà. Utilisez --force pour l'écraser.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    print(f"Chargement des données depuis '{args.input}'...")
-    df = pd.read_parquet(args.input)
-
-    # 1. Filtrage sur le grade Nutri-Score (a-e)
-    valid_grades = ["a", "b", "c", "d", "e"]
-    df = df[df[TARGET_GRADE].astype(str).str.lower().isin(valid_grades)].copy()
-    df[TARGET_GRADE] = df[TARGET_GRADE].astype(str).str.lower()
-
-    # 2. Filtrage sur la présence obligatoire des 7 nutriments clés
-    for col in NUTRIENT_COLS:
-        if col not in df.columns:
-            df[col] = float("nan")
-    df = df.dropna(subset=NUTRIENT_COLS).copy()
-
-    # 3. Filtrage de cohérence physique
-    coherence_mask = (
-        (df["sugars_100g"] <= df["carbohydrates_100g"])
-        & (df["saturated-fat_100g"] <= df["fat_100g"])
-        & (df["energy-kcal_100g"] > 0)
-        & (df["sugars_100g"] >= 0)
-        & (df["carbohydrates_100g"] >= 0)
-        & (df["saturated-fat_100g"] >= 0)
-        & (df["fat_100g"] >= 0)
-    )
-    df = df[coherence_mask].copy()
-
-    # 4. Calcul des ratios
-    df["ratio_sugars_carbs"] = df.apply(
-        lambda r: r["sugars_100g"] / r["carbohydrates_100g"]
-        if r["carbohydrates_100g"] > 0
-        else 0.0,
-        axis=1,
-    )
-    df["ratio_satfat_fat"] = df.apply(
-        lambda r: r["saturated-fat_100g"] / r["fat_100g"]
-        if r["fat_100g"] > 0
-        else 0.0,
-        axis=1,
-    )
-    df["ratio_energy_fat"] = df.apply(
-        lambda r: (r["fat_100g"] * 9.0) / r["energy-kcal_100g"]
-        if r["energy-kcal_100g"] > 0
-        else 0.0,
-        axis=1,
-    )
-
-    # Colonnes sélectionnées pour l'export
-    selected_cols = [
-        ID_COL,
-        CATEGORY_COL,
-        *NUTRIENT_COLS,
-        "additives_n",
-        "nova_group",
-        "ratio_sugars_carbs",
-        "ratio_satfat_fat",
-        "ratio_energy_fat",
-        TARGET_SCORE,
-        TARGET_GRADE
-    ]
-    
-    for col in selected_cols:
-        if col not in df.columns:
-            df[col] = None
-
-    df_out = df[selected_cols].copy()
-
-    # Sauvegarde du fichier parquet
-    os.makedirs(args.output_dir, exist_ok=True)
-    df_out.to_parquet(output_parquet_path, index=False)
-    print(f"Export Parquet réussi : {output_parquet_path}")
-
-    # Répartition de la cible
-    target_counts = df_out[TARGET_GRADE].value_counts().to_dict()
-    target_dist = df_out[TARGET_GRADE].value_counts(normalize=True).to_dict()
-    target_summary = {
-        grade: {
-            "count": int(target_counts.get(grade, 0)),
-            "percentage": round(float(target_dist.get(grade, 0.0)) * 100, 2),
-        }
-        for grade in valid_grades
-    }
-
-    # Description des colonnes & politique de gestion des manquants pour le TP 14
-    columns_meta = [
-        {
-            "name": "code",
-            "type": "string",
-            "unit": None,
-            "description": "Identifiant unique du produit (code-barres).",
-            "missing_pct": round(df_out["code"].isnull().mean() * 100, 2),
-            "missing_policy_tp14": "Identifiant obligatoire (suppression si absent).",
-        },
-        {
-            "name": "rayon",
-            "type": "string / categorical",
-            "unit": None,
-            "description": "Rayon / catégorie du produit.",
-            "missing_pct": round(df_out["rayon"].isnull().mean() * 100, 2),
-            "missing_policy_tp14": "Imputation par catégorie 'Inconnu' ou One-Hot Encoding avec catégorie manquante.",
-        },
-        {
-            "name": "energy-kcal_100g",
-            "type": "float",
-            "unit": "kcal",
-            "description": "Énergie pour 100g.",
-            "missing_pct": round(
-                df_out["energy-kcal_100g"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Filtré à l'export (0%). Imputation par médiane par rayon si applicable.",
-        },
-        {
-            "name": "fat_100g",
-            "type": "float",
-            "unit": "g",
-            "description": "Lipides pour 100g.",
-            "missing_pct": round(df_out["fat_100g"].isnull().mean() * 100, 2),
-            "missing_policy_tp14": "Filtré à l'export (0%). Imputation par médiane par rayon.",
-        },
-        {
-            "name": "saturated-fat_100g",
-            "type": "float",
-            "unit": "g",
-            "description": "Acides gras saturés pour 100g.",
-            "missing_pct": round(
-                df_out["saturated-fat_100g"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Filtré à l'export (0%). Imputation par médiane par rayon.",
-        },
-        {
-            "name": "carbohydrates_100g",
-            "type": "float",
-            "unit": "g",
-            "description": "Glucides pour 100g.",
-            "missing_pct": round(
-                df_out["carbohydrates_100g"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Filtré à l'export (0%). Imputation par médiane par rayon.",
-        },
-        {
-            "name": "sugars_100g",
-            "type": "float",
-            "unit": "g",
-            "description": "Sucres pour 100g.",
-            "missing_pct": round(
-                df_out["sugars_100g"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Filtré à l'export (0%). Imputation par médiane par rayon.",
-        },
-        {
-            "name": "proteins_100g",
-            "type": "float",
-            "unit": "g",
-            "description": "Protéines pour 100g.",
-            "missing_pct": round(
-                df_out["proteins_100g"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Filtré à l'export (0%). Imputation par médiane par rayon.",
-        },
-        {
-            "name": "salt_100g",
-            "type": "float",
-            "unit": "g",
-            "description": "Sel pour 100g.",
-            "missing_pct": round(df_out["salt_100g"].isnull().mean() * 100, 2),
-            "missing_policy_tp14": "Filtré à l'export (0%). Imputation par médiane par rayon.",
-        },
-        {
-            "name": "additives_n",
-            "type": "float / int",
-            "unit": "count",
-            "description": "Nombre d'additifs.",
-            "missing_pct": round(
-                df_out["additives_n"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Imputation par 0 (hypothèse d'absence d'additif).",
-        },
-        {
-            "name": "nova_group",
-            "type": "float / int",
-            "unit": "group (1-4)",
-            "description": "Groupe NOVA de transformation.",
-            "missing_pct": round(df_out["nova_group"].isnull().mean() * 100, 2),
-            "missing_policy_tp14": "Imputation par la mode par rayon ou classe dédiée.",
-        },
-        {
-            "name": "ratio_sugars_carbs",
-            "type": "float",
-            "unit": "ratio [0-1]",
-            "description": "Part des sucres dans les glucides (sugars / carbohydrates).",
-            "missing_pct": round(
-                df_out["ratio_sugars_carbs"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Valeur fixée à 0 si glucides = 0.",
-        },
-        {
-            "name": "ratio_satfat_fat",
-            "type": "float",
-            "unit": "ratio [0-1]",
-            "description": "Part des acides gras saturés dans les lipides (saturated-fat / fat).",
-            "missing_pct": round(
-                df_out["ratio_satfat_fat"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Valeur fixée à 0 si lipides = 0.",
-        },
-        {
-            "name": "ratio_energy_fat",
-            "type": "float",
-            "unit": "ratio",
-            "description": "Part de l'énergie issue des lipides (9 * fat / energy-kcal).",
-            "missing_pct": round(
-                df_out["ratio_energy_fat"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Valeur fixée à 0 si énergie = 0.",
-        },
-        {
-            "name": "nutriscore_score",
-            "type": "float / int",
-            "unit": "points",
-            "description": "Score numérique continu du Nutri-Score.",
-            "missing_pct": round(
-                df_out["nutriscore_score"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Cible secondaire pour modèle de régression.",
-        },
-        {
-            "name": "nutriscore_grade",
-            "type": "string",
-            "unit": "grade (a-e)",
-            "description": "Classe du Nutri-Score (A à E) - Cible principale.",
-            "missing_pct": round(
-                df_out["nutriscore_grade"].isnull().mean() * 100, 2
-            ),
-            "missing_policy_tp14": "Cible principale (0% manquant requis).",
-        },
-    ]
-
-    schema_data = {
-        "nom": output_filename,
-        "date_de_gel": datetime.now().isoformat(),
-        "source": "Open Food Facts / NutriScope Data",
-        "commit_git": get_git_commit(),
-        "nombre_de_lignes": len(df_out),
-        "sha256": compute_sha256(output_parquet_path),
-        "cible": TARGET_GRADE,
-        "identifiant": ID_COL,
-        "filtres_appliques": [
-            "nutriscore_grade présent et valide (a, b, c, d, e)",
-            "Présence obligatoire des 7 nutriments clés",
-            "Cohérence physique : sucres_100g <= carbohydrates_100g",
-            "Cohérence physique : saturated-fat_100g <= fat_100g",
-            "Cohérence physique : energy-kcal_100g > 0",
-            "Nutriments >= 0",
-        ],
-        "repartition_cible": target_summary,
-        "colonnes": columns_meta,
-        "licence": "Open Database License (ODbL)",
-        "usage_prevu": "Jeu de données de features nettoyé pour l'entraînement des modèles de classification/régression du Nutri-Score (TP 14).",
-    }
-
-    with open(output_schema_path, "w", encoding="utf-8") as f:
-        json.dump(schema_data, f, ensure_ascii=False, indent=2)
-
-    print(f"Génération du fichier schema.json réussie : {output_schema_path}")
+    contract = json.loads(schema_path.read_text(encoding="utf-8"))
+    print(f"{contract['row_count']:,} rows -> {parquet_path}")
+    print(f"Schema -> {schema_path} (sha256 {contract['sha256'][:12]}...)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
