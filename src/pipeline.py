@@ -17,7 +17,7 @@ from pathlib import Path
 from cleaning import DEFAULT_STRATEGY, clean
 from create_database import init_database, load_products
 from options import CONFIG, DATA_PATH
-from reader import read_products
+from reader import read_products, CHUNKSIZE
 from report import generate_report
 
 STEPS = 5
@@ -28,7 +28,7 @@ def step(number: int, title: str) -> None:
 
 
 def main(csv_in: os.PathLike, csv_out: os.PathLike | None, report_path: os.PathLike,
-         sep: str = ",", database: dict | None = None) -> int:
+         sep: str = ",", database: dict | None = None, chunksize: int=CHUNKSIZE) -> int:
     """
     Pipeline complet.
 
@@ -52,7 +52,7 @@ def main(csv_in: os.PathLike, csv_out: os.PathLike | None, report_path: os.PathL
 
     step(1, f"Lecture de {csv_in}...")
     try:
-        df_raw = read_products(csv_in, CONFIG["columns"], sep=sep)
+        df_raw = read_products(csv_in, CONFIG["columns"], sep=sep, chunksize=chunksize)
         print(f"  ✓ {len(df_raw):,} lignes, {len(df_raw.columns)} colonnes")
     except FileNotFoundError:
         print(f"  ✗ Fichier introuvable : {csv_in}")
@@ -113,6 +113,7 @@ if __name__ == "__main__":
                         help="Mot de passe ; demandé de façon masquée s'il est omis")
     parser.add_argument("--host", default="localhost")
     parser.add_argument("--port", type=int, default=5432)
+    parser.add_argument("--chunksize", type=int, default=CHUNKSIZE)
     args = parser.parse_args()
 
     # Traite les caractères d'échappement (ex. "\t")
