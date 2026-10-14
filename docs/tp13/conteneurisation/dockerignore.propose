@@ -1,0 +1,13 @@
+# Ne JAMAIS envoyer ceci au démon Docker (taille, secrets, bruit)
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.env
+data/
+notebooks/
+docs/
+brief/
+*.ipynb

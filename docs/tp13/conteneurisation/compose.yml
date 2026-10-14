@@ -1,0 +1,50 @@
+# BROUILLON NON TESTÉ — à relire avant usage.
+# Deux services : la base PostgreSQL (db) et le pipeline (pipeline).
+#   docker compose run --rm pipeline all          # tout, du brut aux exports
+#   docker compose run --rm pipeline parquet      # une étape seule
+#   docker compose down -v                        # tout supprimer (y compris la base)
+name: nutriscope
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Définir DB_PASSWORD dans le fichier .env (copier .env.example)}
+      POSTGRES_DB: nutriscope            # même nom que database_options.ini
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:                          # le pipeline attend que la base réponde vraiment
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    # Port NON publié : le pipeline joint la base par le réseau Compose (évite le conflit avec un PostgreSQL local).
+    # Pour s'y connecter depuis l'hôte (DBeaver, psql) : décommenter, en 5433 pour éviter le 5432 local.
+    # ports: ["5433:5432"]
+
+  pipeline:
+    build:
+      context: .
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db                         # PAS localhost : dans un conteneur, localhost = lui-même
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      NUTRISCOPE_SOURCE: ${NUTRISCOPE_SOURCE:-/app/data-nutriscope/echantillon_france.csv}
+      NUTRISCOPE_SEP: ${NUTRISCOPE_SEP:-,}
+      NUTRISCOPE_DATE: ${NUTRISCOPE_DATE:-}
+      TZ: Europe/Paris
+    volumes:
+      - ./data:/app/data                  # sorties : restent sur ta machine, hors Git
+      # Extrait complet (lecture seule) — décommenter et adapter :
+      # - ./data/en.openfoodfacts.org.products.csv:/app/data/source/off.csv:ro
+
+volumes:
+  pgdata:
