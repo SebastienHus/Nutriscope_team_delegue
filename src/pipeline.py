@@ -126,4 +126,4 @@ if __name__ == "__main__":
             "host": args.host,
             "port": args.port,
         }
-    sys.exit(main(args.csv_in, args.csv_out, args.report_path, sep=separator, database=database))
+    sys.exit(main(args.csv_in, args.csv_out, args.report_path, sep=separator, database=database, chunksize=args.chunksize))
