@@ -13,6 +13,7 @@ import os
 import sys
 import traceback
 from pathlib import Path
+import pandas as pd
 
 from cleaning import DEFAULT_STRATEGY, clean
 from create_database import init_database, load_products
@@ -22,6 +23,28 @@ from report import generate_report
 
 STEPS = 5
 
+class Pipeline:
+    def pipeline(self) -> bool:
+        data = self.load()
+        cleaned_data = self.clean_data(data)
+        self.load_database(cleaned_data)
+        self.parquet(cleaned_data)
+        self.exports(cleaned_data)
+
+    def load(self) -> pd.DataFrame:
+        pass
+
+    def clean_data(self) -> pd.DataFrame:
+        pass
+
+    def load_database(self) -> os.PathLike:
+        pass
+
+    def parquet(self) -> os.PathLike:
+        pass
+
+    def exports(self) -> os.PathLike:
+        pass
 
 def step(number: int, title: str) -> None:
     print(f"\n[{number}/{STEPS}] {title}")

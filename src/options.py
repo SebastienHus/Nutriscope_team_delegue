@@ -18,3 +18,5 @@ def read_database_options(filename: os.PathLike):
 CONFIG = read_database_options(
     Path(__file__).with_name("database_options.ini")
 )
+
+RANDOM_SEED = CONFIG["training"].getint("seed")

@@ -13,3 +13,4 @@ nbconvert
 duckdb
 umap-learn
 pyarrow
+shap
