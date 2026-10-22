@@ -14,3 +14,4 @@ duckdb
 umap-learn
 pyarrow
 shap
+imblearn

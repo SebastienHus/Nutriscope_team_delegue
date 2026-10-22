@@ -2,6 +2,8 @@
 /data/
 work
 tree.txt
+# Pour l'instant, à changer au besoin
+models
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

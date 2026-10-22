@@ -321,6 +321,7 @@ def main() -> int:
                         help="Overwrite today's export if it already exists")
     args = parser.parse_args()
 
+    # TODO: enlever grade unknown, not-applicable + ajouter colonne split avant la conversion en parquet
     try:
         parquet_path, schema_path = export_features(args.input, args.output_dir, args.force)
     except (FileExistsError, FileNotFoundError, ValueError) as error:
