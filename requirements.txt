@@ -13,5 +13,9 @@ nbconvert
 duckdb
 umap-learn
 pyarrow
-shap
+shap==0.52
 imblearn
+xgboost==3.4
+lightgbm==4.7
+catboost==1.2
+optuna==5.0
