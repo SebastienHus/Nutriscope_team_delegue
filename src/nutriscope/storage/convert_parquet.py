@@ -7,11 +7,13 @@ ajoute la clé de partition `pnns_group` (slug de `pnns_groups_1`, `unknown` si 
 (type et justification de chaque colonne, clé de partition, compression, nombre de lignes,
 licence) est écrit à côté du dossier, dans `schema_products.json`.
 
-La conversion est rejouable : le dossier cible est supprimé avant chaque écriture, aucune
-partition orpheline ne subsiste.
+La conversion est rejouable et idempotente : le dossier cible est supprimé avant chaque
+écriture (aucune partition orpheline ne subsiste), les lignes sont triées par code et
+écrites sur un seul thread (mêmes octets à chaque exécution). Un marqueur `_SUCCESS` est
+écrit en dernier dans le dossier : un dossier sans marqueur est une écriture interrompue.
 
-    python src/storage/convert_parquet.py
-    python src/storage/convert_parquet.py data/clean/echantillon.csv data/parquet/products
+    python -m nutriscope.storage.convert_parquet
+    python -m nutriscope.storage.convert_parquet data/clean/echantillon.csv data/parquet/products
 
 Données : © Open Food Facts contributors — ODbL.
 """
@@ -24,23 +26,18 @@ from pathlib import Path
 
 import duckdb
 
-# Les scripts de `src/` s'importent à plat (`import schema`), comme dans `pipeline.py`
-SRC_PATH = Path(__file__).resolve().parents[1]
-if str(SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(SRC_PATH))
-
-from cleaning import MISSING_FLAG_SUFFIX, NUTRIENT_SUFFIX, TIMESTAMP_COLUMNS  # noqa: E402
-from options import DATA_PATH  # noqa: E402
-from schema import UNKNOWN_GROUP  # noqa: E402
+from ..cleaning import MISSING_FLAG_SUFFIX, NUTRIENT_SUFFIX, TIMESTAMP_COLUMNS
+from ..options import DATA_PATH, ROOT_PATH
+from ..schema import UNKNOWN_GROUP
 
 # ============================================================================
 # CONSTANTES
 # ============================================================================
 
-ROOT_PATH = SRC_PATH.parent
 DEFAULT_SOURCE = DATA_PATH / "clean" / "en.openfoodfacts.org.products.csv"
 DEFAULT_DESTINATION = DATA_PATH / "parquet" / "products"
 SCHEMA_FILENAME = "schema_products.json"
+SUCCESS_MARKER = "_SUCCESS"                          # écrit en dernier : le dossier est complet
 
 VIEW_NAME = "products"
 GROUP_COLUMN = "pnns_groups_1"
@@ -125,6 +122,11 @@ def relative_path(path: Path) -> str:
 # CONVERSION
 # ============================================================================
 
+def is_complete(root: Path) -> bool:
+    """Vrai si le dossier partitionné porte son marqueur `_SUCCESS` (écriture terminée)."""
+    return (Path(root) / SUCCESS_MARKER).is_file()
+
+
 def open_products(con: duckdb.DuckDBPyConnection, root: Path = DEFAULT_DESTINATION,
                   view: str = VIEW_NAME) -> None:
     """Crée (ou remplace) la vue `products` sur le jeu partitionné, clé de partition en texte."""
@@ -135,20 +137,24 @@ def open_products(con: duckdb.DuckDBPyConnection, root: Path = DEFAULT_DESTINATI
     )
 
 
-def to_parquet(source: Path = DEFAULT_SOURCE, destination: Path = DEFAULT_DESTINATION) -> Path:
+def to_parquet(source: Path = DEFAULT_SOURCE, destination: Path = DEFAULT_DESTINATION,
+               schema_path: Path | None = None) -> Path:
     """
-    Source nettoyée → Parquet partitionné par rayon, puis `schema_products.json` à côté.
+    Source nettoyée → Parquet partitionné par rayon, puis son schéma, puis `_SUCCESS`.
 
-    Le dossier cible est supprimé avant l'écriture (conversion rejouable). Lève
+    Le schéma est écrit dans `schema_path` (par défaut `schema_products.json` à côté du
+    dossier). Le dossier cible est supprimé avant l'écriture (conversion rejouable). Lève
     `FileNotFoundError` si la source manque et `ValueError` si `pnns_groups_1` est absente.
     Retourne le chemin du schéma écrit.
     """
     source, destination = Path(source), Path(destination)
+    schema_path = destination.parent / SCHEMA_FILENAME if schema_path is None else Path(schema_path)
     if not source.exists():
         raise FileNotFoundError(f"Source not found: {source}")
 
     con = duckdb.connect()
     try:
+        con.execute("SET threads = 1")           # écriture déterministe : mêmes octets à chaque exécution
         relation = source_relation(source)
         columns = [row[0] for row in con.execute(f"DESCRIBE SELECT * FROM {relation}").fetchall()]
         if GROUP_COLUMN not in columns:
@@ -169,22 +175,27 @@ def to_parquet(source: Path = DEFAULT_SOURCE, destination: Path = DEFAULT_DESTIN
                     {casts},
                     {partition_expression()} AS {PARTITION_COLUMN}
                 FROM {relation}
+                ORDER BY {sql_identifier("code")}
             )
             TO {sql_string(destination)}
             (FORMAT PARQUET, PARTITION_BY ({PARTITION_COLUMN}), COMPRESSION {COMPRESSION.upper()},
              OVERWRITE_OR_IGNORE)
         """)
 
-        return write_schema(con, source, destination)
+        written = write_schema(con, source, destination, schema_path)
     finally:
         con.close()
 
+    (destination / SUCCESS_MARKER).touch()      # en dernier : le dossier est complet
+    return written
 
-def write_schema(con: duckdb.DuckDBPyConnection, source: Path, destination: Path) -> Path:
+
+def write_schema(con: duckdb.DuckDBPyConnection, source: Path, destination: Path,
+                 schema_path: Path | None = None) -> Path:
     """
-    Écrit `schema_products.json` à côté du dossier partitionné. Les types sont relus dans
-    les Parquet écrits (pas recopiés de la requête) ; pas d'horodatage : le fichier est
-    réécrit avec le Parquet à chaque conversion.
+    Écrit le schéma du dossier partitionné (`schema_products.json` à côté par défaut).
+    Les types sont relus dans les Parquet écrits (pas recopiés de la requête) ; pas
+    d'horodatage : le fichier est réécrit avec le Parquet à chaque conversion.
     """
     open_products(con, destination)
     row_count = con.execute(f"SELECT count(*) FROM {VIEW_NAME}").fetchone()[0]
@@ -214,7 +225,7 @@ def write_schema(con: duckdb.DuckDBPyConnection, source: Path, destination: Path
         "license": LICENSE,
     }
 
-    schema_path = destination.parent / SCHEMA_FILENAME
+    schema_path = destination.parent / SCHEMA_FILENAME if schema_path is None else Path(schema_path)
     schema_path.write_text(json.dumps(schema, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return schema_path
 

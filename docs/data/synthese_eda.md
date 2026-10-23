@@ -7,7 +7,7 @@
 ## Contexte
 
 - **Données** : échantillon partagé `data-nutriscope/echantillon_france.csv` (8 689 produits).
-- **Nettoyage** : pipeline du TP 9 (`src/cleaning.py`), validé contre `schema.OUTPUT_SCHEMA` ;
+- **Nettoyage** : pipeline du TP 9 (`src/nutriscope/cleaning.py`), validé contre `schema.OUTPUT_SCHEMA` ;
   8 689 → 5 316 produits.
 - **Périmètre des comparaisons par rayon** : 5 108 produits, hors rayon `unknown`.
 - **Rayon `unknown`** : 21,6 % de l'échantillon brut, 3,9 % après nettoyage ; écarté des

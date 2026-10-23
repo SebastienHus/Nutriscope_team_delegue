@@ -1,14 +1,16 @@
 """
-Export d'entraînement figé pour la prédiction du Nutri-Score — TP 12.
+Export d'entraînement figé pour la prédiction du Nutri-Score — TP 12, split du TP 13.
 
 Lit le Parquet partitionné produit par `convert_parquet.py`, ne garde que les produits
 utilisables pour prédire le Nutri-Score, et écrit :
 
 - `data/exports/features_nutriscore_<AAAAMMJJ>.parquet` : identifiant, rayon, nutriments,
-  `additives_n`, `nova_group`, trois ratios, `nutriscore_score` et la cible `nutriscore_grade` ;
+  `additives_n`, `nova_group`, trois ratios, `nutriscore_score`, la cible `nutriscore_grade`
+  et la colonne `split` (`train` / `test`) ;
 - `data/exports/features_nutriscore_<AAAAMMJJ>.schema.json` : le contrat de cet export
   (date de gel, source, commit, nombre de lignes, SHA-256, filtres, répartition de la cible,
-  description et politique de manquants de chaque colonne, licence, usage prévu).
+  méthode et effectifs du split par grade, règle d'usage, description et politique de
+  manquants de chaque colonne, licence, usage prévu).
 
 Un produit est utilisable si son grade est a-e, si ses sept nutriments clés sont présents
 et s'il respecte les cohérences du nettoyage (`schema.sugars_within_carbohydrates`,
@@ -16,11 +18,15 @@ et s'il respecte les cohérences du nettoyage (`schema.sugars_within_carbohydrat
 
 L'export est figé : il refuse d'écraser un fichier existant (`FileExistsError`), sauf avec
 `--force`. Les lignes sont triées par code et écrites sur un seul thread : relancer avec
-`--force` sur le même Parquet produit la même empreinte SHA-256. Le split train / test
-n'est pas fait ici (TP 13).
+`--force` sur le même Parquet produit la même empreinte SHA-256.
 
-    python src/storage/export_features.py
-    python src/storage/export_features.py -i data/parquet/products -o data/exports --force
+Le split (TP 13) est stratifié sur `nutriscore_grade` : dans chaque grade, les codes triés
+sont permutés par un générateur NumPy local initialisé avec la graine (42), et les 20 %
+premiers vont au test. L'affectation est donc identique produit par produit d'une
+exécution à l'autre, et chaque grade a la même part de test.
+
+    python -m nutriscope.storage.export_features
+    python -m nutriscope.storage.export_features -i data/parquet/products -o data/exports --force
 
 Données : © Open Food Facts contributors — ODbL.
 """
@@ -35,20 +41,17 @@ from datetime import date
 from pathlib import Path
 
 import duckdb
+import numpy as np
+import pandas as pd
 
-# Les scripts de `src/` s'importent à plat (`import schema`), comme dans `pipeline.py`
-SRC_PATH = Path(__file__).resolve().parents[1]
-if str(SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(SRC_PATH))
-
-from options import DATA_PATH  # noqa: E402
-from schema import KCAL_PER_GRAM, KEY_NUTRIENTS, NUTRISCORE_GRADES, ROUNDING_TOLERANCE_G  # noqa: E402
-from storage.convert_parquet import (  # noqa: E402
+from ..options import DATA_PATH, RANDOM_SEED, ROOT_PATH, TEST_SIZE
+from ..schema import KCAL_PER_GRAM, KEY_NUTRIENTS, NUTRISCORE_GRADES, ROUNDING_TOLERANCE_G
+from .convert_parquet import (
     DEFAULT_DESTINATION,
     LICENSE,
     PARTITION_COLUMN,
-    ROOT_PATH,
     VIEW_NAME,
+    is_complete,
     open_products,
     relative_path,
     sql_identifier,
@@ -70,13 +73,20 @@ ID_COLUMN = "code"
 TARGET = "nutriscore_grade"
 SCORE = "nutriscore_score"
 TARGET_GRADES = tuple(grade for grade in NUTRISCORE_GRADES if grade != "not-applicable")
+SPLIT = "split"
+TRAIN, TEST = "train", "test"
 
 KCAL = "energy-kcal_100g"
 FAT_KCAL_PER_GRAM = KCAL_PER_GRAM["fat_100g"]
 
 INTENDED_USE = ("Entraînement et évaluation des modèles de prédiction du Nutri-Score "
-                "(classification du grade, régression du score) — TP 13 (split) et TP 14.")
+                "(classification du grade, régression du score) — phase 4 (TP 14 à 16).")
 NO_MISSING = "Aucun manquant : filtré à l'export."
+SPLIT_METHOD = ("Stratifié sur `nutriscore_grade` : dans chaque grade, codes triés puis permutés "
+                "par `numpy.random.default_rng(seed)` ; les `round(n × test_size)` premiers vont au test.")
+USAGE_RULE = ("`fit` sur le train seulement ; le test n'est regardé qu'une fois, à la fin ; "
+              "la validation croisée se fait à l'intérieur du train. Ne jamais recalculer le split.")
+FORBIDDEN_FEATURES = (ID_COLUMN, SCORE, SPLIT)
 
 
 @dataclass(frozen=True)
@@ -136,6 +146,11 @@ FEATURES = (
     Feature(TARGET, "grade a-e", "Grade Nutri-Score : cible principale (classification).", NO_MISSING),
 )
 
+# Colonne ajoutée après la requête, par `assign_split` (jamais une feature)
+SPLIT_FEATURE = Feature(SPLIT, None, f"Jeu d'appartenance (`{TRAIN}` ou `{TEST}`), figé : "
+                        "ne jamais le recalculer ni l'utiliser comme feature.", NO_MISSING)
+EXPORT_COLUMNS = (*FEATURES, SPLIT_FEATURE)
+
 FILTERS = (
     f"`{TARGET}` dans {list(TARGET_GRADES)}",
     f"sept nutriments clés présents : {list(KEY_NUTRIENTS)}",
@@ -178,6 +193,35 @@ ORDER BY {sql_identifier(ID_COLUMN)}
 
 
 # ============================================================================
+# SPLIT TRAIN / TEST
+# ============================================================================
+
+def assign_split(codes: pd.Series, grades: pd.Series, test_size: float = TEST_SIZE,
+                 seed: int = RANDOM_SEED) -> pd.Series:
+    """
+    Split train / test stratifié sur le grade, reproductible produit par produit.
+
+    Pour chaque grade, les codes sont triés, puis permutés par un générateur local
+    `numpy.random.default_rng(seed)` : l'affectation d'un produit ne dépend que des codes
+    de son grade, jamais de l'ordre d'arrivée des lignes ni d'un hasard global partagé.
+    Les `round(n × test_size)` premiers codes de la permutation vont au test.
+    Retourne une série `train` / `test` alignée sur `codes`.
+
+    NOTE: Un produit sans grade resterait en train. Ça n’arrive pas dans le pipeline :
+    l’export ne garde que les grades a à e.
+    """
+    if not codes.is_unique:
+        raise ValueError("Split refused: product codes are not unique")
+    split = pd.Series(TRAIN, index=codes.index, dtype=object)
+    for grade in sorted(grades.dropna().unique()):
+        members = codes[grades == grade].sort_values(kind="stable")
+        n_test = int(round(len(members) * test_size))
+        chosen = np.random.default_rng(seed).permutation(len(members))[:n_test]
+        split.loc[members.index[chosen]] = TEST
+    return split
+
+
+# ============================================================================
 # MÉTADONNÉES
 # ============================================================================
 
@@ -216,7 +260,7 @@ def describe_export(con: duckdb.DuckDBPyConnection, parquet_path: Path, source: 
     relation = f"read_parquet({sql_string(parquet_path)})"
     described = con.execute(f"DESCRIBE SELECT * FROM {relation}").fetchall()
     names = [row[0] for row in described]
-    expected = [feature.name for feature in FEATURES]
+    expected = [feature.name for feature in EXPORT_COLUMNS]
     if names != expected:
         raise RuntimeError(f"Exported columns {names} differ from the declared features {expected}")
 
@@ -228,6 +272,12 @@ def describe_export(con: duckdb.DuckDBPyConnection, parquet_path: Path, source: 
     distribution = dict(con.execute(
         f"SELECT {sql_identifier(TARGET)}, count(*) FROM {relation} GROUP BY 1 ORDER BY 1"
     ).fetchall())
+    split_counts = {
+        (grade, part): count for grade, part, count in con.execute(
+            f"SELECT {sql_identifier(TARGET)}, {sql_identifier(SPLIT)}, count(*) FROM {relation} "
+            "GROUP BY 1, 2 ORDER BY 1, 2"
+        ).fetchall()
+    }
 
     def percent(count: int) -> float:
         return round(100 * count / row_count, 2) if row_count else 0.0
@@ -241,8 +291,13 @@ def describe_export(con: duckdb.DuckDBPyConnection, parquet_path: Path, source: 
             "missing_pct": percent(row_count - count),
             "missing_policy": feature.missing_policy,
         }
-        for feature, (_, sql_type, *_details), count in zip(FEATURES, described, present)
+        for feature, (_, sql_type, *_details), count in zip(EXPORT_COLUMNS, described, present)
     ]
+
+    def split_entry(grade: str) -> dict:
+        train, test = split_counts.get((grade, TRAIN), 0), split_counts.get((grade, TEST), 0)
+        total = train + test
+        return {TRAIN: train, TEST: test, "test_pct": round(100 * test / total, 2) if total else 0.0}
 
     return {
         "name": parquet_path.name,
@@ -258,6 +313,20 @@ def describe_export(con: duckdb.DuckDBPyConnection, parquet_path: Path, source: 
             grade: {"count": distribution.get(grade, 0), "pct": percent(distribution.get(grade, 0))}
             for grade in TARGET_GRADES
         },
+        "split": {
+            "column": SPLIT,
+            "method": SPLIT_METHOD,
+            "stratified_on": TARGET,
+            "seed": RANDOM_SEED,
+            "test_size": TEST_SIZE,
+            "counts": {
+                TRAIN: sum(count for (_, part), count in split_counts.items() if part == TRAIN),
+                TEST: sum(count for (_, part), count in split_counts.items() if part == TEST),
+            },
+            "counts_by_grade": {grade: split_entry(grade) for grade in TARGET_GRADES},
+            "usage_rule": USAGE_RULE,
+        },
+        "forbidden_features": [*FORBIDDEN_FEATURES, "product_name", "brands"],
         "columns": columns,
         "license": LICENSE,
         "intended_use": INTENDED_USE,
@@ -274,7 +343,8 @@ def export_features(source: Path = DEFAULT_SOURCE, output_dir: Path = DEFAULT_OU
     Écrit l'export daté et son schéma ; retourne leurs chemins.
 
     Lève `FileExistsError` si l'export du jour existe déjà et que `force` est faux,
-    `FileNotFoundError` si le Parquet source manque, `ValueError` s'il lui manque une colonne.
+    `FileNotFoundError` si le Parquet source manque ou est incomplet (pas de `_SUCCESS`),
+    `ValueError` s'il lui manque une colonne.
     """
     source, output_dir = Path(source), Path(output_dir)
     freeze_date = date.today() if freeze_date is None else freeze_date
@@ -284,6 +354,9 @@ def export_features(source: Path = DEFAULT_SOURCE, output_dir: Path = DEFAULT_OU
         raise FileExistsError(f"{parquet_path} already exists (use --force to overwrite)")
     if not source.is_dir() or not any(source.rglob("*.parquet")):
         raise FileNotFoundError(f"No Parquet dataset found in {source}")
+    if not is_complete(source):
+        raise FileNotFoundError(f"Incomplete Parquet dataset (no _SUCCESS marker) in {source}: "
+                                "run the conversion again")
 
     con = duckdb.connect()
     try:
@@ -294,10 +367,24 @@ def export_features(source: Path = DEFAULT_SOURCE, output_dir: Path = DEFAULT_OU
         if missing:
             raise ValueError(f"Missing columns in {source}: {missing}")
 
+        con.execute(f"CREATE TEMP TABLE features AS {features_query()}")
+        assignment = con.execute(
+            f"SELECT {sql_identifier(ID_COLUMN)}, {sql_identifier(TARGET)} FROM features "
+            f"ORDER BY {sql_identifier(ID_COLUMN)}"
+        ).df()
+        assignment[SPLIT] = assign_split(assignment[ID_COLUMN], assignment[TARGET])
+        con.register("split_assignment", assignment[[ID_COLUMN, SPLIT]])
+
         output_dir.mkdir(parents=True, exist_ok=True)
         parquet_path.unlink(missing_ok=True)
-        con.execute(f"COPY ({features_query()}) TO {sql_string(parquet_path)} "
-                    f"(FORMAT PARQUET, COMPRESSION {COMPRESSION.upper()})")
+        con.execute(f"""
+            COPY (
+                SELECT features.*, split_assignment.{sql_identifier(SPLIT)}
+                FROM features
+                JOIN split_assignment USING ({sql_identifier(ID_COLUMN)})
+                ORDER BY {sql_identifier(ID_COLUMN)}
+            ) TO {sql_string(parquet_path)} (FORMAT PARQUET, COMPRESSION {COMPRESSION.upper()})
+        """)
 
         contract = describe_export(con, parquet_path, source, freeze_date)
     finally:
@@ -321,7 +408,6 @@ def main() -> int:
                         help="Overwrite today's export if it already exists")
     args = parser.parse_args()
 
-    # TODO: enlever grade unknown, not-applicable + ajouter colonne split avant la conversion en parquet
     try:
         parquet_path, schema_path = export_features(args.input, args.output_dir, args.force)
     except (FileExistsError, FileNotFoundError, ValueError) as error:
@@ -331,6 +417,8 @@ def main() -> int:
     contract = json.loads(schema_path.read_text(encoding="utf-8"))
     print(f"{contract['row_count']:,} rows -> {parquet_path}")
     print(f"Schema -> {schema_path} (sha256 {contract['sha256'][:12]}...)")
+    counts = contract["split"]["counts"]
+    print(f"Split (seed {contract['split']['seed']}): {counts[TRAIN]:,} train / {counts[TEST]:,} test")
     return 0
 
 

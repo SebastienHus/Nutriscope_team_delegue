@@ -1,11 +1,6 @@
 """
-Configuration pytest pour le module de nettoyage — TP 9
+Configuration pytest commune.
+
+Le package `nutriscope` s'importe tel qu'installé par `pip install -e .` ; à défaut,
+`pythonpath = ["src"]` (dans `pyproject.toml`) le rend importable pendant les tests.
 """
-
-import sys
-from pathlib import Path
-
-# Ajouter src/ au path pour importer cleaning et report
-ROOT = Path(__file__).parent.parent / "src"
-print(ROOT)
-sys.path.insert(0, str(ROOT))

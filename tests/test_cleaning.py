@@ -13,8 +13,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import schema
-from cleaning import (
+from nutriscope import schema
+from nutriscope.cleaning import (
     CLEANING_RULES,
     DEFAULT_STRATEGY,
     Report,

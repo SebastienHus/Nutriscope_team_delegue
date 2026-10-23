@@ -1,32 +1,35 @@
-# Façade mince sur la CLI : la logique vit dans nutriscope/pipeline.py.
+# Façade mince sur la CLI : la logique vit dans src/nutriscope/pipeline.py.
 # Sous Windows, `make` n'est pas installé par défaut : utiliser directement
 #   python -m nutriscope.pipeline all
 PY ?= python
 export PYTHONUTF8 = 1
 
-.PHONY: pipeline load clean_data load_database parquet exports test clean docker docker-test
+STEPS = load clean_data load_database parquet exports
 
-venv:
-	$(PY) -m venv .venv
-	.venv/Scripts/Activate.ps1
-	$(PY) install -r requirements.txt
+.PHONY: install pipeline extrait $(STEPS) test clean clean-all
+
+# Dans un venv activé : dépendances épinglées + package nutriscope en mode éditable
+install:
+	$(PY) -m pip install -r requirements.txt
+	$(PY) -m pip install -e .
 
 pipeline:
 	$(PY) -m nutriscope.pipeline all
 
-load clean_data load_database parquet exports:
+# Flux complet sur l'extrait (data/en.openfoodfacts.org.products.csv), pour le tableau des durées
+extrait:
+	$(PY) -m nutriscope.pipeline all --full
+
+$(STEPS):
 	$(PY) -m nutriscope.pipeline $@
 
 test:
 	$(PY) -m pytest -q
 
-# Supprime UNIQUEMENT les dossiers produits par le pipeline (jamais les CSV de data/ à la racine).
-# Les exports figés ne sont supprimés qu'avec --include-exports.
+# Supprime UNIQUEMENT les sorties datées du pipeline (jamais les CSV sources de data/).
+# Les exports figés ne sont supprimés que par clean-all.
 clean:
-	$(PY) -m nutriscope.pipeline clean
+	$(PY) -m nutriscope.pipeline purge
 
-docker:
-	docker compose run --rm --build pipeline all
-
-docker-test:
-	docker compose run --rm --entrypoint python pipeline -m pytest -q
+clean-all:
+	$(PY) -m nutriscope.pipeline purge --include-exports

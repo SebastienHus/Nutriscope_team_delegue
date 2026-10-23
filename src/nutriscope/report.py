@@ -5,8 +5,8 @@ Rapport avant/après structuré et committable.
 
 import pandas as pd
 from datetime import datetime
-import schema
-from cleaning import Report, type_columns
+from . import schema
+from .cleaning import Report, type_columns
 
 
 def generate_report(
@@ -130,7 +130,7 @@ def generate_report(
 
 ## Notes
 
-- Ce rapport est **généré automatiquement** par `python src/pipeline.py`
+- Ce rapport est **généré automatiquement** par `python -m nutriscope.pipeline clean_data`
 - Le pipeline peut être rejoué sans intervention manuelle
 - Les données brutes originales sont archivées
 

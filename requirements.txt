@@ -1,21 +1,36 @@
-sqlparse
-sqlalchemy
-sqlalchemy-utils
-pandas
-numpy
-seaborn
-matplotlib
-psycopg
-pytest
-scikit-learn
-pandera
-nbconvert
-duckdb
-umap-learn
-pyarrow
-shap==0.52
-imblearn
-xgboost==3.4
-lightgbm==4.7
-catboost==1.2
-optuna==5.0
+# Versions épinglées sur le venv de l'équipe (Python 3.12) ; bibliothèques de boosting : versions du TP 15.
+# Installation : pip install -r requirements.txt && pip install -e .
+
+# Données et stockage
+pandas==3.0.6
+numpy==2.5.3
+scipy==1.18.1
+pyarrow==26.0.0
+duckdb==1.5.6
+pandera==0.34.1
+
+# Base PostgreSQL
+sqlalchemy==2.1.4
+sqlalchemy-utils==0.43.0
+sqlparse==0.6.0
+psycopg[binary]==3.3.6
+
+# Visualisation et notebooks
+matplotlib==3.11.2
+seaborn==0.13.2
+umap-learn==0.5.12
+nbconvert==7.17.1
+ipykernel==7.4.0
+
+# Machine learning
+scikit-learn==1.9.1
+joblib==1.6.0
+imbalanced-learn
+xgboost==3.4.*
+lightgbm==4.7.*
+catboost==1.2.*
+optuna==5.0.*
+shap==0.52.*
+
+# Tests
+pytest==9.1.1

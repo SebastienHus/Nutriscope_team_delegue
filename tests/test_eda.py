@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from eda import (
+from nutriscope.eda import (
     business_inconsistencies,
     cohens_d,
     compare_by_group,

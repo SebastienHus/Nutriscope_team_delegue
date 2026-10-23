@@ -1,9 +1,13 @@
 .vscode
+# Sorties du pipeline : régénérables, jamais versionnées
 /data/
 work
 tree.txt
-# Pour l'instant, à changer au besoin
+# Modèles entraînés et artefacts des bibliothèques de boosting
 models
+catboost_info/
+# Mots de passe (base PostgreSQL, Grafana)
+secrets/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -7,6 +7,7 @@ une fois par session, jamais sur l'extrait complet.
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -17,19 +18,20 @@ import duckdb
 import pandas as pd
 import pytest
 
-import schema
-from cleaning import clean
-from options import CONFIG
-from reader import read_products
-from storage.convert_parquet import (
+from nutriscope import schema
+from nutriscope.cleaning import clean
+from nutriscope.options import CONFIG, ROOT_PATH
+from nutriscope.reader import read_products
+from nutriscope.storage.convert_parquet import (
     PARTITION_COLUMN,
     SCHEMA_FILENAME,
+    SUCCESS_MARKER,
     VIEW_NAME,
     open_products,
     to_parquet,
 )
-from storage.export_features import (
-    FEATURES,
+from nutriscope.storage.export_features import (
+    EXPORT_COLUMNS,
     TARGET,
     TARGET_GRADES,
     export_features,
@@ -37,9 +39,8 @@ from storage.export_features import (
     sha256,
 )
 
-ROOT = Path(__file__).parent.parent
-SAMPLE_PATH = ROOT / "data-nutriscope" / "echantillon_france.csv"
-EXPORT_SCRIPT = ROOT / "src" / "storage" / "export_features.py"
+SAMPLE_PATH = ROOT_PATH / "data-nutriscope" / "echantillon_france.csv"
+EXPORT_MODULE = "nutriscope.storage.export_features"
 FREEZE_DATE = date(2026, 10, 8)
 
 
@@ -152,6 +153,18 @@ def test_leading_zeros_survive_and_blank_group_is_unknown(tiny_csv, tmp_path):
     assert rows == {"0012345678905": "sugary-snacks", "3017620422003": schema.UNKNOWN_GROUP}
 
 
+def test_conversion_writes_success_marker(parquet_root):
+    assert (parquet_root / SUCCESS_MARKER).is_file()
+
+
+def test_export_refuses_incomplete_dataset(tiny_csv, tmp_path):
+    destination = tmp_path / "products"
+    to_parquet(tiny_csv, destination)
+    (destination / SUCCESS_MARKER).unlink()
+    with pytest.raises(FileNotFoundError, match="_SUCCESS"):
+        export_features(destination, tmp_path / "exports", freeze_date=FREEZE_DATE)
+
+
 def test_conversion_is_replayable(tiny_csv, tmp_path):
     destination = tmp_path / "products"
     to_parquet(tiny_csv, destination)
@@ -184,7 +197,7 @@ def test_export_schema_lists_parquet_columns_in_order(export):
     contract = json.loads(schema_path.read_text(encoding="utf-8"))
     columns = list(pd.read_parquet(parquet_path).columns)
     assert [column["name"] for column in contract["columns"]] == columns
-    assert columns == [feature.name for feature in FEATURES]
+    assert columns == [feature.name for feature in EXPORT_COLUMNS]
 
 
 def test_export_target_has_no_missing(export):
@@ -216,7 +229,8 @@ def test_export_force_is_reproducible(export, parquet_root):
 
 
 def test_cli_refuses_to_overwrite(parquet_root, tmp_path):
-    command = [sys.executable, str(EXPORT_SCRIPT), "-i", str(parquet_root), "-o", str(tmp_path)]
-    assert subprocess.run(command, capture_output=True).returncode == 0
-    assert subprocess.run(command, capture_output=True).returncode == 1
+    command = [sys.executable, "-m", EXPORT_MODULE, "-i", str(parquet_root), "-o", str(tmp_path)]
+    env = {**os.environ, "PYTHONPATH": str(ROOT_PATH / "src")}   # même sans `pip install -e .`
+    assert subprocess.run(command, capture_output=True, env=env).returncode == 0
+    assert subprocess.run(command, capture_output=True, env=env).returncode == 1
     assert export_paths(tmp_path, date.today())[0].exists()

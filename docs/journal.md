@@ -104,3 +104,33 @@ Utilisation de `countries_tags` avec nomenclature normalisée.
 Le dataset Open Food Facts, malgré ses imperfections, constitue une source fiable et exploitable pour le projet NutriScope. Les phases d'exploration ont mis en évidence les nécessités d'un pipeline de nettoyage rigoureux, de normalisation des données et de définition précise des seuils de complétude minimale pour les analyses ultérieures.
 
 Le volume disponible (~1,1M produits français) offre une base solide pour l'entraînement des modèles et la fourniture du service.
+
+---
+
+## TP 13 à 15 : pipeline, package et phase 4
+
+### Décisions
+
+- **Package `nutriscope`** : le code passe de `src/*.py` (imports à plat, `sys.path`
+  modifié dans les tests, les scripts et les notebooks) à `src/nutriscope/`, installé par
+  `pip install -e .`. Les commandes deviennent `python -m nutriscope.<module>`.
+- **Pipeline bout-en-bout** (`python -m nutriscope.pipeline all`) : cinq étapes datées,
+  idempotentes, journalisées dans `data/logs/pipeline_runs.jsonl`. Voir
+  `docs/data/pipeline.md`.
+- **Split figé** : colonne `split` ajoutée à l'export, stratifiée sur le grade, 20 % de
+  test, graine 42 (section `[training]` de `database_options.ini`).
+- **Base facultative** : sans PostgreSQL configuré, `load_database` est ignorée avec un
+  avertissement, pour que le pipeline tourne sur une machine vierge.
+- **`src/train.py` supprimé** : il entraînait une régression qui n'a pas sa place au
+  TP 13 ; le split vit dans l'export, l'entraînement dans `nutriscope.classification`.
+- **Notebook `ml_nutriscore.ipynb`** : validation croisée sur le train seul, test regardé
+  une seule fois en fin de notebook, préparation commune (`classification.preparation`).
+
+### Dette
+
+- Durées réelles du pipeline à mesurer (échantillon et extrait complet) et à reporter
+  dans `docs/data/pipeline.md`.
+- TP 14 : fuite volontaire et importances par permutation (étape 4), trois erreurs
+  analysées (étape 5) restent à faire.
+- TP 15 : analyse des confusions par rayon et cinq produits diagnostiqués, ADR
+  (`docs/decisions/`) et note `docs/ml/limites_nutriscore.md` restent à faire.

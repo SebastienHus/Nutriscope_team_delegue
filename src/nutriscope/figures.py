@@ -16,7 +16,7 @@ import seaborn as sns
 
 # Résolu depuis l'emplacement du module : les PNG atterrissent au même endroit quel que
 # soit le dossier depuis lequel le notebook ou nbconvert est lancé.
-FIGURES_DIR = Path(__file__).resolve().parents[1] / "notebooks" / "figures"
+FIGURES_DIR = Path(__file__).resolve().parents[2] / "notebooks" / "figures"
 
 
 def figure(fig: plt.Figure, name: str, directory: Path = FIGURES_DIR) -> Path:

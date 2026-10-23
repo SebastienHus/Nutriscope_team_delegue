@@ -22,8 +22,8 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-import schema
-from schema import (
+from . import schema
+from .schema import (
     ALCOHOL_GROUP,
     KCAL_MAX,
     KJ_KCAL_RATIO_RANGE,
