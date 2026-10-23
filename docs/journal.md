@@ -134,3 +134,31 @@ Le volume disponible (~1,1M produits français) offre une base solide pour l'ent
   analysées (étape 5) restent à faire.
 - TP 15 : analyse des confusions par rayon et cinq produits diagnostiqués, ADR
   (`docs/decisions/`) et note `docs/ml/limites_nutriscore.md` restent à faire.
+
+### Portage depuis la proposition alternative du TP 13
+
+La branche `origin/tp13-alternative-proposition` (Sébastien, 14/10) avait mesuré sur
+l'extrait complet ce que notre pipeline ne gérait pas : la mémoire. Repris dans
+`src/nutriscope/pipeline.py` :
+
+- `load` lit la source avec DuckDB, en flux et tout en texte, avec les guillemets
+  désactivés pour l'export tabulé (son banc d'essai : 23 s, aucune ligne perdue, au lieu
+  d'une saturation de la RAM avec pandas) ;
+- `clean_data` nettoie par lots répartis par code-barres au-delà d'un million de lignes
+  (son banc d'essai : 2,5 Go de pic au lieu de 14,1 Go, même résultat). Le rapport de
+  nettoyage a été découpé (`summarize_before`, `merge_summaries`, `merge_reports`) pour
+  s'additionner d'un lot à l'autre ;
+- empreinte rapide des sources de plus de 1 Go, et versions des bibliothèques dans le
+  manifeste.
+
+Non repris : la structure de son package, ses noms en français, son split en SQL
+(équivalent au nôtre). Détail et justification : `docs/data/pipeline.md`, section 2.
+
+### Un dossier de sorties par source
+
+Le 23/10, l'export figé de l'échantillon a bloqué celui de l'extrait complet le même jour
+(`FileExistsError`), et les sorties intermédiaires de l'un écrasaient celles de l'autre.
+Décision : chaque source écrit dans `data/<source>/`, nommé d'après le fichier source
+(`--name` pour le forcer) ; le journal des durées reste commun et indique la source.
+`purge` ne vide que la source courante, `purge -a` toutes les sources (et les sorties de
+l'ancienne organisation, directement dans `data/`).

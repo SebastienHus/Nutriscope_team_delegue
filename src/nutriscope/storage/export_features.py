@@ -351,11 +351,11 @@ def export_features(source: Path = DEFAULT_SOURCE, output_dir: Path = DEFAULT_OU
     parquet_path, schema_path = export_paths(output_dir, freeze_date)
 
     if parquet_path.exists() and not force:
-        raise FileExistsError(f"{parquet_path} already exists (use --force to overwrite)")
+        raise FileExistsError(f"{relative_path(parquet_path)} already exists (use --force to overwrite)")
     if not source.is_dir() or not any(source.rglob("*.parquet")):
-        raise FileNotFoundError(f"No Parquet dataset found in {source}")
+        raise FileNotFoundError(f"No Parquet dataset found in {relative_path(source)}")
     if not is_complete(source):
-        raise FileNotFoundError(f"Incomplete Parquet dataset (no _SUCCESS marker) in {source}: "
+        raise FileNotFoundError(f"Incomplete Parquet dataset (no _SUCCESS marker) in {relative_path(source)}: "
                                 "run the conversion again")
 
     con = duckdb.connect()
@@ -365,7 +365,7 @@ def export_features(source: Path = DEFAULT_SOURCE, output_dir: Path = DEFAULT_OU
         available = {row[0] for row in con.execute(f"DESCRIBE {VIEW_NAME}").fetchall()}
         missing = [column for column in required_columns() if column not in available]
         if missing:
-            raise ValueError(f"Missing columns in {source}: {missing}")
+            raise ValueError(f"Missing columns in {relative_path(source)}: {missing}")
 
         con.execute(f"CREATE TEMP TABLE features AS {features_query()}")
         assignment = con.execute(

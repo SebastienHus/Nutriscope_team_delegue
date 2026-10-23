@@ -64,7 +64,7 @@ python -c "import nutriscope; print(nutriscope.__file__)"
 | Échantillon France        | `data-nutriscope/echantillon_france.csv`        | oui         | source par défaut du pipeline et des tests                |
 | Jeu ML de la phase 4      | `data-nutriscope/nutriscope_ml_sample.parquet`  | oui         | entrée des notebooks TP 14 et TP 15 (colonne `split` figée) |
 | Extrait complet           | `data/en.openfoodfacts.org.products.csv`        | **non**     | mesures de durée (`--full`)                               |
-| Sorties du pipeline       | `data/raw`, `clean`, `parquet`, `exports`, `logs` | **non**   | régénérables par le pipeline                              |
+| Sorties du pipeline       | `data/<source>/` (un dossier par source) et `data/logs/` | **non** | régénérables par le pipeline                       |
 
 **Rien n'est à préparer pour l'échantillon** : il est dans le dépôt. Pour l'extrait
 complet, télécharger l'export CSV d'Open Food Facts
@@ -91,21 +91,36 @@ Une commande va du CSV brut aux exports prêts pour le ML :
 python -m nutriscope.pipeline all        # ou : make pipeline
 ```
 
+Avec `make`, les options passent par la variable `ARGS` (`make` refuserait lui-même
+une option comme `-a`) : `make pipeline ARGS=--full`,
+`make clean-all ARGS=--include-exports`.
+
+Chaque source écrit dans son propre dossier, nommé d'après le fichier source :
+`data/echantillon_france/` pour l'échantillon, `data/en-openfoodfacts-org-products/`
+pour l'extrait complet (`--name` pour en choisir un autre). Les deux ne s'écrasent
+jamais. Le journal des durées, `data/logs/pipeline_runs.jsonl`, est commun.
+
 Les cinq étapes se lancent aussi une par une, dans cet ordre :
 
 ```bash
-python -m nutriscope.pipeline load            # CSV brut -> data/raw/
-python -m nutriscope.pipeline clean_data      # règles du TP 9 -> data/clean/
+python -m nutriscope.pipeline load            # CSV brut -> data/<source>/raw/
+python -m nutriscope.pipeline clean_data      # règles du TP 9 -> data/<source>/clean/
 python -m nutriscope.pipeline load_database   # nettoyé -> PostgreSQL (ignorée sans base)
-python -m nutriscope.pipeline parquet         # nettoyé -> data/parquet/ (par rayon)
-python -m nutriscope.pipeline exports         # Parquet -> data/exports/ (split figé)
+python -m nutriscope.pipeline parquet         # nettoyé -> data/<source>/parquet/ (par rayon)
+python -m nutriscope.pipeline exports         # Parquet -> data/<source>/exports/ (split figé)
 ```
 
 Les noms de l'énoncé (`charger`, `nettoyer`, `charger_base`) sont acceptés. Options
 utiles : `--full` (extrait complet), `--source CHEMIN`, `--date AAAAMMJJ` (rejouer une
 date), `--force` (réécrire l'export figé du jour), `--require-db` (échouer si la base
-manque). Détail : `python -m nutriscope.pipeline --help` et
+manque), `--batches N` (nettoyer en N lots), `--memory 12GB` (plafond mémoire de DuckDB),
+`--name NOM` (dossier de sorties). Détail : `python -m nutriscope.pipeline --help` et
 [`docs/data/pipeline.md`](docs/data/pipeline.md).
+
+Sur l'extrait complet (13 Go), la source est lue en flux par DuckDB et le nettoyage se
+fait automatiquement en 8 lots : comptez une dizaine de Go de mémoire au pic du
+chargement, et quelques Go pour le nettoyage. Avec moins de RAM, ajoutez `--memory`
+(DuckDB déborde alors sur disque dans `data/<source>/tmp/`) et augmentez `--batches`.
 
 ### Sortie attendue
 
@@ -113,12 +128,12 @@ Pour chaque étape, une ligne de statut, le nombre de lignes traitées, la duré
 fichiers écrits ; la commande se termine par `DONE` (code de retour 0) :
 
 ```text
-NutriScope pipeline - run date AAAAMMJJ - source data-nutriscope/echantillon_france.csv
+NutriScope pipeline - run date AAAAMMJJ - source data-nutriscope/echantillon_france.csv - outputs data/echantillon_france
 
 [1/5] load
   OK      load: N rows in X.X s
-          -> data/raw/products_raw_AAAAMMJJ.parquet
-          -> data/raw/products_raw_AAAAMMJJ.manifest.json
+          -> data/echantillon_france/raw/products_raw_AAAAMMJJ.parquet
+          -> data/echantillon_france/raw/products_raw_AAAAMMJJ.manifest.json
 [2/5] clean_data
   OK      clean_data: N rows in X.X s
 ...
@@ -142,14 +157,14 @@ attendue), ou `--date` pour produire un nouvel export daté.
 
 ## Vérifier que ça a marché
 
-1. La commande se termine par `DONE`, et `data/` contient :
+1. La commande se termine par `DONE`, et `data/echantillon_france/` contient :
    `raw/products_raw_<date>.parquet`, `clean/products_clean_<date>.parquet`,
    `parquet/products_<date>/_SUCCESS`, `exports/features_nutriscore_<date>.parquet` et
    son `.schema.json`.
 2. Le split est stratifié : la part de test vaut environ 20 % pour chaque grade.
 
    ```bash
-   python -c "import json, glob; s = json.load(open(sorted(glob.glob('data/exports/*.schema.json'))[-1], encoding='utf-8')); print(s['split']['counts_by_grade'])"
+   python -c "import json, glob; s = json.load(open(sorted(glob.glob('data/echantillon_france/exports/*.schema.json'))[-1], encoding='utf-8')); print(s['split']['counts_by_grade'])"
    ```
 
 3. Les tests passent :
@@ -183,9 +198,13 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/ml_nutriscore.ipyn
 | `... incomplete (no _SUCCESS marker)`           | relancer `parquet` (exécution précédente interrompue)                   |
 | `FileExistsError` sur l'export                  | comportement voulu : `--force` en l'assumant, ou une autre `--date`     |
 | `load_database` en `SKIPPED`                    | normal sans base ; sinon définir `NUTRISCOPE_DB_PASSWORD`               |
+| `MemoryError` ou poste qui sature (`--full`)    | `--memory 8GB` et `--batches 16`                                        |
 | Tout est incohérent                             | `python -m nutriscope.pipeline purge` (ou `make clean`), puis `all`     |
+| Faire de la place sur le disque                 | `python -m nutriscope.pipeline purge -a` : toutes les sources           |
 
-`purge` ne supprime que les sorties datées du pipeline : jamais les CSV sources, jamais
+`purge` ne supprime que les sorties datées de la source courante (l'échantillon par
+défaut, `--full` pour l'extrait complet) et son dossier `tmp/` ; `purge -a` le fait pour
+toutes les sources. Jamais les CSV sources, jamais
 le journal des durées, et jamais les exports figés (sauf `--include-exports`).
 
 ## Structure du dépôt

@@ -150,7 +150,7 @@ def to_parquet(source: Path = DEFAULT_SOURCE, destination: Path = DEFAULT_DESTIN
     source, destination = Path(source), Path(destination)
     schema_path = destination.parent / SCHEMA_FILENAME if schema_path is None else Path(schema_path)
     if not source.exists():
-        raise FileNotFoundError(f"Source not found: {source}")
+        raise FileNotFoundError(f"Source not found: {relative_path(source)}")
 
     con = duckdb.connect()
     try:

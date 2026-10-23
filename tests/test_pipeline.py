@@ -17,7 +17,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from nutriscope.options import RANDOM_SEED, ROOT_PATH, TEST_SIZE
+from nutriscope.options import CONFIG, RANDOM_SEED, ROOT_PATH, TEST_SIZE
 from nutriscope.pipeline import (
     CLEAN,
     DB_PASSWORD_ENV,
@@ -33,6 +33,8 @@ from nutriscope.pipeline import (
     Pipeline,
     main,
     purge,
+    relative_message,
+    source_name,
 )
 from nutriscope.storage.convert_parquet import SUCCESS_MARKER
 from nutriscope.storage.export_features import SPLIT, TARGET, TEST, TRAIN, assign_split, sha256
@@ -107,7 +109,7 @@ def test_all_steps_run_and_database_is_skipped_with_warning(run):
 
 def test_each_step_writes_dated_outputs(run):
     pipeline, _ = run
-    data = pipeline.data_dir
+    data = pipeline.data_dir / "echantillon_france"          # un dossier par source
     expected = [
         data / "raw" / f"products_raw_{TAG}.parquet",
         data / "raw" / f"products_raw_{TAG}.manifest.json",
@@ -127,9 +129,20 @@ def test_load_keeps_barcodes_as_text_and_fingerprints_source(run):
     raw = pd.read_parquet(pipeline.dated(RAW))
     assert pd.api.types.is_string_dtype(raw["code"])
     manifest = json.loads(pipeline.dated(RAW).with_suffix(".manifest.json").read_text(encoding="utf-8"))
-    assert manifest["source_sha256"] == sha256(SAMPLE_PATH)
+    assert manifest["source_fingerprint"] == {"method": "sha256", "value": sha256(SAMPLE_PATH),
+                                              "bytes": SAMPLE_PATH.stat().st_size}
     assert manifest["rows"] == results["load"].rows == len(raw)
+    assert manifest["versions"]["duckdb"]
     assert "ODbL" in manifest["license"]
+
+
+def test_load_keeps_only_configured_columns_all_as_text(run):
+    pipeline, _ = run
+    raw = pd.read_parquet(pipeline.dated(RAW))
+    manifest = json.loads(pipeline.dated(RAW).with_suffix(".manifest.json").read_text(encoding="utf-8"))
+    assert list(raw.columns) == manifest["columns"]
+    assert set(raw.columns) <= set(CONFIG["columns"])
+    assert all(pd.api.types.is_string_dtype(raw[column]) for column in raw.columns)   # typage : règle 1 du TP 9
 
 
 def test_parquet_counts_the_same_products_as_the_cleaned_dataset(run):
@@ -143,6 +156,17 @@ def test_journal_has_one_line_per_step(run):
     first_run = lines[:len(STEPS)]
     assert [line["step"] for line in first_run] == list(STEPS)
     assert all({"timestamp", "duration_s", "status", "rows"} <= set(line) for line in first_run)
+    assert len({line["run_id"] for line in first_run}) == 1            # une exécution, un identifiant
+    assert {line["source"] for line in first_run} == {"data-nutriscope/echantillon_france.csv"}
+    assert first_run[0]["options"] == {"batches": "auto", "memory": None, "force": False}
+    assert {line["name"] for line in first_run} == {"echantillon_france"}
+
+
+def test_journal_messages_carry_no_absolute_repository_path():
+    absolute = ROOT_PATH.resolve() / "data" / "exports" / "features.parquet"
+    assert relative_message(f"{absolute} already exists") == "data/exports/features.parquet already exists" \
+        or relative_message(f"{absolute} already exists") == "data\\exports\\features.parquet already exists"
+    assert str(ROOT_PATH.resolve()) not in relative_message(f"FileExistsError: {absolute}")
 
 
 # ============================================================================
@@ -168,7 +192,7 @@ def test_rerunning_load_and_clean_changes_no_data_byte(run):
 
 def test_exports_alone_finds_the_previous_day_parquet(run, tmp_path):
     pipeline, _ = run
-    shutil.copytree(pipeline.data_dir / "parquet", tmp_path / "parquet")     # data/exports/ effacé
+    shutil.copytree(pipeline.output_dir / "parquet", tmp_path / pipeline.name / "parquet")  # exports/ effacé
     next_day = make_pipeline(tmp_path, run_date=RUN_DATE + timedelta(days=1))
     result = next_day.run("exports")
     assert result.status == OK, result.message
@@ -187,8 +211,8 @@ def test_step_without_input_fails_with_a_useful_message(tmp_path):
 
 def test_exports_refuses_an_interrupted_parquet(run, tmp_path):
     pipeline, _ = run
-    shutil.copytree(pipeline.data_dir / "parquet", tmp_path / "parquet")
-    (tmp_path / "parquet" / f"products_{TAG}" / SUCCESS_MARKER).unlink()
+    shutil.copytree(pipeline.output_dir / "parquet", tmp_path / pipeline.name / "parquet")
+    (tmp_path / pipeline.name / "parquet" / f"products_{TAG}" / SUCCESS_MARKER).unlink()
     result = make_pipeline(tmp_path).run("exports")
     assert result.status == FAILED
     assert "_SUCCESS" in result.message
@@ -204,6 +228,34 @@ def test_database_required_fails_without_credentials(run):
     pipeline, _ = run
     strict = make_pipeline(pipeline.data_dir, require_db=True)
     assert strict.run("load_database").status == FAILED
+
+
+# ============================================================================
+# NETTOYAGE PAR LOTS (gros volumes)
+# ============================================================================
+
+def test_batched_cleaning_gives_the_same_dataset(run, tmp_path):
+    """Nettoyer en 3 lots (répartis par code-barres) donne exactement le nettoyé en un bloc."""
+    pipeline, _ = run
+    shutil.copytree(pipeline.output_dir / "raw", tmp_path / pipeline.name / "raw")
+    batched = make_pipeline(tmp_path, batches=3)
+    result = batched.run("clean_data")
+    assert result.status == OK, result.message
+    assert "3 batch" in result.message
+    pd.testing.assert_frame_equal(pd.read_parquet(batched.dated(CLEAN)), pd.read_parquet(pipeline.dated(CLEAN)))
+
+    def totals(p):
+        rules = json.loads(p.dated(CLEAN).with_name(f"cleaning_rules_{TAG}.json").read_text(encoding="utf-8"))
+        return [(r["rule"], r["lines_before"], r["lines_after"], r["lines_changed"]) for r in rules["rules"]]
+
+    assert totals(batched) == totals(pipeline)                 # comptes rendus additionnés à l'identique
+    assert not (batched.output_dir / "tmp" / f"clean_batches_{TAG}").exists()   # lots temporaires effacés
+
+
+def test_single_block_below_one_million_rows(run):
+    pipeline, _ = run
+    rules = json.loads(pipeline.dated(CLEAN).with_name(f"cleaning_rules_{TAG}.json").read_text(encoding="utf-8"))
+    assert rules["batches"] == 1
 
 
 # ============================================================================
@@ -254,21 +306,70 @@ def test_schema_describes_the_written_file(export_df, contract, run):
 # CLI ET PURGE
 # ============================================================================
 
-def test_purge_removes_only_dated_pipeline_outputs(tmp_path):
-    kept = [tmp_path / "en.openfoodfacts.org.products.csv",
-            tmp_path / "clean" / "en.openfoodfacts.org.products.csv",
-            tmp_path / "exports" / f"features_nutriscore_{TAG}.parquet",
-            tmp_path / JOURNAL]
-    removed = [tmp_path / "raw" / f"products_raw_{TAG}.parquet",
-               tmp_path / "clean" / f"products_clean_{TAG}.parquet",
-               tmp_path / "parquet" / f"products_{TAG}" / SUCCESS_MARKER]
-    for path in kept + removed:
+def _touch(paths):
+    for path in paths:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("x")
-    purge(tmp_path)
+
+
+def test_output_folder_is_named_after_the_source(tmp_path):
+    assert source_name(Path("data/en.openfoodfacts.org.products.csv")) == "en-openfoodfacts-org-products"
+    assert source_name(SAMPLE_PATH) == "echantillon_france"
+    assert make_pipeline(tmp_path).output_dir == tmp_path / "echantillon_france"
+    assert make_pipeline(tmp_path, name="essai").output_dir == tmp_path / "essai"
+    for invalid in ("logs", "raw", "Avec Espace"):
+        with pytest.raises(ValueError):
+            make_pipeline(tmp_path, name=invalid)
+
+
+def test_two_sources_never_overwrite_each_other(run, tmp_path):
+    """Le même jour, une autre source écrit dans son propre dossier : l'export figé de l'échantillon ne la bloque pas."""
+    pipeline, _ = run
+    other = make_pipeline(pipeline.data_dir, name="autre_source")
+    before = sha256(pipeline.dated(EXPORT))
+    assert other.run("load").status == OK
+    assert other.dated(RAW).parent.parent == pipeline.data_dir / "autre_source"
+    assert sha256(pipeline.dated(EXPORT)) == before
+
+
+def test_purge_removes_only_dated_outputs_of_the_current_source(tmp_path):
+    kept = [tmp_path / "en.openfoodfacts.org.products.csv",
+            tmp_path / "echantillon_france" / "clean" / "notes.csv",
+            tmp_path / "echantillon_france" / "exports" / f"features_nutriscore_{TAG}.parquet",
+            tmp_path / "autre" / "raw" / f"products_raw_{TAG}.parquet",          # autre source
+            tmp_path / JOURNAL]
+    removed = [tmp_path / "echantillon_france" / "raw" / f"products_raw_{TAG}.parquet",
+               tmp_path / "echantillon_france" / "clean" / f"products_clean_{TAG}.parquet",
+               tmp_path / "echantillon_france" / "parquet" / f"products_{TAG}" / SUCCESS_MARKER,
+               tmp_path / "echantillon_france" / "tmp" / "duckdb" / "spill.tmp"]
+    _touch(kept + removed)
+    purge(tmp_path, name="echantillon_france")
     assert all(path.exists() for path in kept)
     assert not any(path.exists() for path in removed)
-    assert not (tmp_path / "parquet" / f"products_{TAG}").exists()
+    assert not (tmp_path / "echantillon_france" / "parquet" / f"products_{TAG}").exists()
+
+
+def test_purge_all_covers_every_source_and_the_old_layout(tmp_path):
+    kept = [tmp_path / "en.openfoodfacts.org.products.csv",
+            tmp_path / "clean" / "en.openfoodfacts.org.products.csv",            # source non datée
+            tmp_path / "autre" / "exports" / f"features_nutriscore_{TAG}.parquet",
+            tmp_path / JOURNAL]
+    removed = [tmp_path / "echantillon_france" / "raw" / f"products_raw_{TAG}.parquet",
+               tmp_path / "autre" / "clean" / f"products_clean_{TAG}.parquet",
+               tmp_path / "raw" / f"products_raw_{TAG}.parquet",                 # ancienne organisation
+               tmp_path / "tmp" / "duckdb" / "spill.tmp"]
+    _touch(kept + removed)
+    assert main(["purge", "-a", "--data-dir", str(tmp_path)]) == 0
+    assert all(path.exists() for path in kept)
+    assert not any(path.exists() for path in removed)
+    assert main(["purge", "-a", "--include-exports", "--data-dir", str(tmp_path)]) == 0
+    assert not kept[2].exists()
+
+
+def test_all_flag_is_reserved_to_purge():
+    with pytest.raises(SystemExit) as error:
+        main(["all", "-a"])
+    assert error.value.code == 2
 
 
 def test_cli_rejects_unknown_step():
