@@ -416,7 +416,7 @@ class Pipeline:
 
         DuckDB lit la source en flux et écrit directement le Parquet : rien ne passe par
         pandas, la mémoire reste bornée même sur l'export complet. Seules les colonnes de
-        `database_options.ini` sont gardées (les absentes sont listées dans le manifeste),
+        `options.ini` sont gardées (les absentes sont listées dans le manifeste),
         toutes en texte. Les lignes sont triées sur toutes les colonnes (code en premier) :
         deux exécutions écrivent le même fichier.
         """

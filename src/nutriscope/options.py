@@ -15,10 +15,10 @@ PACKAGE_PATH = Path(__file__).resolve().parent
 ROOT_PATH = PACKAGE_PATH.parents[1]                  # src/nutriscope/ → racine du dépôt
 DATA_PATH = ROOT_PATH / "data"                       # sorties du pipeline (hors Git)
 SHARED_DATA_PATH = ROOT_PATH / "data-nutriscope"     # jeu partagé (échantillon, jeux ML)
-CONFIG_PATH = PACKAGE_PATH / "database_options.ini"
+CONFIG_PATH = PACKAGE_PATH / "options.ini"
 
 
-def read_database_options(filename: os.PathLike) -> dict:
+def read_options(filename: os.PathLike) -> dict:
     """Lit le fichier d'options : sections en dictionnaires, `columns` en liste."""
     config_obj = configparser.ConfigParser(allow_no_value=True)  # requis pour les listes sans valeur
     config_obj.read(filename, encoding="utf-8")
@@ -31,7 +31,7 @@ def read_database_options(filename: os.PathLike) -> dict:
     return config
 
 
-CONFIG = read_database_options(CONFIG_PATH)
+CONFIG = read_options(CONFIG_PATH)
 
 # Graine et part de test du split figé (TP 13), réutilisées par la phase 4
 RANDOM_SEED = int(CONFIG["training"]["seed"])

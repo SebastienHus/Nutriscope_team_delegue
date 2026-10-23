@@ -25,7 +25,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy_utils import create_database, database_exists
 
 from .cleaning import clean
-from .options import CONFIG_PATH, ROOT_PATH, read_database_options
+from .options import CONFIG_PATH, ROOT_PATH, read_options
 from .reader import read_products
 
 SQL_SCHEMA_PATH = ROOT_PATH / "schema_nutriscope.sql"
@@ -226,7 +226,7 @@ def main(args):
     filename = os.path.abspath(args.filename)
     if not os.path.exists(filename):
         raise FileNotFoundError(f"Le chemin n'existe pas : `{filename}`")
-    config = read_database_options(filename)
+    config = read_options(filename)
     # TODO: Besoin du container Postgresql et des secrets
     password = args.password or getpass.getpass("Mot de passe PostgreSQL : ")
     engine = init_database(config, args.username, password, args.host, args.port)
@@ -248,7 +248,7 @@ if __name__ == "__main__":
         description="Crée la base NutriScope et, si un export est fourni, la charge après nettoyage.",
     )
     parser.add_argument("filename", nargs="?", default=CONFIG_PATH,
-                        help="Fichier d'options (par défaut : database_options.ini du package)")
+                        help="Fichier d'options (par défaut : options.ini du package)")
     parser.add_argument("-u", "--username", default="postgres")
     parser.add_argument("-pwd", "--password", default=None,
                         help="Mot de passe ; demandé de façon masquée s'il est omis")

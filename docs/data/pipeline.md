@@ -17,7 +17,7 @@ schéma et export produit).
                  ▼
  ┌────────────────────┐  data/<source>/raw/products_raw_<date>.parquet         (lu en flux par DuckDB)
  │ 1. load            │  data/<source>/raw/products_raw_<date>.manifest.json  (empreinte source, versions, horodatage)
- └────────────────────┘  tout en texte, colonnes de database_options.ini
+ └────────────────────┘  tout en texte, colonnes de options.ini
                  │
                  ▼
  ┌────────────────────┐  data/<source>/clean/products_clean_<date>.parquet   (trié par code)
@@ -113,7 +113,7 @@ Nos durées et nos comptages, mesurés avec ce pipeline, sont en section 4 : mê
 - Le CSV (ou le Parquet) est lu par DuckDB et écrit directement en Parquet : rien ne
   passe par pandas, la mémoire reste bornée. `--memory 12GB` plafonne DuckDB, qui
   déborde alors sur disque dans `data/<source>/tmp/duckdb/`.
-- Seules les colonnes de `database_options.ini` sont gardées. Celles qui manquent dans
+- Seules les colonnes de `options.ini` sont gardées. Celles qui manquent dans
   la source sont listées dans le manifeste (`columns_missing_in_source`).
 - **Tout est lu en texte** (`all_varchar`) : le code-barres garde ses zéros de tête, et
   aucun type n'est deviné. Le typage reste la règle 1 du nettoyage (`type_columns`).
@@ -252,7 +252,7 @@ colonne, répartition des grades, et le bloc `split` :
 | Clé                     | Contenu                                                              |
 | ----------------------- | -------------------------------------------------------------------- |
 | `method`                | stratifié sur `nutriscore_grade`, générateur NumPy local par grade   |
-| `seed`, `test_size`     | 42 et 0,2 (lus dans `src/nutriscope/database_options.ini`)           |
+| `seed`, `test_size`     | 42 et 0,2 (lus dans `src/nutriscope/options.ini`)           |
 | `counts_by_grade`       | effectifs train / test et part de test pour chaque grade             |
 | `usage_rule`            | la règle d'usage ci-dessous                                          |
 

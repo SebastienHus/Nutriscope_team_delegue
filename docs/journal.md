@@ -118,7 +118,7 @@ Le volume disponible (~1,1M produits français) offre une base solide pour l'ent
   idempotentes, journalisées dans `data/logs/pipeline_runs.jsonl`. Voir
   `docs/data/pipeline.md`.
 - **Split figé** : colonne `split` ajoutée à l'export, stratifiée sur le grade, 20 % de
-  test, graine 42 (section `[training]` de `database_options.ini`).
+  test, graine 42 (section `[training]` de `options.ini`).
 - **Base facultative** : sans PostgreSQL configuré, `load_database` est ignorée avec un
   avertissement, pour que le pipeline tourne sur une machine vierge.
 - **`src/train.py` supprimé** : il entraînait une régression qui n'a pas sa place au
