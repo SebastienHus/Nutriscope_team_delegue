@@ -21,6 +21,7 @@ seaborn==0.13.2
 umap-learn==0.5.12
 nbconvert==7.17.1
 ipykernel==7.4.0
+kneed==0.9.0
 
 # Machine learning
 scikit-learn==1.9.1
