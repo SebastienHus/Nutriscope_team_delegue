@@ -7,7 +7,9 @@ Modules :
 - `eda`, `figures` : analyse exploratoire (TP 10) ;
 - `storage` : Parquet partitionné et export d'entraînement figé (TP 12, TP 13) ;
 - `pipeline` : orchestration bout-en-bout (TP 13) ;
-- `classification` : préparation, plis et métriques communs de la phase 4 (TP 14, TP 15).
+- `classification` : préparation, plis et métriques communs de la phase 4 (TP 14, TP 15) ;
+- `clustering` : segmentation du catalogue (TP 16, matinée) ;
+- `substitution` : moteur de substitution v1 (TP 16, après-midi).
 
 Données : © Open Food Facts contributors — ODbL.
 """
