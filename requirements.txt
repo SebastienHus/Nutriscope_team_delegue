@@ -33,5 +33,11 @@ catboost==1.2.*
 optuna==5.0.*
 shap==0.52.*
 
+# Modèles
+tensorflow==2.22.0
+keras==3.13.2
+protobuf==6.33.6
+setuptools==81.0.0
+
 # Tests
 pytest==9.1.1
