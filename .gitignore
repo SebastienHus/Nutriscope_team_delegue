@@ -9,6 +9,11 @@ catboost_info/
 # Mots de passe (base PostgreSQL, Grafana)
 secrets/
 
+# For Docker secrets and backup
+secrets/*.txt
+backups/*
+!backups/.gitkeep
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

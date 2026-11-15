@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1380 1090" width="1380" height="1090" role="img">
+<defs><marker id="a-2f6f9f" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#2f6f9f"/></marker><marker id="a-9a6a23" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#9a6a23"/></marker><marker id="a-6b4f9e" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#6b4f9e"/></marker><marker id="a-a8423a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#a8423a"/></marker><marker id="a-227d6e" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#227d6e"/></marker><marker id="a-7b8694" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#7b8694"/></marker><marker id="a-8b95a1" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#8b95a1"/></marker><marker id="a-c9c2b6" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#c9c2b6"/></marker></defs>
+<rect x="0.6" y="0.6" width="1378.8" height="1088.8" rx="12" fill="#fbfaf7" stroke="#e4ded3" stroke-width="1.2"/>
+<text x="32.0" y="38.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="19" font-weight="700" fill="#1c2430" text-anchor="start">Stack LLM — Docker, jour 3</text>
+<text x="32.0" y="60.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="12" font-weight="400" fill="#5d6a78" text-anchor="start">Topologie d'exécution : qui appelle qui, sur quel port, à travers quel réseau Docker.</text>
+<rect x="32.0" y="86.0" width="1316.0" height="84.0" rx="10" fill="none" stroke="#7b8694" stroke-width="1.1" stroke-dasharray="7 5"/>
+<rect x="50.0" y="77.0" width="320.1" height="18.0" rx="5" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="57.0" y="90.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" font-weight="600" fill="#7b8694" text-anchor="start">hôte — aucun port n'est exposé en dehors de 127.0.0.1</text>
+<rect x="48.0" y="104.0" width="164.0" height="54.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="130.0" y="129.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">Navigateur</text>
+<text x="130.0" y="147.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">poste de l'étudiant</text>
+<text x="248.0" y="126.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" font-weight="400" fill="#5d6a78" text-anchor="start">Interfaces : site http://localhost:8080  ·  Grafana :3000  ·  Prometheus :9090</text>
+<text x="248.0" y="146.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" font-weight="400" fill="#8b95a1" text-anchor="start">Ports de débogage ouverts par compose.override.yml seulement (dev) : api 8000, db 5432, llm 8081</text>
+<rect x="48.0" y="300.0" width="164.0" height="84.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 49.0 308.0 A 7 7 0 0 1 56.0 301.0 L 204.0 301.0 A 7 7 0 0 1 211.0 308.0" fill="none" stroke="#2f6f9f" stroke-width="2.6"/>
+<text x="130.0" y="325.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">web</text>
+<text x="130.0" y="343.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">nginx-unprivileged 1.30</text>
+<text x="130.0" y="357.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">UID 101, écoute sur 8080</text>
+<text x="130.0" y="371.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">sert / et proxifie /api/</text>
+<rect x="352.0" y="300.0" width="164.0" height="84.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 353.0 308.0 A 7 7 0 0 1 360.0 301.0 L 508.0 301.0 A 7 7 0 0 1 515.0 308.0" fill="none" stroke="#2f6f9f" stroke-width="2.6"/>
+<text x="434.0" y="325.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">api</text>
+<text x="434.0" y="343.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">FastAPI / uvicorn :8000</text>
+<text x="434.0" y="357.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">image multi-stage, cible runner</text>
+<text x="434.0" y="371.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">/api/chat   /api/history</text>
+<rect x="656.0" y="200.0" width="164.0" height="84.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 657.0 208.0 A 7 7 0 0 1 664.0 201.0 L 812.0 201.0 A 7 7 0 0 1 819.0 208.0" fill="none" stroke="#9a6a23" stroke-width="2.6"/>
+<text x="738.0" y="225.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">db</text>
+<text x="738.0" y="243.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">postgres:16-alpine</text>
+<text x="738.0" y="257.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">POSTGRES_PASSWORD_FILE</text>
+<text x="738.0" y="271.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">table messages</text>
+<rect x="656.0" y="400.0" width="164.0" height="84.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 657.0 408.0 A 7 7 0 0 1 664.0 401.0 L 812.0 401.0 A 7 7 0 0 1 819.0 408.0" fill="none" stroke="#6b4f9e" stroke-width="2.6"/>
+<text x="738.0" y="425.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">llm</text>
+<text x="738.0" y="443.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">llama.cpp server b11434</text>
+<text x="738.0" y="457.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">Qwen2.5 0.5B, API OpenAI</text>
+<text x="738.0" y="471.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">expose --metrics</text>
+<rect x="1072.0" y="400.0" width="164.0" height="84.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 1073.0 408.0 A 7 7 0 0 1 1080.0 401.0 L 1228.0 401.0 A 7 7 0 0 1 1235.0 408.0" fill="none" stroke="#a8423a" stroke-width="2.6"/>
+<text x="1154.0" y="425.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">llm-init</text>
+<text x="1154.0" y="443.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">curl 8.22, job one-shot</text>
+<text x="1154.0" y="457.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">télécharge le .gguf</text>
+<text x="1154.0" y="471.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">restart: "no"</text>
+<rect x="1266.0" y="414.0" width="82.0" height="56.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="1307.0" y="439.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">Internet</text>
+<text x="1307.0" y="457.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">Hugging Face</text>
+<path d="M 880.0 219 A 70.0 7 0 0 1 1020.0 219 L 1020.0 265 A 70.0 7 0 0 1 880.0 265 Z" fill="#f4f1ea" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 880.0 219 A 70.0 7 0 0 0 1020.0 219" fill="none" stroke="#c9c2b6" stroke-width="1.2"/>
+<text x="950.0" y="243.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="11.5" font-weight="600" fill="#1c2430" text-anchor="middle">pgdata</text>
+<text x="950.0" y="257.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="400" fill="#8b95a1" text-anchor="middle">/var/lib/postgresql/data</text>
+<path d="M 880.0 419 A 70.0 7 0 0 1 1020.0 419 L 1020.0 465 A 70.0 7 0 0 1 880.0 465 Z" fill="#f4f1ea" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 880.0 419 A 70.0 7 0 0 0 1020.0 419" fill="none" stroke="#c9c2b6" stroke-width="1.2"/>
+<text x="950.0" y="443.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="11.5" font-weight="600" fill="#1c2430" text-anchor="middle">llm_models</text>
+<text x="950.0" y="457.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="400" fill="#8b95a1" text-anchor="middle">/models monté en ro</text>
+<rect x="156.9" y="281.0" width="46.1" height="19.0" rx="5" fill="#f2f6f9" stroke="#2f6f9f" stroke-width="1"/>
+<text x="180.0" y="294.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="10" font-weight="600" fill="#2f6f9f" text-anchor="middle">:8080</text>
+<rect x="398.9" y="281.0" width="70.2" height="19.0" rx="5" fill="#f2f6f9" stroke="#8b95a1" stroke-width="1"/>
+<text x="434.0" y="294.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="10" font-weight="600" fill="#8b95a1" text-anchor="middle">dev :8000</text>
+<rect x="702.9" y="181.0" width="70.2" height="19.0" rx="5" fill="#f2f6f9" stroke="#8b95a1" stroke-width="1"/>
+<text x="738.0" y="194.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="10" font-weight="600" fill="#8b95a1" text-anchor="middle">dev :5432</text>
+<rect x="702.9" y="381.0" width="70.2" height="19.0" rx="5" fill="#f2f6f9" stroke="#8b95a1" stroke-width="1"/>
+<text x="738.0" y="394.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="10" font-weight="600" fill="#8b95a1" text-anchor="middle">dev :8081</text>
+<path d="M 130.0 158.0 L 130.0 300.0" fill="none" stroke="#7b8694" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-7b8694)"/>
+<rect x="137.0" y="222.5" width="141.2" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="142.0" y="233.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#7b8694" text-anchor="start">HTTP sur la boucle locale</text>
+<path d="M 212.0 342.0 L 352.0 342.0" fill="none" stroke="#2f6f9f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-2f6f9f)"/>
+<rect x="219.2" y="320.5" width="125.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="282.0" y="331.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#2f6f9f" text-anchor="middle">proxy /api/ → api:8000</text>
+<path d="M 516.0 328.0 L 586.0 328.0 L 586.0 242.0 L 656.0 242.0" fill="none" stroke="#9a6a23" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-9a6a23)"/>
+<rect x="478.5" y="268.5" width="104.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="578.0" y="279.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#9a6a23" text-anchor="end">db:5432 · pool 1-5</text>
+<path d="M 516.0 356.0 L 586.0 356.0 L 586.0 442.0 L 656.0 442.0" fill="none" stroke="#6b4f9e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-6b4f9e)"/>
+<rect x="384.0" y="394.5" width="199.0" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="578.0" y="405.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#6b4f9e" text-anchor="end">llm:8080 · POST /v1/chat/completions</text>
+<path d="M 820.0 242.0 L 880.0 242.0" fill="none" stroke="#8b95a1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-8b95a1)"/>
+<path d="M 880.0 442.0 L 820.0 442.0" fill="none" stroke="#8b95a1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-8b95a1)"/>
+<path d="M 1072.0 442.0 L 1020.0 442.0" fill="none" stroke="#8b95a1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-8b95a1)"/>
+<path d="M 1236.0 442.0 L 1266.0 442.0" fill="none" stroke="#a8423a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-a8423a)"/>
+<rect x="32.0" y="520.0" width="1316.0" height="440.0" rx="10" fill="none" stroke="#227d6e" stroke-width="1.1" stroke-dasharray="7 5"/>
+<rect x="50.0" y="511.0" width="383.6" height="18.0" rx="5" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="57.0" y="524.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" font-weight="600" fill="#227d6e" text-anchor="start">réseau observability — services actifs avec --profile monitoring</text>
+<rect x="64.0" y="576.0" width="164.0" height="84.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 65.0 584.0 A 7 7 0 0 1 72.0 577.0 L 220.0 577.0 A 7 7 0 0 1 227.0 584.0" fill="none" stroke="#227d6e" stroke-width="2.6"/>
+<text x="146.0" y="601.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">cadvisor</text>
+<text x="146.0" y="619.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">v0.60.6</text>
+<text x="146.0" y="633.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">CPU, RAM, réseau</text>
+<text x="146.0" y="647.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">de chaque conteneur</text>
+<rect x="64.0" y="716.0" width="164.0" height="84.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 65.0 724.0 A 7 7 0 0 1 72.0 717.0 L 220.0 717.0 A 7 7 0 0 1 227.0 724.0" fill="none" stroke="#227d6e" stroke-width="2.6"/>
+<text x="146.0" y="741.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">alloy</text>
+<text x="146.0" y="759.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">v1.20.1</text>
+<text x="146.0" y="773.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">lit le socket Docker</text>
+<text x="146.0" y="787.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">et pousse les logs JSON</text>
+<rect x="64.0" y="856.0" width="232.0" height="52.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="180.0" y="881.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">/var/run/docker.sock</text>
+<text x="180.0" y="899.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">monté en lecture seule</text>
+<rect x="430.0" y="576.0" width="164.0" height="84.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 431.0 584.0 A 7 7 0 0 1 438.0 577.0 L 586.0 577.0 A 7 7 0 0 1 593.0 584.0" fill="none" stroke="#227d6e" stroke-width="2.6"/>
+<text x="512.0" y="601.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">prometheus</text>
+<text x="512.0" y="619.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">v3.13.4, rétention 7 j</text>
+<text x="512.0" y="633.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">règles d'alerte alerts.yml</text>
+<rect x="430.0" y="716.0" width="164.0" height="84.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 431.0 724.0 A 7 7 0 0 1 438.0 717.0 L 586.0 717.0 A 7 7 0 0 1 593.0 724.0" fill="none" stroke="#227d6e" stroke-width="2.6"/>
+<text x="512.0" y="741.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">loki</text>
+<text x="512.0" y="759.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">3.7.8, tsdb schéma v13</text>
+<text x="512.0" y="773.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">rétention 168 h</text>
+<rect x="790.0" y="646.0" width="164.0" height="84.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 791.0 654.0 A 7 7 0 0 1 798.0 647.0 L 946.0 647.0 A 7 7 0 0 1 953.0 654.0" fill="none" stroke="#227d6e" stroke-width="2.6"/>
+<text x="872.0" y="671.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">grafana</text>
+<text x="872.0" y="689.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">12.4.12</text>
+<text x="872.0" y="703.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">dashboard provisionné</text>
+<text x="872.0" y="717.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">mot de passe = secret</text>
+<rect x="488.9" y="557.0" width="46.1" height="19.0" rx="5" fill="#f2f6f9" stroke="#227d6e" stroke-width="1"/>
+<text x="512.0" y="570.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="10" font-weight="600" fill="#227d6e" text-anchor="middle">:9090</text>
+<rect x="849.0" y="627.0" width="46.1" height="19.0" rx="5" fill="#f2f6f9" stroke="#227d6e" stroke-width="1"/>
+<text x="872.0" y="640.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="10" font-weight="600" fill="#227d6e" text-anchor="middle">:3000</text>
+<path d="M 430.0 618.0 L 228.0 618.0" fill="none" stroke="#227d6e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<rect x="271.5" y="595.5" width="115.0" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="329.0" y="606.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#227d6e" text-anchor="middle">scrape cadvisor:8080</text>
+<path d="M 512.0 660.0 L 512.0 716.0" fill="none" stroke="#227d6e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<rect x="517.0" y="682.5" width="94.0" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="522.0" y="693.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#227d6e" text-anchor="start">scrape loki:3100</text>
+<path d="M 470.0 576.0 L 470.0 384.0" fill="none" stroke="#227d6e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<rect x="477.0" y="442.5" width="130.8" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="482.0" y="453.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#227d6e" text-anchor="start">scrape api:8000/metrics</text>
+<path d="M 556.0 576.0 L 556.0 500.0 L 700.0 500.0 L 700.0 484.0" fill="none" stroke="#227d6e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<rect x="562.6" y="480.5" width="130.8" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="628.0" y="491.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#227d6e" text-anchor="middle">scrape llm:8080/metrics</text>
+<path d="M 228.0 758.0 L 430.0 758.0" fill="none" stroke="#227d6e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<rect x="266.2" y="735.5" width="125.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="329.0" y="746.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#227d6e" text-anchor="middle">push /loki/api/v1/push</text>
+<path d="M 180.0 856.0 L 180.0 800.0" fill="none" stroke="#8b95a1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 3" marker-end="url(#a-8b95a1)"/>
+<rect x="187.0" y="822.5" width="99.2" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="192.0" y="833.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#8b95a1" text-anchor="start">découverte + logs</text>
+<path d="M 790.0 664.0 L 700.0 664.0 L 700.0 618.0 L 594.0 618.0" fill="none" stroke="#227d6e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<rect x="639.2" y="596.5" width="41.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="660.0" y="607.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#227d6e" text-anchor="middle">PromQL</text>
+<path d="M 790.0 712.0 L 700.0 712.0 L 700.0 758.0 L 594.0 758.0" fill="none" stroke="#227d6e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<rect x="641.9" y="736.5" width="36.2" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="660.0" y="747.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="500" fill="#227d6e" text-anchor="middle">LogQL</text>
+<text x="64.0" y="936.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" font-weight="400" fill="#5d6a78" text-anchor="start">Volumes nommés : pgdata · llm_models · prometheus_data (/prometheus) · loki_data (/loki) · grafana_data (/var/lib/grafana)</text>
+<text x="32.0" y="1004.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" font-weight="700" fill="#1c2430" text-anchor="start">Réseaux Docker</text>
+<path d="M 32.0 1030.0 L 58.0 1030.0" fill="none" stroke="#2f6f9f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-2f6f9f)"/>
+<text x="66.0" y="1027.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="11" font-weight="600" fill="#2f6f9f" text-anchor="start">frontend</text>
+<text x="66.0" y="1042.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="400" fill="#8b95a1" text-anchor="start">web → api</text>
+<path d="M 162.0 1030.0 L 188.0 1030.0" fill="none" stroke="#9a6a23" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-9a6a23)"/>
+<text x="196.0" y="1027.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="11" font-weight="600" fill="#9a6a23" text-anchor="start">backend</text>
+<text x="196.0" y="1042.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="400" fill="#8b95a1" text-anchor="start">internal: true, aucune sortie</text>
+<path d="M 366.6 1030.0 L 392.6 1030.0" fill="none" stroke="#6b4f9e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-6b4f9e)"/>
+<text x="400.6" y="1027.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="11" font-weight="600" fill="#6b4f9e" text-anchor="start">inference</text>
+<text x="400.6" y="1042.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="400" fill="#8b95a1" text-anchor="start">api → llm</text>
+<path d="M 496.6 1030.0 L 522.6 1030.0" fill="none" stroke="#a8423a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-a8423a)"/>
+<text x="530.6" y="1027.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="11" font-weight="600" fill="#a8423a" text-anchor="start">egress</text>
+<text x="530.6" y="1042.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="400" fill="#8b95a1" text-anchor="start">sortie Internet du seul llm-init</text>
+<path d="M 716.2 1030.0 L 742.2 1030.0" fill="none" stroke="#227d6e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<text x="750.2" y="1027.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="11" font-weight="600" fill="#227d6e" text-anchor="start">observability</text>
+<text x="750.2" y="1042.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="400" fill="#8b95a1" text-anchor="start">métriques et logs</text>
+<text x="32.0" y="1074.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10" font-weight="400" fill="#5d6a78" text-anchor="start">Ordre de démarrage (depends_on) : llm-init terminé → llm sain → api saine → web   ·   db saine → api   ·   loki sain → alloy   ·   prometheus + loki sains → grafana</text>
+</svg>

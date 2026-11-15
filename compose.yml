@@ -1,0 +1,233 @@
+# ============================================================
+#  Stack applicative : web (nginx) -> api (FastAPI) -> db (PostgreSQL) + llm (llama.cpp)
+#  Usage :
+#    dev   : docker compose up -d --build              (charge compose.override.yml)
+#    prod  : docker compose -f compose.yml -f compose.prod.yml up -d --build
+#    + monitoring : ajouter --profile monitoring
+# ============================================================
+name: llm-stack
+
+include:
+  - path: monitoring/compose.yml        # sous-projet Prometheus / Grafana / Loki (profil "monitoring")
+
+services:
+
+  # ---------- Base de données ----------
+  db:
+    extends:
+      file: compose.common.yml
+      service: hardened
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-llmapp}
+      POSTGRES_USER: ${POSTGRES_USER:-llmapp}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /tmp
+      - /run/postgresql
+    # PostgreSQL démarre en root puis bascule sur l'utilisateur "postgres" : il lui faut ces 5 capabilities
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [backend]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 200
+
+  # ---------- Job one-shot : télécharge le modèle GGUF dans un volume ----------
+  llm-init:
+    image: curlimages/curl:8.22.0
+    user: root
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        target="/models/$$MODEL_FILE"
+        if [ -s "$$target" ]; then echo "Modèle déjà présent : $$target"; exit 0; fi
+        echo "Téléchargement de $$MODEL_URL"
+        curl --fail --location --retry 5 --continue-at - --output "$$target.part" "$$MODEL_URL"
+        mv "$$target.part" "$$target"
+    environment:
+      MODEL_FILE: ${MODEL_FILE:-qwen2.5-0.5b-instruct-q4_k_m.gguf}
+      MODEL_URL: >-
+        ${MODEL_URL:-https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf}
+    volumes:
+      - llm_models:/models
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+    networks: [egress]
+
+  # ---------- Serveur LLM (llama.cpp, API compatible OpenAI, métriques Prometheus) ----------
+  llm:
+    extends:
+      file: compose.common.yml
+      service: hardened
+    image: ghcr.io/ggml-org/llama.cpp:server-b11434
+    user: "1000:1000"
+    command:
+      - --model
+      - /models/${MODEL_FILE:-qwen2.5-0.5b-instruct-q4_k_m.gguf}
+      - --alias
+      - ${LLM_MODEL:-qwen2.5-0.5b-instruct}
+      - --ctx-size
+      - "4096"
+      - --parallel
+      - "2"
+      - --threads
+      - ${LLM_THREADS:-4}
+      - --metrics
+      - --port
+      - "8080"
+    volumes:
+      - llm_models:/models:ro
+    tmpfs:
+      - /tmp
+    depends_on:
+      llm-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks: [inference, observability]
+    deploy:
+      resources:
+        limits:
+          cpus: "${LLM_CPUS:-2.0}"
+          memory: 2G
+          pids: 200
+
+  # ---------- API ----------
+  api:
+    extends:
+      file: compose.common.yml
+      service: hardened
+    build:
+      context: ./api
+      target: runner
+    image: llm-stack/api:${APP_VERSION:-dev}
+    environment:
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB:-llmapp}
+      DB_USER: ${POSTGRES_USER:-llmapp}
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      LLM_URL: http://llm:8080
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5-0.5b-instruct}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    secrets:
+      - db_password
+    tmpfs:
+      - /tmp
+    depends_on:
+      db:
+        condition: service_healthy
+      llm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks: [frontend, backend, inference, observability]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 200
+
+  # ---------- Front web (nginx non-root) ----------
+  web:
+    extends:
+      file: compose.common.yml
+      service: hardened
+    build:
+      context: ./web
+    image: llm-stack/web:${APP_VERSION:-dev}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:8080"
+    tmpfs:
+      - /tmp
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [frontend]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+          pids: 200
+
+  # ---------- Sauvegarde logique (profil "backup") ----------
+  # docker compose --profile backup run --rm db-backup
+  db-backup:
+    image: postgres:16-alpine
+    profiles: [backup]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-llmapp}
+      PGDATABASE: ${POSTGRES_DB:-llmapp}
+      PGPASSFILE: /tmp/.pgpass
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "db:5432:$$PGDATABASE:$$PGUSER:$$(cat /run/secrets/db_password)" > "$$PGPASSFILE"
+        chmod 600 "$$PGPASSFILE"
+        out="/backups/dump-$$(date +%Y%m%d-%H%M%S).sql.gz"
+        pg_dump | gzip > "$$out"
+        echo "Sauvegarde créée : $$out"
+    secrets:
+      - db_password
+    volumes:
+      - ./backups:/backups
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    networks: [backend]
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+
+volumes:
+  pgdata:
+  llm_models:
+
+networks:
+  frontend:
+  backend:
+    internal: true        # la base n'a aucun accès à Internet ni à l'hôte
+  inference:
+  egress:                 # seul llm-init sort sur Internet (téléchargement du modèle)

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1380 790" width="1380" height="790" role="img">
+<defs><marker id="a-2f6f9f" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#2f6f9f"/></marker><marker id="a-9a6a23" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#9a6a23"/></marker><marker id="a-6b4f9e" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#6b4f9e"/></marker><marker id="a-a8423a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#a8423a"/></marker><marker id="a-227d6e" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#227d6e"/></marker><marker id="a-7b8694" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#7b8694"/></marker><marker id="a-8b95a1" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#8b95a1"/></marker><marker id="a-c9c2b6" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#c9c2b6"/></marker></defs>
+<rect x="0.6" y="0.6" width="1378.8" height="788.8" rx="12" fill="#fbfaf7" stroke="#e4ded3" stroke-width="1.2"/>
+<text x="32.0" y="38.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="19" font-weight="700" fill="#1c2430" text-anchor="start">Ordre de démarrage</text>
+<text x="32.0" y="60.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="12" font-weight="400" fill="#5d6a78" text-anchor="start">Chaque flèche est un depends_on : le service de droite ne démarre pas tant que celui de gauche n'a pas atteint l'état indiqué.</text>
+<text x="32.0" y="98.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" font-weight="700" fill="#1c2430" text-anchor="start">Chaîne applicative</text>
+<rect x="48.0" y="116.0" width="186.0" height="100.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 49.0 124.0 A 7 7 0 0 1 56.0 117.0 L 226.0 117.0 A 7 7 0 0 1 233.0 124.0" fill="none" stroke="#a8423a" stroke-width="2.6"/>
+<text x="141.0" y="141.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">llm-init</text>
+<text x="141.0" y="159.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">job one-shot</text>
+<text x="141.0" y="173.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">télécharge le modèle GGUF</text>
+<text x="141.0" y="187.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">doit sortir en code 0</text>
+<rect x="404.0" y="116.0" width="186.0" height="100.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 405.0 124.0 A 7 7 0 0 1 412.0 117.0 L 582.0 117.0 A 7 7 0 0 1 589.0 124.0" fill="none" stroke="#6b4f9e" stroke-width="2.6"/>
+<text x="497.0" y="141.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">llm</text>
+<text x="497.0" y="159.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">healthcheck : curl /health</text>
+<text x="497.0" y="173.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">interval 10 s, retries 12</text>
+<text x="497.0" y="187.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">start_period 30 s</text>
+<rect x="48.0" y="276.0" width="186.0" height="100.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 49.0 284.0 A 7 7 0 0 1 56.0 277.0 L 226.0 277.0 A 7 7 0 0 1 233.0 284.0" fill="none" stroke="#9a6a23" stroke-width="2.6"/>
+<text x="141.0" y="301.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">db</text>
+<text x="141.0" y="319.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">healthcheck : pg_isready</text>
+<text x="141.0" y="333.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">interval 10 s, retries 5</text>
+<text x="141.0" y="347.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">start_period 20 s</text>
+<rect x="760.0" y="206.0" width="186.0" height="100.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 761.0 214.0 A 7 7 0 0 1 768.0 207.0 L 938.0 207.0 A 7 7 0 0 1 945.0 214.0" fill="none" stroke="#2f6f9f" stroke-width="2.6"/>
+<text x="853.0" y="231.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">api</text>
+<text x="853.0" y="249.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">healthcheck : /health/live</text>
+<text x="853.0" y="263.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">interval 10 s, retries 5</text>
+<text x="853.0" y="277.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">start_period 10 s</text>
+<rect x="1116.0" y="206.0" width="186.0" height="100.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 1117.0 214.0 A 7 7 0 0 1 1124.0 207.0 L 1294.0 207.0 A 7 7 0 0 1 1301.0 214.0" fill="none" stroke="#2f6f9f" stroke-width="2.6"/>
+<text x="1209.0" y="231.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">web</text>
+<text x="1209.0" y="249.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">healthcheck : /healthz</text>
+<text x="1209.0" y="263.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">interval 10 s, retries 5</text>
+<path d="M 234.0 166.0 L 404.0 166.0" fill="none" stroke="#a8423a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-a8423a)"/>
+<rect x="292.7" y="132.5" width="52.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="319.0" y="143.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" font-weight="500" fill="#8b95a1" text-anchor="middle">condition</text>
+<rect x="239.2" y="145.5" width="159.6" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="319.0" y="156.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="500" fill="#a8423a" text-anchor="middle">service_completed_successfully</text>
+<path d="M 590.0 166.0 L 676.0 166.0 L 676.0 236.0 L 760.0 236.0" fill="none" stroke="#6b4f9e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-6b4f9e)"/>
+<rect x="683.0" y="182.5" width="52.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="688.0" y="193.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" font-weight="500" fill="#8b95a1" text-anchor="start">condition</text>
+<rect x="683.0" y="195.5" width="84.8" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="688.0" y="206.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="500" fill="#6b4f9e" text-anchor="start">service_healthy</text>
+<path d="M 234.0 326.0 L 676.0 326.0 L 676.0 276.0 L 760.0 276.0" fill="none" stroke="#9a6a23" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-9a6a23)"/>
+<rect x="393.7" y="292.5" width="52.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="420.0" y="303.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" font-weight="500" fill="#8b95a1" text-anchor="middle">condition</text>
+<rect x="377.6" y="305.5" width="84.8" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="420.0" y="316.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="500" fill="#9a6a23" text-anchor="middle">service_healthy</text>
+<path d="M 946.0 256.0 L 1116.0 256.0" fill="none" stroke="#2f6f9f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-2f6f9f)"/>
+<rect x="1004.7" y="222.5" width="52.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="1031.0" y="233.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" font-weight="500" fill="#8b95a1" text-anchor="middle">condition</text>
+<rect x="988.6" y="235.5" width="84.8" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="1031.0" y="246.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="500" fill="#2f6f9f" text-anchor="middle">service_healthy</text>
+<text x="32.0" y="452.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11.5" font-weight="700" fill="#1c2430" text-anchor="start">Chaîne supervision — profil monitoring</text>
+<rect x="48.0" y="470.0" width="186.0" height="100.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 49.0 478.0 A 7 7 0 0 1 56.0 471.0 L 226.0 471.0 A 7 7 0 0 1 233.0 478.0" fill="none" stroke="#227d6e" stroke-width="2.6"/>
+<text x="141.0" y="495.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">prometheus</text>
+<text x="141.0" y="513.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">healthcheck : /-/ready</text>
+<text x="141.0" y="527.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">interval 15 s, retries 5</text>
+<rect x="48.0" y="610.0" width="186.0" height="100.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 49.0 618.0 A 7 7 0 0 1 56.0 611.0 L 226.0 611.0 A 7 7 0 0 1 233.0 618.0" fill="none" stroke="#227d6e" stroke-width="2.6"/>
+<text x="141.0" y="635.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">loki</text>
+<text x="141.0" y="653.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">healthcheck : /ready</text>
+<text x="141.0" y="667.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">interval 15 s, retries 10</text>
+<text x="141.0" y="681.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">start_period 20 s</text>
+<rect x="404.0" y="470.0" width="186.0" height="100.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 405.0 478.0 A 7 7 0 0 1 412.0 471.0 L 582.0 471.0 A 7 7 0 0 1 589.0 478.0" fill="none" stroke="#227d6e" stroke-width="2.6"/>
+<text x="497.0" y="495.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">grafana</text>
+<text x="497.0" y="513.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">démarre seulement quand</text>
+<text x="497.0" y="527.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">Prometheus et Loki</text>
+<text x="497.0" y="541.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">sont tous les deux sains</text>
+<rect x="404.0" y="610.0" width="186.0" height="100.0" rx="7" fill="#ffffff" stroke="#c9c2b6" stroke-width="1.2"/>
+<path d="M 405.0 618.0 A 7 7 0 0 1 412.0 611.0 L 582.0 611.0 A 7 7 0 0 1 589.0 618.0" fill="none" stroke="#227d6e" stroke-width="2.6"/>
+<text x="497.0" y="635.0" font-family="ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace" font-size="13.5" font-weight="600" fill="#1c2430" text-anchor="middle">alloy</text>
+<text x="497.0" y="653.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">démarre seulement quand</text>
+<text x="497.0" y="667.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="400" fill="#5d6a78" text-anchor="middle">Loki est sain</text>
+<path d="M 234.0 520.0 L 404.0 520.0" fill="none" stroke="#227d6e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<rect x="292.7" y="486.5" width="52.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="319.0" y="497.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" font-weight="500" fill="#8b95a1" text-anchor="middle">condition</text>
+<rect x="276.6" y="499.5" width="84.8" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="319.0" y="510.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="500" fill="#227d6e" text-anchor="middle">service_healthy</text>
+<path d="M 234.0 660.0 L 404.0 660.0" fill="none" stroke="#227d6e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<rect x="292.7" y="626.5" width="52.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="319.0" y="637.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" font-weight="500" fill="#8b95a1" text-anchor="middle">condition</text>
+<rect x="276.6" y="639.5" width="84.8" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="319.0" y="650.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="500" fill="#227d6e" text-anchor="middle">service_healthy</text>
+<path d="M 141.0 610.0 L 141.0 590.0 L 320.0 590.0 L 320.0 546.0 L 404.0 546.0" fill="none" stroke="#227d6e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a-227d6e)"/>
+<rect x="327.0" y="558.5" width="52.5" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="332.0" y="569.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9" font-weight="500" fill="#8b95a1" text-anchor="start">condition</text>
+<rect x="327.0" y="571.5" width="84.8" height="15.0" rx="4" fill="#fbfaf7" stroke="none" stroke-width="0"/>
+<text x="332.0" y="582.5" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="9.5" font-weight="500" fill="#227d6e" text-anchor="start">service_healthy</text>
+<text x="32.0" y="744.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" font-weight="400" fill="#5d6a78" text-anchor="start">Au tout premier lancement, llm-init télécharge environ 490 Mo : llm, puis api, puis web restent « starting » pendant plusieurs minutes.</text>
+<text x="32.0" y="764.0" font-family="system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" font-size="11" font-weight="400" fill="#8b95a1" text-anchor="start">Suivre la progression avec :  docker compose logs -f llm-init llm</text>
+</svg>

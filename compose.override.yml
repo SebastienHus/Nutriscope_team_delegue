@@ -1,0 +1,31 @@
+# Chargé AUTOMATIQUEMENT par "docker compose up" : confort de développement.
+# (Désactivé dès que l'on passe explicitement -f compose.yml -f ...)
+services:
+
+  api:
+    build:
+      target: dev                 # uvicorn --reload + pytest
+    environment:
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./api/app:/app/app:ro     # hot-reload du code (bind mount)
+      - ./api/tests:/app/tests:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  web:
+    volumes:
+      - ./web/public:/usr/share/nginx/html:ro
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"     # accès psql depuis l'hôte pour déboguer
+
+  llm:
+    ports:
+      - "127.0.0.1:8081:8080"     # interface web de llama.cpp : http://localhost:8081
+
+networks:
+  backend:
+    internal: false               # nécessaire pour publier le port 5432 de la base
