@@ -1,6 +1,11 @@
 .vscode
 # Sorties du pipeline : régénérables, jamais versionnées
-/data/
+/data/*
+# ... sauf le lot de l'atelier scanner, versionné tel quel (photos CC-BY-SA, vérité terrain)
+!/data/photos/
+!/data/verite_terrain.csv
+!/data/catalogue_off_lot.csv
+!/data/sources_photos.csv
 work
 tree.txt
 # Modèles entraînés et artefacts des bibliothèques de boosting

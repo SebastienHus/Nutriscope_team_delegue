@@ -176,7 +176,11 @@ def normalize_texts(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
     - `product_name` : espaces de bord retirés, nom vide → NA ;
     - grades Nutri-Score et environnemental : minuscules sans espaces, puis toute valeur
       hors `schema.NUTRISCORE_GRADES` / `schema.ENVIRONMENTAL_SCORE_GRADES` → NA
-      (dont `unknown`). Les valeurs fautives sont pointées par `schema.GRADES_SCHEMA`.
+      (dont `unknown`). Les valeurs fautives sont pointées par `schema.GRADES_SCHEMA` ;
+    - `quantity` : espaces de bord retirés, quantité vide → NA, puis toute quantité de plus
+      de `schema.QUANTITY_MAX_LENGTH` caractères (texte parasite) ou sans aucun chiffre
+      (« pcs », « Poids variable », une marque) → NA. Le produit est conservé. Les valeurs
+      fautives sont pointées par `schema.QUANTITY_SCHEMA`.
     """
     out = df.copy()
     details = {}
@@ -196,7 +200,22 @@ def normalize_texts(df: pd.DataFrame) -> tuple[pd.DataFrame, Report]:
         out.loc[index, column] = np.nan
         details[f"{column}_invalidated"] = len(index)
 
-    changed = _changed_rows(df, out, ["product_name", *grades])
+    texts = ["product_name", *grades]
+    if "quantity" in out.columns:
+        quantity = _to_text(out["quantity"])
+        blank = _is_blank(quantity) & quantity.notna()
+        out["quantity"] = quantity.str.strip().mask(blank)
+        details["quantity_blank"] = blank.sum()
+
+        failures = schema.find_failures(out[["quantity"]], schema.QUANTITY_SCHEMA)
+        too_long = failures.get("quantity:max_length", pd.Index([]))
+        no_digit = failures.get("quantity:has_digit", pd.Index([]))
+        out.loc[too_long.union(no_digit), "quantity"] = np.nan
+        details["quantity_too_long"] = len(too_long)
+        details["quantity_without_digit"] = len(no_digit)
+        texts.append("quantity")
+
+    changed = _changed_rows(df, out, texts)
     return out, _report("normalize_texts", df, out, changed, details)
 
 

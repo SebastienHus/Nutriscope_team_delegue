@@ -174,11 +174,11 @@ CREATE TABLE products (
 
     name TEXT,
 
-    quantity VARCHAR(255),
+    quantity VARCHAR(100),
 
     ingredients_text TEXT,
 
-    main_category VARCHAR(255),
+    main_category TEXT,
 
     pnns_group_1 VARCHAR(64) NOT NULL,
 
@@ -203,6 +203,10 @@ CREATE TABLE products (
     -- Code-barres officiel : EAN-8, UPC-A ou EAN-13 (cf. src/schema.py)
     CONSTRAINT chk_product_code
         CHECK (code ~ '^([0-9]{8}|[0-9]{12}|[0-9]{13})$'),
+
+    -- Quantité : 100 caractères au plus, au moins un chiffre (cf. src/schema.py)
+    CONSTRAINT chk_product_quantity
+        CHECK (char_length(quantity) <= 100 AND quantity ~ '[0-9]'),
 
     CONSTRAINT chk_product_pnns_group_1
         CHECK (pnns_group_1 IN (
@@ -533,4 +537,4 @@ ON food_groups(name);
 
 /* =====================================================
    FIN DU SCRIPT
-   ===================================================== */
+   ===================================================== */

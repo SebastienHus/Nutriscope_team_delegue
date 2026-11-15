@@ -7,10 +7,16 @@ La base ne reçoit que la sortie de `cleaning.clean()` :
   `schema.py` (0–100 g, 0–900 kcal, grades autorisés, code officiel) ;
 - le chargement se fait dans une seule transaction : tout ou rien.
 
-L'étape `load_database` du pipeline appelle `init_database` puis `load_products`. Usage autonome (lecture,
-nettoyage puis chargement) :
+Ce module ne lit ni ne nettoie l'export : la base est chargée par l'étape `load_database`
+du pipeline, à partir du Parquet nettoyé (source de vérité unique, partagée avec l'étape
+`parquet`), avec contrôle du nombre de produits chargés :
 
-    python -m nutriscope.create_database -d data/en.openfoodfacts.org.products.csv -s "\\t"
+    python -m nutriscope.pipeline load_database            # échantillon partagé
+    python -m nutriscope.pipeline load_database --full     # extrait complet
+
+Usage autonome : créer (ou réinitialiser) le schéma, sans données :
+
+    python -m nutriscope.create_database
 
 Identifiants : ceux du conteneur PostgreSQL (`options.db_credentials`) : POSTGRES_USER du `.env`,
 mot de passe lu dans `secrets/db_password.txt` (ou POSTGRES_PASSWORD). Aucun mot de passe en argument.
@@ -26,10 +32,8 @@ from sqlalchemy import URL, create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy_utils import create_database, database_exists
 
-from .cleaning import clean
 from .options import (CONFIG_PATH, DB_PASSWORD_ENV, DEFAULT_DB_PASSWORD_FILE, ROOT_PATH, db_credentials,
                       read_options)
-from .reader import read_products
 
 SQL_SCHEMA_PATH = ROOT_PATH / "schema_nutriscope.sql"
 INSERT_CHUNKSIZE = 10_000             # lignes par lot d'insertion
@@ -240,31 +244,21 @@ def main(args):
     overrides = {"username": args.username, "host": args.host, "port": args.port}
     credentials.update({key: value for key, value in overrides.items() if value is not None})
     engine = init_database(config, **credentials)
-
-    if not args.data_path:
-        return 1
-
-    raw = read_products(args.data_path, config["columns"], sep=args.separator)
-    df, _ = clean(raw)
-    for table, count in load_products(engine, df).items():
-        print(f"  {table}: {count:,} lignes")
-        
+    engine.dispose()
+    print("Base prête et vide : chargement avec `python -m nutriscope.pipeline load_database`.")
     return 0
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="NutriscopeDatabaseCreation",
-        description="Crée la base NutriScope et, si un export est fourni, la charge après nettoyage.",
+        description="Crée (ou réinitialise) la base NutriScope et son schéma, sans données. "
+                    "Chargement : python -m nutriscope.pipeline load_database",
     )
     parser.add_argument("filename", nargs="?", default=CONFIG_PATH,
                         help="Fichier d'options (par défaut : options.ini du package)")
     parser.add_argument("-u", "--username", default=None, help="Défaut : POSTGRES_USER du .env")
     parser.add_argument("--host", default=None, help="Défaut : POSTGRES_HOST, sinon localhost")
     parser.add_argument("--port", type=int, default=None, help="Défaut : POSTGRES_PORT, sinon 5432")
-    parser.add_argument("-d", "--data-path", default=None, help="Export Open Food Facts brut")
-    parser.add_argument("-s", "--separator", default="\t",
-                        help="Séparateur de l'export (tabulation pour l'export complet)")
     args = parser.parse_args()
-    args.separator = args.separator.encode().decode("unicode-escape")
     sys.exit(main(args))
