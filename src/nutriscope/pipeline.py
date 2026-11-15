@@ -59,7 +59,8 @@ import numpy as np
 import pandas as pd
 
 from .cleaning import DEFAULT_STRATEGY, clean
-from .options import CONFIG, DATA_PATH, ROOT_PATH, SHARED_DATA_PATH
+from .options import (CONFIG, DATA_PATH, DB_PASSWORD_ENV, DB_PASSWORD_FILE_ENV, DEFAULT_DB_PASSWORD_FILE,
+                      ROOT_PATH, SHARED_DATA_PATH, db_credentials)
 from .report import merge_reports, merge_summaries, render_report, summarize_before
 from .storage.convert_parquet import (LICENSE, is_complete, relative_path, sql_identifier, sql_string,
                                       to_parquet)
@@ -94,15 +95,7 @@ CSV_MAX_LINE_SIZE = 20_000_000          # quelques fiches ont des listes d'ingr�
 NO_QUOTE_FALLBACK = "\x01"              # si DuckDB refuse quote = '' (guillemets désactivés)
 VERSIONED_PACKAGES = ("duckdb", "pandas", "pyarrow", "numpy", "pandera")
 
-# Connexion PostgreSQL : variables d'environnement, ou fichier de mot de passe (secrets/)
-DB_ENV = {
-    "username": ("NUTRISCOPE_DB_USER", "postgres"),
-    "host": ("NUTRISCOPE_DB_HOST", "localhost"),
-    "port": ("NUTRISCOPE_DB_PORT", "5432"),
-}
-DB_PASSWORD_ENV = "NUTRISCOPE_DB_PASSWORD"
-DB_PASSWORD_FILE_ENV = "NUTRISCOPE_DB_PASSWORD_FILE"
-DEFAULT_DB_PASSWORD_FILE = ROOT_PATH / "secrets" / "db_password.txt"
+# Connexion PostgreSQL : voir `options.db_credentials` (POSTGRES_* du .env + secrets/db_password.txt)
 
 
 @dataclass(frozen=True)
@@ -657,15 +650,7 @@ class Pipeline:
 
     def db_credentials(self) -> dict | None:
         """Identifiants PostgreSQL, ou `None` si aucun mot de passe n'est configuré."""
-        password = os.environ.get(DB_PASSWORD_ENV)
-        if not password:
-            password_file = Path(os.environ.get(DB_PASSWORD_FILE_ENV) or self.db_password_file)
-            if password_file.is_file():
-                password = password_file.read_text(encoding="utf-8").strip()
-        if not password:
-            return None
-        values = {key: os.environ.get(env, default) for key, (env, default) in DB_ENV.items()}
-        return {**values, "port": int(values["port"]), "password": password}
+        return db_credentials(self.db_password_file)
 
     def _database_unavailable(self, reason: str) -> StepOutcome:
         if self.require_db:

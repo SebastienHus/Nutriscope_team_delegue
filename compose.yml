@@ -1,0 +1,244 @@
+# ============================================================
+#  Stack applicative : web (nginx) -> api (FastAPI) -> db (PostgreSQL) + llm (Ollama)
+#  Usage :
+#    dev   : docker compose up -d --build              (charge compose.override.yml)
+#    prod  : docker compose -f compose.yml -f compose.prod.yml up -d --build
+#    + monitoring : ajouter --profile monitoring
+# ============================================================
+name: llm-stack
+
+include:
+  - path: monitoring/compose.yml        # sous-projet Prometheus / Grafana / Loki (profil "monitoring")
+
+services:
+
+  # ---------- Base de données ----------
+  db:
+    extends:
+      file: compose.common.yml
+      service: hardened
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-llmapp}
+      POSTGRES_USER: ${POSTGRES_USER:-llmapp}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /tmp
+      - /run/postgresql
+    # Mémoire partagée des requêtes parallèles (/dev/shm, 64 Mo par défaut dans Docker) : trop juste
+    # pour le catalogue complet (1 M de produits). Comptée dans la limite mémoire du conteneur.
+    shm_size: 256mb
+    # PostgreSQL démarre en root puis bascule sur l'utilisateur "postgres" : il lui faut ces 5 capabilities
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [backend]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 200
+
+  # ---------- Job one-shot : télécharge le modèle Ollama dans le volume ----------
+  # Démarre un serveur Ollama temporaire, fait "ollama pull" si le modèle manque, puis rend
+  # le volume à l'utilisateur 1000 (celui du service llm). Relancé à chaque "up" : sans réseau
+  # ni téléchargement si le modèle est déjà là.
+  llm-init:
+    image: ollama/ollama:${OLLAMA_VERSION:-0.30.10}
+    user: root
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        ollama serve > /tmp/serve.log 2>&1 &
+        until ollama list > /dev/null 2>&1; do sleep 1; done
+        if ollama show "$$LLM_MODEL" > /dev/null 2>&1; then
+          echo "Modèle déjà présent : $$LLM_MODEL"
+        else
+          echo "Téléchargement de $$LLM_MODEL (plusieurs Go, la première fois seulement)"
+          ollama pull "$$LLM_MODEL"
+        fi
+        chown -R 1000:1000 /models
+    environment:
+      LLM_MODEL: ${LLM_MODEL:-qwen3-vl:8b-instruct}
+      OLLAMA_MODELS: /models
+      HOME: /tmp
+    volumes:
+      - llm_models:/models
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]   # root sans capabilities ne pourrait ni écrire ni faire le chown
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+    networks: [egress]
+
+  # ---------- Serveur LLM (Ollama, API compatible OpenAI sur /v1) ----------
+  llm:
+    extends:
+      file: compose.common.yml
+      service: hardened
+    image: ollama/ollama:${OLLAMA_VERSION:-0.30.10}
+    user: "1000:1000"
+    environment:
+      HOME: /tmp                                   # Ollama y écrit sa clé : le reste du disque est en lecture seule
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_MODELS: /models
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m} # garde le modèle en mémoire entre deux requêtes
+      OLLAMA_CONTEXT_LENGTH: ${LLM_CTX:-8192}      # une image consomme beaucoup de tokens
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NOPRUNE: "1"
+    volumes:
+      - llm_models:/models
+    tmpfs:
+      - /tmp
+    depends_on:
+      llm-init:
+        condition: service_completed_successfully
+    healthcheck:
+      # l'image n'a pas curl : le client ollama vérifie que le serveur répond ET que le modèle est installé
+      test: ["CMD", "ollama", "show", "${LLM_MODEL:-qwen3-vl:8b-instruct}"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks: [inference]
+    deploy:
+      resources:
+        limits:
+          cpus: "${LLM_CPUS:-4.0}"
+          memory: ${LLM_MEMORY:-12G}
+          pids: 1000
+
+  # ---------- API ----------
+  api:
+    extends:
+      file: compose.common.yml
+      service: hardened
+    build:
+      context: ./api
+      target: runner
+    image: llm-stack/api:${APP_VERSION:-dev}
+    environment:
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB:-llmapp}
+      DB_USER: ${POSTGRES_USER:-llmapp}
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      LLM_URL: http://llm:11434
+      LLM_MODEL: ${LLM_MODEL:-qwen3-vl:8b-instruct}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-300}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    secrets:
+      - db_password
+    tmpfs:
+      - /tmp
+    depends_on:
+      db:
+        condition: service_healthy
+      llm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks: [frontend, backend, inference, observability]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 200
+
+  # ---------- Front web (nginx non-root) ----------
+  web:
+    extends:
+      file: compose.common.yml
+      service: hardened
+    build:
+      context: ./web
+    image: llm-stack/web:${APP_VERSION:-dev}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:8080"
+    tmpfs:
+      - /tmp
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [frontend]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+          pids: 200
+
+  # ---------- Sauvegarde logique (profil "backup") ----------
+  # docker compose --profile backup run --rm db-backup
+  db-backup:
+    image: postgres:16-alpine
+    profiles: [backup]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-llmapp}
+      PGDATABASE: ${POSTGRES_DB:-llmapp}
+      PGPASSFILE: /tmp/.pgpass
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "db:5432:$$PGDATABASE:$$PGUSER:$$(cat /run/secrets/db_password)" > "$$PGPASSFILE"
+        chmod 600 "$$PGPASSFILE"
+        out="/backups/dump-$$(date +%Y%m%d-%H%M%S).sql.gz"
+        pg_dump | gzip > "$$out"
+        echo "Sauvegarde créée : $$out"
+    secrets:
+      - db_password
+    volumes:
+      - ./backups:/backups
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    networks: [backend]
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+
+volumes:
+  pgdata:
+  llm_models:
+
+networks:
+  frontend:
+  backend:
+    internal: true        # la base n'a aucun accès à Internet ni à l'hôte
+  inference:
+    internal: true        # le serveur LLM n'a aucun accès à Internet
+  egress:                 # seul llm-init sort sur Internet (téléchargement du modèle)

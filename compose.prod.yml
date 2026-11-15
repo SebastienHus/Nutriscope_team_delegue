@@ -1,0 +1,25 @@
+# Surcouche "production" : docker compose -f compose.yml -f compose.prod.yml up -d --build
+# Aucun port de debug, images versionnées, redémarrage automatique.
+services:
+
+  api:
+    build:
+      target: runner
+    image: llm-stack/api:${APP_VERSION:?Définir APP_VERSION (ex. 1.0.0)}
+    restart: always
+    environment:
+      LOG_LEVEL: INFO
+
+  web:
+    image: llm-stack/web:${APP_VERSION:?Définir APP_VERSION (ex. 1.0.0)}
+    restart: always
+
+  db:
+    restart: always
+
+  llm:
+    restart: always
+
+  # Surcharge d'un service défini dans le sous-projet monitoring
+  grafana:
+    restart: always

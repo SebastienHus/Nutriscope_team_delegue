@@ -20,7 +20,7 @@ dependencies = { file = ["requirements.txt"] }
 where = ["src"]
 
 [tool.setuptools.package-data]
-nutriscope = ["options.ini"]
+nutriscope = ["options.ini", "assistant/assistant_behavior.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

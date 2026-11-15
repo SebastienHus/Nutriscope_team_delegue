@@ -93,6 +93,13 @@ ALCOHOL_GROUP = "Alcoholic beverages"   # l'alcool apporte une énergie hors 4 /
 NUTRISCORE_GRADES = ("a", "b", "c", "d", "e", "not-applicable")
 ENVIRONMENTAL_SCORE_GRADES = ("a-plus", "a", "b", "c", "d", "e", "f", "not-applicable")
 
+# Quantité : texte libre (« 400 g », « 6 x 33 cl », « 210 g (Poids net égoutté : 150 g) »).
+# Les quantités détaillées font moins de 50 caractères : au-delà de 100, c'est du texte parasite
+# (un paragraphe de 3 530 caractères dans l'extrait complet). Sans chiffre (« pcs », « Poids
+# variable », une marque), la valeur n'indique aucune quantité. Mêmes bornes dans le DDL.
+QUANTITY_MAX_LENGTH = 100
+QUANTITY_DIGIT_PATTERN = r"[0-9]"
+
 
 # ============================================================================
 # CONTRÔLES VECTORISÉS
@@ -216,6 +223,15 @@ def _allowed_values(values: tuple[str, ...]) -> list[pa.Check]:
     return [pa.Check.isin(values, name="allowed_value")]
 
 
+def _quantity_checks() -> list[pa.Check]:
+    return [
+        pa.Check.str_length(max_value=QUANTITY_MAX_LENGTH, name="max_length",
+                            error=f"quantité de {QUANTITY_MAX_LENGTH} caractères au plus"),
+        pa.Check.str_contains(QUANTITY_DIGIT_PATTERN, name="has_digit",
+                              error="quantité contenant au moins un chiffre"),
+    ]
+
+
 SUGARS_CHECK = pa.Check(sugars_within_carbohydrates, name="sugars_within_carbohydrates",
                         error="sucres ≤ glucides + 0,5 g")
 SATURATED_CHECK = pa.Check(saturated_within_fat, name="saturated_within_fat",
@@ -252,6 +268,11 @@ GRADES_SCHEMA = pa.DataFrameSchema(
     name="grade_rules",
 )
 
+QUANTITY_SCHEMA = pa.DataFrameSchema(
+    {"quantity": pa.Column(None, _quantity_checks(), nullable=True, required=False)},
+    name="quantity_rules",
+)
+
 NUTRIENT_BOUNDS_SCHEMA = pa.DataFrameSchema(
     {
         column: pa.Column(None, _bound_checks(low, high), nullable=True, required=False)
@@ -273,6 +294,7 @@ NUTRIENT_CONSISTENCY_SCHEMA = pa.DataFrameSchema(
 _output_columns = {
     "code": pa.Column(str, _code_checks(), unique=True, nullable=False),
     "product_name": pa.Column(str, [pa.Check.str_length(min_value=1, name="not_blank")], nullable=True),
+    "quantity": pa.Column(str, _quantity_checks(), nullable=True, required=False),
     "pnns_groups_1": pa.Column(str, _allowed_values(PNNS_GROUPS), nullable=False),
     "nutriscore_grade": pa.Column(str, _allowed_values(NUTRISCORE_GRADES), nullable=True),
     "environmental_score_grade": pa.Column(str, _allowed_values(ENVIRONMENTAL_SCORE_GRADES), nullable=True),

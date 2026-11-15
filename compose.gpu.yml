@@ -1,0 +1,13 @@
+# Surcouche GPU NVIDIA (Docker Desktop + WSL2 + pilote NVIDIA récent) :
+#   docker compose -f compose.yml -f compose.override.yml -f compose.gpu.yml up -d --build
+# Vérifier avant : docker run --rm --gpus all ubuntu nvidia-smi
+services:
+
+  llm:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

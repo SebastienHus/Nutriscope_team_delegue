@@ -33,6 +33,56 @@ def read_options(filename: os.PathLike) -> dict:
 
 CONFIG = read_options(CONFIG_PATH)
 
+
+# ============================================================================
+# CONNEXION POSTGRESQL
+# ============================================================================
+# Mêmes variables que le conteneur `db` (compose.yml) : POSTGRES_USER vient du `.env`,
+# le mot de passe du secret Docker `secrets/db_password.txt` (scripts/init-secrets.*).
+ENV_FILE = ROOT_PATH / ".env"
+DB_USER_ENV = "POSTGRES_USER"
+DB_PASSWORD_ENV = "POSTGRES_PASSWORD"
+DB_PASSWORD_FILE_ENV = "POSTGRES_PASSWORD_FILE"
+DB_HOST_ENV = "POSTGRES_HOST"
+DB_PORT_ENV = "POSTGRES_PORT"
+DEFAULT_DB_PASSWORD_FILE = ROOT_PATH / "secrets" / "db_password.txt"
+
+
+def load_env_file(path: os.PathLike = ENV_FILE) -> None:
+    """Charge les `CLE=valeur` du `.env` sans écraser une variable déjà définie dans le shell."""
+    path = Path(path)
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+def db_credentials(password_file: os.PathLike = DEFAULT_DB_PASSWORD_FILE) -> dict | None:
+    """
+    Identifiants PostgreSQL pour `create_database.init_database`, ou `None` sans mot de passe.
+
+    Mot de passe : POSTGRES_PASSWORD, sinon le fichier POSTGRES_PASSWORD_FILE, sinon
+    `secrets/db_password.txt`. Utilisateur, hôte, port : POSTGRES_USER / _HOST / _PORT.
+    """
+    load_env_file()
+    password = os.environ.get(DB_PASSWORD_ENV)
+    if not password:
+        path = Path(os.environ.get(DB_PASSWORD_FILE_ENV) or password_file)
+        if path.is_file():
+            password = path.read_text(encoding="utf-8").strip()
+    if not password:
+        return None
+    return {
+        "username": os.environ.get(DB_USER_ENV, "postgres"),
+        "password": password,
+        "host": os.environ.get(DB_HOST_ENV, "localhost"),
+        "port": int(os.environ.get(DB_PORT_ENV, "5432")),
+    }
+
 # Graine et part de test du split figé (TP 13), réutilisées par la phase 4
 RANDOM_SEED = int(CONFIG["training"]["seed"])
 TEST_SIZE = float(CONFIG["training"]["test_size"])

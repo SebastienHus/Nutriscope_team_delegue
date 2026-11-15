@@ -162,3 +162,16 @@ Décision : chaque source écrit dans `data/<source>/`, nommé d'après le fichi
 (`--name` pour le forcer) ; le journal des durées reste commun et indique la source.
 `purge` ne vide que la source courante, `purge -a` toutes les sources (et les sorties de
 l'ancienne organisation, directement dans `data/`).
+
+## TP 18 : assistant outillé et scanner d'étiquettes
+
+- **Fait** : assistant sur `qwen3:8b` (Ollama, adresse dans `OLLAMA_HOST`) qui interroge la base PostgreSQL
+  par l'outil `chercher_produit` (plugins dans `src/nutriscope/tools/`), boucle bornée, refus médical en code,
+  relecture des nombres en code ; scanner `scanner_etiquette` (validation, vote, clé EAN, aiguillage,
+  rédacteur et relecteur) branché comme étape avant la boucle ; ADR 0001, schéma dans `docs/architecture.md`.
+- **Problème** : le premier notebook exposait un filtre `df.query` construit avec le texte du modèle (exécution
+  de code possible) et appelait les fonctions sans contrôle ; `assistant_behavior.txt` contenait encore le rôle
+  d'un vendeur de matériel (température 0,7). Corrigés ; reste à remplir les mesures de l'ADR sur nos postes.
+- **Suite** : exécuter `notebooks/llm.ipynb` et `notebooks/atelier_scanner_demo.ipynb`, charger
+  `data/catalogue_off_lot.csv` dans la base, mesurer les versions du scanner (`docs/mesures_scanner.md`) ;
+  TP 21 : moteur de substitution en plugin.

@@ -175,6 +175,23 @@ class TestNormalizeTexts:
         assert df["nutriscore_grade"].tolist() == ["a", "not-applicable"]
         assert df["environmental_score_grade"].tolist() == ["a-plus", "f"]
 
+    def test_invalid_quantities_cleared(self):
+        products = make_products(
+            {"quantity": " 400 g "},
+            {"quantity": "210 g (Poids net égoutté : 150 g)"},
+            {"quantity": "900 gramme " + "texte parasite " * 10},
+            {"quantity": "Poids variable"},
+            {"quantity": "   "},
+            {"quantity": np.nan},
+        )
+        df, report = normalize_texts(products)
+        assert df.loc[:1, "quantity"].tolist() == ["400 g", "210 g (Poids net égoutté : 150 g)"]
+        assert df.loc[2:, "quantity"].isna().all()
+        assert report.details["quantity_too_long"] == 1
+        assert report.details["quantity_without_digit"] == 1
+        assert report.details["quantity_blank"] == 1
+        assert report.lines_changed == 4
+
 
 # ============================================================================
 # RÈGLE : CODES

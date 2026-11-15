@@ -1,6 +1,11 @@
 .vscode
 # Sorties du pipeline : régénérables, jamais versionnées
-/data/
+/data/*
+# ... sauf le lot de l'atelier scanner, versionné tel quel (photos CC-BY-SA, vérité terrain)
+!/data/photos/
+!/data/verite_terrain.csv
+!/data/catalogue_off_lot.csv
+!/data/sources_photos.csv
 work
 tree.txt
 # Modèles entraînés et artefacts des bibliothèques de boosting
@@ -10,6 +15,11 @@ tree.txt
 catboost_info/
 # Mots de passe (base PostgreSQL, Grafana)
 secrets/
+
+# For Docker secrets and backup
+secrets/*.txt
+backups/*
+!backups/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

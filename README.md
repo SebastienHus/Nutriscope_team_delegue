@@ -77,9 +77,10 @@ Variables d'environnement facultatives :
 | ------------------------------ | --------------------------------------------------------------------- |
 | `NUTRISCOPE_SOURCE`            | source brute du pipeline (CSV, TSV ou Parquet), à la place de l'échantillon |
 | `NUTRISCOPE_DATA`              | dossier (ou fichier) du jeu ML lu par les notebooks                   |
-| `NUTRISCOPE_DB_PASSWORD`       | mot de passe PostgreSQL (sinon lu dans `secrets/db_password.txt`)     |
-| `NUTRISCOPE_DB_PASSWORD_FILE`  | autre fichier contenant le mot de passe                               |
-| `NUTRISCOPE_DB_USER`, `NUTRISCOPE_DB_HOST`, `NUTRISCOPE_DB_PORT` | connexion (défauts : `postgres`, `localhost`, `5432`) |
+| `POSTGRES_USER`                | utilisateur PostgreSQL, le même que le conteneur `db` (lu dans `.env`) |
+| `POSTGRES_PASSWORD`            | mot de passe PostgreSQL (sinon lu dans `secrets/db_password.txt`)     |
+| `POSTGRES_PASSWORD_FILE`       | autre fichier contenant le mot de passe                               |
+| `POSTGRES_HOST`, `POSTGRES_PORT` | connexion (défauts : `localhost`, `5432`)                           |
 
 Le dossier `secrets/` est ignoré par Git : ne jamais y versionner de mot de passe.
 
@@ -121,6 +122,15 @@ Sur l'extrait complet (13 Go), la source est lue en flux par DuckDB et le nettoy
 fait automatiquement en 8 lots : comptez une dizaine de Go de mémoire au pic du
 chargement, et quelques Go pour le nettoyage. Avec moins de RAM, ajoutez `--memory`
 (DuckDB déborde alors sur disque dans `data/<source>/tmp/`) et augmentez `--batches`.
+
+### Lancement Docker
+
+```bash
+docker compose up -d --build
+docker compose logs -f llm-init        # suivre le téléchargement
+# avec GPU NVIDIA :
+docker compose -f compose.yml -f compose.override.yml -f compose.gpu.yml up -d --build
+```
 
 ### Sortie attendue
 
@@ -197,7 +207,7 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/ml_nutriscore.ipyn
 | `MissingInputError: ... run the X step first`   | lancer l'étape indiquée, ou `all`                                       |
 | `... incomplete (no _SUCCESS marker)`           | relancer `parquet` (exécution précédente interrompue)                   |
 | `FileExistsError` sur l'export                  | comportement voulu : `--force` en l'assumant, ou une autre `--date`     |
-| `load_database` en `SKIPPED`                    | normal sans base ; sinon définir `NUTRISCOPE_DB_PASSWORD`               |
+| `load_database` en `SKIPPED`                    | normal sans base ; sinon lancer `scripts/init-secrets.ps1` et la stack Docker               |
 | `MemoryError` ou poste qui sature (`--full`)    | `--memory 8GB` et `--batches 16`                                        |
 | Tout est incohérent                             | `python -m nutriscope.pipeline purge` (ou `make clean`), puis `all`     |
 | Faire de la place sur le disque                 | `python -m nutriscope.pipeline purge -a` : toutes les sources           |
