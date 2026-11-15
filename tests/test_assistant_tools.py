@@ -120,6 +120,43 @@ def test_search_words_are_safe_for_like_patterns():
     assert search_words("Prince goût chocolat 100% blé!") == ["prince", "gout", "chocolat", "100", "ble"]
 
 
+def test_too_vague_search_is_an_error(registry, monkeypatch):
+    import nutriscope.catalog
+
+    monkeypatch.setattr(nutriscope.catalog, "MAX_MATCHES", 1)
+    result = search(registry, {"nom": "biscuit"})
+    assert set(result) == {"erreur"} and "too vague" in result["erreur"]
+    assert search(registry, {"nom": "pate a tartiner"})["statut"] == "ok"      # 1 produit : sous le plafond
+
+
+def test_namesakes_ranked_by_completeness():
+    from nutriscope.catalog import InMemoryCatalog
+
+    rows = [{"code": "1", "name": "Nutella", "nutriscore_grade": "e", "completeness": 0.47},
+            {"code": "3", "name": "Nutella", "nutriscore_grade": "e", "completeness": 0.9},
+            {"code": "2", "name": "Nutella", "nutriscore_grade": "e"}]
+    _, found = InMemoryCatalog(rows).search_by_name(["nutella"], 3)
+    assert [row["code"] for row in found] == ["3", "1", "2"]
+
+
+def test_short_words_match_word_starts_only():
+    from nutriscope.catalog import word_matches
+
+    assert word_matches("lu", "LU Prince") and word_matches("lu", "Lulu") and word_matches("lu", "xx:lu")
+    assert not word_matches("lu", "Valu")                      # court : début de mot seulement
+    assert word_matches("tella", "Nutella")                    # long : n'importe où
+    assert word_matches("pate", "Pâte à tartiner")
+
+
+def test_sql_normalize_text_matches_python():
+    """Les index de recherche portent sur `normalize_text` du DDL : même table de correspondance qu'en Python."""
+    from nutriscope.catalog import _ACCENTED, _PLAIN
+    from nutriscope.options import ROOT_PATH
+
+    ddl = " ".join((ROOT_PATH / "schema_nutriscope.sql").read_text(encoding="utf-8").split())
+    assert f"translate(lower(coalesce(value, '')), '{_ACCENTED}', '{_PLAIN}')" in ddl
+
+
 def test_build_fiche_converts_decimals_and_nan():
     from decimal import Decimal
 

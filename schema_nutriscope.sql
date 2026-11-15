@@ -39,6 +39,23 @@ CREATE SCHEMA IF NOT EXISTS public;
 SET search_path TO public;
 
 /* =====================================================
+   RECHERCHE PAR NOM (catalogue de l'assistant)
+   Casse et accents ignorés : même correspondance que
+   `normalize_text` de src/nutriscope/catalog.py. Les index
+   trigrammes (pg_trgm) servent les recherches LIKE '%mot%'
+   (mots de 3 caractères ou plus), les index plein texte les
+   débuts de mot (mots plus courts : 'lu:*').
+   ===================================================== */
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE OR REPLACE FUNCTION normalize_text(value TEXT) RETURNS TEXT
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    RETURN translate(lower(coalesce(value, '')),
+                     'àáâãäåāçćčèéêëēėęìíîïīñńòóôõöøōœùúûüūýÿž',
+                     'aaaaaaaccceeeeeeeiiiiinnoooooooouuuuuyyz');
+
+/* =====================================================
    TABLE FOOD GROUP
    ===================================================== */
 
@@ -187,6 +204,9 @@ CREATE TABLE products (
     created_at TIMESTAMP NOT NULL,
 
     last_modified_at TIMESTAMP NOT NULL,
+
+    -- Complétude de la fiche Open Food Facts (0 à 1,1) : départage les homonymes à la recherche
+    completeness REAL,
 
     image_url TEXT,
 
@@ -533,6 +553,23 @@ ON countries(name);
 
 CREATE INDEX idx_food_group_name
 ON food_groups(name);
+
+-- Recherche par nom ou marque (catalog.PostgresCatalog.search_by_name)
+CREATE INDEX idx_product_name_search
+ON products USING gin (normalize_text(name) gin_trgm_ops);
+
+CREATE INDEX idx_brand_name_search
+ON brands USING gin (normalize_text(name) gin_trgm_ops);
+
+CREATE INDEX idx_product_name_words
+ON products USING gin (to_tsvector('simple', normalize_text(name)));
+
+CREATE INDEX idx_brand_name_words
+ON brands USING gin (to_tsvector('simple', normalize_text(name)));
+
+-- Produits d'une marque (la clé primaire commence par product_code)
+CREATE INDEX idx_products_brands_brand
+ON products_brands(brand_id);
 
 
 /* =====================================================

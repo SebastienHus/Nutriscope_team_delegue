@@ -30,6 +30,9 @@ services:
     tmpfs:
       - /tmp
       - /run/postgresql
+    # Mémoire partagée des requêtes parallèles (/dev/shm, 64 Mo par défaut dans Docker) : trop juste
+    # pour le catalogue complet (1 M de produits). Comptée dans la limite mémoire du conteneur.
+    shm_size: 256mb
     # PostgreSQL démarre en root puis bascule sur l'utilisateur "postgres" : il lui faut ces 5 capabilities
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
     healthcheck:

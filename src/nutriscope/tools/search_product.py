@@ -13,7 +13,9 @@ Au moins `nom` ou `code` ; aucun autre argument. Résultat :
 
     {"statut": "ok" | "ambigu" | "introuvable", "total": <nombre trouvé>, "produits": [<fiche>, ...]}
 
-Arguments invalides -> {"erreur": "<explication>"}, jamais d'exception.
+Arguments invalides -> {"erreur": "<explication>"}, jamais d'exception. Une recherche trop vague
+(plus de `catalog.MAX_MATCHES` produits, ex. « de ») rend aussi une erreur, qui demande de préciser
+le nom : classer autant de produits dépasserait le délai de la base, et le contrat reste inchangé.
 Le nom cherche aussi dans la marque (« prince lu » trouve les Prince de LU).
 """
 
@@ -22,7 +24,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ..catalog import Catalog, build_fiche, search_words
+from ..catalog import Catalog, TooManyMatches, build_fiche, search_words
 from .base import Tool, ToolContext, ToolError
 
 ALLOWED_ARGUMENTS = ("nom", "code", "limite")
@@ -96,7 +98,10 @@ class SearchProductTool(Tool):
             rows = self.catalog.find_by_code(arguments["code"])
             total = len(rows)
         else:
-            total, rows = self.catalog.search_by_name(search_words(arguments["nom"]), limit)
+            try:
+                total, rows = self.catalog.search_by_name(search_words(arguments["nom"]), limit)
+            except TooManyMatches as exc:
+                return {"erreur": f"`nom` is too vague ({exc}): add words, e.g. the brand or the product type"}
         products = [build_fiche(row) for row in rows[:limit]]
         status = "introuvable" if total == 0 else "ok" if total == 1 else "ambigu"
         return {"statut": status, "total": total, "produits": products}
