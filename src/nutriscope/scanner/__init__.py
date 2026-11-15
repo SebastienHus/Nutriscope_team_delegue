@@ -37,7 +37,7 @@ from .routing import differences, find_sheet
 from .validation import NUTRIENTS, Reading
 from .vote import vote
 
-__all__ = ["LabelScanner", "ReviewedAnswer", "answer_question", "empty_result", "scanner_etiquette"]
+__all__ = ["LabelScanner", "ReviewedAnswer", "answer_question", "empty_result", "scan_label"]
 
 log = logging.getLogger(__name__)
 SEARCH_TOOL = "chercher_produit"
@@ -164,10 +164,10 @@ class LabelScanner:
 _default_scanner: LabelScanner | None = None
 
 
-def scanner_etiquette(image: Any, face: Any = None) -> dict[str, Any]:
+def scan_label(image: Any, face: Any = None) -> dict[str, Any]:
     """
-    Fonction imposée par l'atelier : chemin ou octets d'une photo -> dictionnaire résultat. ``face`` :
-    photo de la face avant, facultative (bonus du brief). Ne lève jamais d'exception.
+    Chemin ou octets d'une photo -> dictionnaire résultat. ``face`` :
+    photo de la face avant. Ne lève jamais d'exception.
     """
     global _default_scanner
     if _default_scanner is None:

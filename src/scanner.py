@@ -1,12 +1,12 @@
 """
-Point d'entrée attendu par les outils de l'atelier (``outils/``) : ``src/scanner.py:scanner_etiquette``.
+Point d'entrée attendu par les outils de l'atelier (``tools/``) : ``src/scanner.py:scan_label``.
 
-    pytest outils
-    python outils/mesurer_scanner.py --version palier1
+    pytest tools
+    python tools/measure_scanner.py --version palier1
 
 Le scanner lui-même est dans le paquet : ``nutriscope.scanner``.
 """
 
-from nutriscope.scanner import scanner_etiquette
+from nutriscope.scanner import scan_label
 
-__all__ = ["scanner_etiquette"]
+__all__ = ["scan_label"]
