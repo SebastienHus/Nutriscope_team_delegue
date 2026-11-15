@@ -4,7 +4,9 @@
 work
 tree.txt
 # Modèles entraînés et artefacts des bibliothèques de boosting
-models
+# (sauf le classifieur d'images du TP 17, livrable versionné)
+/models/*
+!/models/image_classifier/
 catboost_info/
 # Mots de passe (base PostgreSQL, Grafana)
 secrets/

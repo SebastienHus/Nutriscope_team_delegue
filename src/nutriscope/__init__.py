@@ -10,6 +10,7 @@ Modules :
 - `classification` : préparation, plis et métriques communs de la phase 4 (TP 14, TP 15) ;
 - `clustering` : segmentation du catalogue (TP 16, matinée) ;
 - `substitution` : moteur de substitution v1 (TP 16, après-midi).
+- `image` : classifieur d'images, photo → rayon + confiance (TP 17, appelé par l'API du TP 23).
 
 Données : © Open Food Facts contributors — ODbL.
 """

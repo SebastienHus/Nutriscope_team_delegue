@@ -1,0 +1,5 @@
+# Photos écartées après inspection visuelle (notebooks/dl_images.ipynb, section 1).
+# Une ligne par photo : rayon, code-barres (nom du fichier sans .jpg), raison.
+aisle,code,reason
+biscuits,3061990143587,code-barres seul (pas la face du produit)
+biscuits,4823077621642,code-barres seul (pas la face du produit)
