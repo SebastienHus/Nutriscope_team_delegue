@@ -443,7 +443,7 @@
     {
       "id": 9,
       "type": "timeseries",
-      "title": "Serveur LLM : débit de génération (llama.cpp)",
+      "title": "Serveur LLM : vitesse et charge (Ollama, mesuré par l'API)",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -460,8 +460,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(llamacpp:tokens_predicted_total[1m])",
-          "legendFormat": "tokens/s générés",
+          "expr": "sum(rate(llm_generated_tokens_total[5m])) / clamp_min(sum(rate(llm_request_duration_seconds_sum[5m])), 0.001)",
+          "legendFormat": "vitesse du modèle (tokens/s)",
           "refId": "A"
         },
         {
@@ -469,8 +469,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "llamacpp:requests_processing",
-          "legendFormat": "requêtes en cours",
+          "expr": "sum(llm_requests_in_progress)",
+          "legendFormat": "requêtes en cours (> 1 = file d'attente)",
           "refId": "B"
         }
       ],

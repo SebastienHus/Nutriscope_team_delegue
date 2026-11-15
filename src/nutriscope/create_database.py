@@ -11,10 +11,12 @@ L'étape `load_database` du pipeline appelle `init_database` puis `load_products
 nettoyage puis chargement) :
 
     python -m nutriscope.create_database -d data/en.openfoodfacts.org.products.csv -s "\\t"
+
+Identifiants : ceux du conteneur PostgreSQL (`options.db_credentials`) : POSTGRES_USER du `.env`,
+mot de passe lu dans `secrets/db_password.txt` (ou POSTGRES_PASSWORD). Aucun mot de passe en argument.
 """
 
 import argparse
-import getpass
 import os
 import sys
 
@@ -25,7 +27,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy_utils import create_database, database_exists
 
 from .cleaning import clean
-from .options import CONFIG_PATH, ROOT_PATH, read_options
+from .options import (CONFIG_PATH, DB_PASSWORD_ENV, DEFAULT_DB_PASSWORD_FILE, ROOT_PATH, db_credentials,
+                      read_options)
 from .reader import read_products
 
 SQL_SCHEMA_PATH = ROOT_PATH / "schema_nutriscope.sql"
@@ -227,9 +230,16 @@ def main(args):
     if not os.path.exists(filename):
         raise FileNotFoundError(f"Le chemin n'existe pas : `{filename}`")
     config = read_options(filename)
-    # TODO: Besoin du container Postgresql et des secrets
-    password = args.password or getpass.getpass("Mot de passe PostgreSQL : ")
-    engine = init_database(config, args.username, password, args.host, args.port)
+    credentials = db_credentials()
+    if credentials is None:
+        raise SystemExit(
+            f"Aucun mot de passe PostgreSQL : définir {DB_PASSWORD_ENV} ou créer "
+            f"{DEFAULT_DB_PASSWORD_FILE} (scripts/init-secrets.ps1)"
+        )
+    # Les options de la ligne de commande priment sur le .env
+    overrides = {"username": args.username, "host": args.host, "port": args.port}
+    credentials.update({key: value for key, value in overrides.items() if value is not None})
+    engine = init_database(config, **credentials)
 
     if not args.data_path:
         return 1
@@ -249,11 +259,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("filename", nargs="?", default=CONFIG_PATH,
                         help="Fichier d'options (par défaut : options.ini du package)")
-    parser.add_argument("-u", "--username", default="postgres")
-    parser.add_argument("-pwd", "--password", default=None,
-                        help="Mot de passe ; demandé de façon masquée s'il est omis")
-    parser.add_argument("--host", default="localhost")
-    parser.add_argument("--port", type=int, default=5432)
+    parser.add_argument("-u", "--username", default=None, help="Défaut : POSTGRES_USER du .env")
+    parser.add_argument("--host", default=None, help="Défaut : POSTGRES_HOST, sinon localhost")
+    parser.add_argument("--port", type=int, default=None, help="Défaut : POSTGRES_PORT, sinon 5432")
     parser.add_argument("-d", "--data-path", default=None, help="Export Open Food Facts brut")
     parser.add_argument("-s", "--separator", default="\t",
                         help="Séparateur de l'export (tabulation pour l'export complet)")

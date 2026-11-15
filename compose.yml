@@ -1,5 +1,5 @@
 # ============================================================
-#  Stack applicative : web (nginx) -> api (FastAPI) -> db (PostgreSQL) + llm (llama.cpp)
+#  Stack applicative : web (nginx) -> api (FastAPI) -> db (PostgreSQL) + llm (Ollama)
 #  Usage :
 #    dev   : docker compose up -d --build              (charge compose.override.yml)
 #    prod  : docker compose -f compose.yml -f compose.prod.yml up -d --build
@@ -46,73 +46,79 @@ services:
           memory: 512M
           pids: 200
 
-  # ---------- Job one-shot : télécharge le modèle GGUF dans un volume ----------
+  # ---------- Job one-shot : télécharge le modèle Ollama dans le volume ----------
+  # Démarre un serveur Ollama temporaire, fait "ollama pull" si le modèle manque, puis rend
+  # le volume à l'utilisateur 1000 (celui du service llm). Relancé à chaque "up" : sans réseau
+  # ni téléchargement si le modèle est déjà là.
   llm-init:
-    image: curlimages/curl:8.22.0
+    image: ollama/ollama:${OLLAMA_VERSION:-0.30.10}
     user: root
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         set -e
-        target="/models/$$MODEL_FILE"
-        if [ -s "$$target" ]; then echo "Modèle déjà présent : $$target"; exit 0; fi
-        echo "Téléchargement de $$MODEL_URL"
-        curl --fail --location --retry 5 --continue-at - --output "$$target.part" "$$MODEL_URL"
-        mv "$$target.part" "$$target"
+        ollama serve > /tmp/serve.log 2>&1 &
+        until ollama list > /dev/null 2>&1; do sleep 1; done
+        if ollama show "$$LLM_MODEL" > /dev/null 2>&1; then
+          echo "Modèle déjà présent : $$LLM_MODEL"
+        else
+          echo "Téléchargement de $$LLM_MODEL (plusieurs Go, la première fois seulement)"
+          ollama pull "$$LLM_MODEL"
+        fi
+        chown -R 1000:1000 /models
     environment:
-      MODEL_FILE: ${MODEL_FILE:-qwen2.5-0.5b-instruct-q4_k_m.gguf}
-      MODEL_URL: >-
-        ${MODEL_URL:-https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf}
+      LLM_MODEL: ${LLM_MODEL:-qwen3-vl:8b-instruct}
+      OLLAMA_MODELS: /models
+      HOME: /tmp
     volumes:
       - llm_models:/models
+    tmpfs:
+      - /tmp
     read_only: true
     cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]   # root sans capabilities ne pourrait ni écrire ni faire le chown
     security_opt:
       - no-new-privileges:true
     restart: "no"
     networks: [egress]
 
-  # ---------- Serveur LLM (llama.cpp, API compatible OpenAI, métriques Prometheus) ----------
+  # ---------- Serveur LLM (Ollama, API compatible OpenAI sur /v1) ----------
   llm:
     extends:
       file: compose.common.yml
       service: hardened
-    image: ghcr.io/ggml-org/llama.cpp:server-b11434
+    image: ollama/ollama:${OLLAMA_VERSION:-0.30.10}
     user: "1000:1000"
-    command:
-      - --model
-      - /models/${MODEL_FILE:-qwen2.5-0.5b-instruct-q4_k_m.gguf}
-      - --alias
-      - ${LLM_MODEL:-qwen2.5-0.5b-instruct}
-      - --ctx-size
-      - "4096"
-      - --parallel
-      - "2"
-      - --threads
-      - ${LLM_THREADS:-4}
-      - --metrics
-      - --port
-      - "8080"
+    environment:
+      HOME: /tmp                                   # Ollama y écrit sa clé : le reste du disque est en lecture seule
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_MODELS: /models
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m} # garde le modèle en mémoire entre deux requêtes
+      OLLAMA_CONTEXT_LENGTH: ${LLM_CTX:-8192}      # une image consomme beaucoup de tokens
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NOPRUNE: "1"
     volumes:
-      - llm_models:/models:ro
+      - llm_models:/models
     tmpfs:
       - /tmp
     depends_on:
       llm-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
+      # l'image n'a pas curl : le client ollama vérifie que le serveur répond ET que le modèle est installé
+      test: ["CMD", "ollama", "show", "${LLM_MODEL:-qwen3-vl:8b-instruct}"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
       start_period: 30s
-    networks: [inference, observability]
+    networks: [inference]
     deploy:
       resources:
         limits:
-          cpus: "${LLM_CPUS:-2.0}"
-          memory: 2G
-          pids: 200
+          cpus: "${LLM_CPUS:-4.0}"
+          memory: ${LLM_MEMORY:-12G}
+          pids: 1000
 
   # ---------- API ----------
   api:
@@ -128,8 +134,9 @@ services:
       DB_NAME: ${POSTGRES_DB:-llmapp}
       DB_USER: ${POSTGRES_USER:-llmapp}
       DB_PASSWORD_FILE: /run/secrets/db_password
-      LLM_URL: http://llm:8080
-      LLM_MODEL: ${LLM_MODEL:-qwen2.5-0.5b-instruct}
+      LLM_URL: http://llm:11434
+      LLM_MODEL: ${LLM_MODEL:-qwen3-vl:8b-instruct}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-300}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     secrets:
       - db_password
@@ -230,4 +237,5 @@ networks:
   backend:
     internal: true        # la base n'a aucun accès à Internet ni à l'hôte
   inference:
+    internal: true        # le serveur LLM n'a aucun accès à Internet
   egress:                 # seul llm-init sort sur Internet (téléchargement du modèle)

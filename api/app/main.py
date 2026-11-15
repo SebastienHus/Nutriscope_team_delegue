@@ -86,7 +86,8 @@ def ready():
 def chat(req: ChatRequest):
     start = time.perf_counter()
     try:
-        answer, tokens = llm.chat(req.message)
+        with metrics.LLM_IN_PROGRESS.labels(config.LLM_MODEL).track_inprogress():
+            answer, tokens = llm.chat(req.message)
     except llm.LLMError as exc:
         metrics.LLM_REQUESTS.labels(config.LLM_MODEL, "error").inc()
         log.error("LLM indisponible", extra={"extra_fields": {"error": str(exc)}})

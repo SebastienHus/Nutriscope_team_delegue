@@ -1,5 +1,5 @@
 """Métriques Prometheus exposées sur /metrics."""
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Gauge, Histogram
 
 HTTP_REQUESTS = Counter(
     "http_requests_total", "Requêtes HTTP reçues", ["method", "path", "status"]
@@ -21,4 +21,7 @@ LLM_LATENCY = Histogram(
 )
 LLM_TOKENS = Counter(
     "llm_generated_tokens_total", "Tokens générés par le LLM", ["model"]
+)
+LLM_IN_PROGRESS = Gauge(
+    "llm_requests_in_progress", "Appels au LLM en cours (au-delà de 1 : file d'attente côté Ollama)", ["model"]
 )
