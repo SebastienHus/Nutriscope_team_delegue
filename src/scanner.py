@@ -1,8 +1,8 @@
 """
-Point d'entrée attendu par les outils de l'atelier (``tools/``) : ``src/scanner.py:scan_label``.
+Point d'entrée attendu par les outils de l'atelier (``scan_tools/``) : ``src/scanner.py:scan_label``.
 
-    pytest tools
-    python tools/measure_scanner.py --version palier1
+    pytest scan_tools
+    python scan_tools/measure_scanner.py --version palier1
 
 Le scanner lui-même est dans le paquet : ``nutriscope.scanner``.
 """

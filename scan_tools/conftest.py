@@ -2,8 +2,8 @@
 
 Lancement, depuis la racine de votre dépôt :
 
-    pytest tools
-    pytest tools --scanner src/workflow.py:scan_label     # si votre fonction est ailleurs
+    pytest scan_tools
+    pytest scan_tools --scanner src/workflow.py:scan_label     # si votre fonction est ailleurs
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from scan_tools.scan_common import DEFAULT_SCANNER, ScannerNotFound, load_scanner
+from scan_common import DEFAULT_SCANNER, ScannerNotFound, load_scanner
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -23,7 +23,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 @pytest.fixture(scope="session")
 def scan_label(request: pytest.FixtureRequest):
     """Sans scanner, inutile de lancer 90 tests : un seul message clair, et on s'arrête."""
-    # L'option n'existe pas si pytest est lancé sans « tools » en argument : on prend alors le défaut.
+    # L'option n'existe pas si pytest est lancé sans « scan_tools » en argument : on prend alors le défaut.
     target = request.config.getoption("--scanner", default=DEFAULT_SCANNER)
     try:
         return load_scanner(target)

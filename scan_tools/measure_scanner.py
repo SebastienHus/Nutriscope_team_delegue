@@ -3,12 +3,12 @@
 Le script appelle votre fonction ``scan_label(image)`` sur chaque photo d'étiquette,
 puis compare son résultat à ``data/verite_terrain.csv``. Il ne contient aucune partie du scanner.
 
-Lancement, depuis la racine de votre dépôt (``tools/`` et ``data/`` côte à côte) :
+Lancement, depuis la racine de votre dépôt (``scan_tools/`` et ``data/`` côte à côte) :
 
-    python tools/measure_scanner.py --version palier1
-    python tools/measure_scanner.py --version palier1 --ids 02 10 21      # 3 photos seulement
-    python tools/measure_scanner.py --version vote3 --scanner src/workflow.py:scan_label
-    python tools/measure_scanner.py --history                             # revoir le tableau des versions
+    python scan_tools/measure_scanner.py --version palier1
+    python scan_tools/measure_scanner.py --version palier1 --ids 02 10 21      # 3 photos seulement
+    python scan_tools/measure_scanner.py --version vote3 --scanner src/workflow.py:scan_label
+    python scan_tools/measure_scanner.py --history                             # revoir le tableau des versions
 
 Pour chaque photo et chaque nutriment, la valeur rendue tombe dans une case :
 
@@ -36,7 +36,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from scan_tools.scan_common import (DEFAULT_SCANNER, NUTRIENTS, STATUSES, ScannerNotFound, contract_problems,
+from scan_common import (DEFAULT_SCANNER, NUTRIENTS, STATUSES, ScannerNotFound, contract_problems,
                              is_number, load_ground_truth, load_scanner, photo)
 
 OUTCOMES = ("correct", "wrong", "invented", "missed")

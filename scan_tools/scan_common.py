@@ -24,7 +24,7 @@ from typing import Any, Callable
 # Où chercher la fonction si on ne précise rien : src/scanner.py, fonction scan_label.
 DEFAULT_SCANNER = "src/scanner.py:scan_label"
 
-# Dossier data/ placé à côté du dossier tools/.
+# Dossier data/ placé à côté du dossier scan_tools/.
 DATA = Path(__file__).resolve().parent.parent / "data"
 
 NUTRIENTS = ("kj", "kcal", "lipides", "satures", "glucides", "sucres", "fibres", "proteines", "sel")

@@ -1,7 +1,7 @@
 """Tests du contrat de scan_label (README, « Le seul contrat imposé »).
 
 Ces tests vérifient la **forme** du résultat, pas la qualité de la lecture : celle-ci se
-mesure avec ``tools/measure_scanner.py``. Ils appellent seulement ``scan_label`` :
+mesure avec ``scan_tools/measure_scanner.py``. Ils appellent seulement ``scan_label`` :
 l'organisation de votre code vous appartient.
 
 Photos utilisées (5 lectures par le modèle, plus une fausse image) :
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from scan_tools.scan_common import RULES, load_ground_truth, photo, rule_dictionary
+from scan_common import RULES, load_ground_truth, photo, rule_dictionary
 
 PRODUCTS = {p["id"]: p for p in load_ground_truth()}
 PHOTOS = ("02", "01", "03", "08", "21")

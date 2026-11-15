@@ -148,7 +148,7 @@ def plot_samples(frame: pd.DataFrame, n_per_aisle: int = 6, seed: int = 0, image
             axes[i, j].set_title(code, fontsize=7)
         for ax in axes[i]:
             ax.axis("off")
-        axes[i, 0].set_title(f"{aisle}\n{axes[i, 0].get_title()}", fontsize=9, loc="left")
+        axes[i, 0].set_title(aisle, fontsize=9, loc="left")
     fig.tight_layout()
     return fig
 
