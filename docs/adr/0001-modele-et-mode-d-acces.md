@@ -2,6 +2,10 @@
 
 Date : 15/11/2026 — Statut : **proposée** (passe à « acceptée » une fois les mesures ci-dessous remplies)
 
+> **Modifiée par l'[ADR 0002](0002-llama-cpp-au-lieu-d-ollama.md)** : le modèle local est désormais servi par
+> **llama.cpp** et non par Ollama, qui lisait les images sur le processeur avec une carte de 8 Go ; un seul
+> modèle (`qwen3-vl-4b-instruct`) sert l'assistant et le scanner. Le choix du local, et l'API en secours, tiennent.
+
 ## Contexte
 
 NutriScope veut un assistant qui répond sur les produits **à partir du catalogue de l'équipe** (base
@@ -15,7 +19,7 @@ modèle de vision lira les étiquettes (atelier scanner). Contraintes :
 
 ## Options
 
-1. **Modèle local avec Ollama** : `qwen3:8b` pour l'assistant, `qwen3-vl:8b-instruct` pour la vision.
+1. **Modèle local avec Ollama** : `qwen3:8b` pour l'assistant, `qwen3-vl:4b-instruct` pour la vision.
 2. **API commerciale** (OpenAI, Anthropic…) : modèles plus capables, facturés au token, hébergés hors UE.
 3. **API hébergée en Europe** (Mistral, ou OpenRouter avec un fournisseur européen) : facturée au token,
    données traitées dans l'UE.
@@ -48,7 +52,7 @@ Repère de prix pour le secours par API (brief de l'atelier, relevé du 11/11/20
 ## Décision
 
 Option 1 : **modèle local avec Ollama**, `qwen3:8b` pour l'assistant (raisonnement désactivé :
-`LLM_REASONING_EFFORT=none`, sinon le budget de tokens part dans la réflexion) et `qwen3-vl:8b-instruct` pour
+`LLM_REASONING_EFFORT=none`, sinon le budget de tokens part dans la réflexion) et `qwen3-vl:4b-instruct` pour
 le scanner, à température 0. Raisons : coût nul pour la formation, aucune question d'utilisateur ne quitte le
 poste, et la qualité suffit **parce que les garde-fous ne reposent pas sur le modèle** : arguments validés
 avant exécution, refus médical en code, relecture des nombres en code. L'adresse du serveur vient de la variable

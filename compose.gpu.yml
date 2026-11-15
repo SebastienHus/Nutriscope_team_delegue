@@ -1,9 +1,11 @@
 # Surcouche GPU NVIDIA (Docker Desktop + WSL2 + pilote NVIDIA récent) :
 #   docker compose -f compose.yml -f compose.override.yml -f compose.gpu.yml up -d --build
 # Vérifier avant : docker run --rm --gpus all ubuntu nvidia-smi
+# Image CUDA de llama.cpp : le modèle ET le module de vision (mmproj) sont sur le GPU.
 services:
 
   llm:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda-${LLAMACPP_VERSION:-b11434}
     deploy:
       resources:
         reservations:

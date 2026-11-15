@@ -138,6 +138,64 @@ def test_ambiguous_name_stays_unverified(png_bytes):
     assert result["statut"] == "non_verifie" and any("ambigu" in alert for alert in result["alertes"])
 
 
+CHOCOLATE_BISCUIT = {"kj": "1960 kJ", "kcal": "466 kcal", "lipides": "17 g", "satures": "5,4 g",
+                     "glucides": "68 g", "sucres": "32 g", "fibres": "4,1 g", "proteines": "6,4 g", "sel": "0,5 g"}
+
+
+def test_ambiguous_name_is_resolved_by_label_values(png_bytes):
+    reply = label_json(code_barres=None, nom="Biscuit fourré", marque=None, nutriments=CHOCOLATE_BISCUIT)
+    result = make_scanner([text_reply(reply)])(png_bytes)
+    assert result["statut"] == "verifie" and result["fiche_catalogue"]["code"] == "3000000000024"
+    assert result["ecarts"] == [] and any("départagé par les valeurs" in alert for alert in result["alertes"])
+
+
+def test_too_few_values_do_not_resolve_an_ambiguous_name(png_bytes):
+    few = dict.fromkeys(CHOCOLATE_BISCUIT) | {"kcal": "466 kcal", "sucres": "32 g"}
+    reply = label_json(code_barres=None, nom="Biscuit fourré", marque=None, nutriments=few)
+    result = make_scanner([text_reply(reply)])(png_bytes)
+    assert result["statut"] == "non_verifie" and any("ambigu" in alert for alert in result["alertes"])
+
+
+def test_values_do_not_resolve_when_the_search_returned_only_some_fiches(png_bytes):
+    reply = label_json(code_barres=None, nom="Biscuit fourré", marque=None, nutriments=CHOCOLATE_BISCUIT)
+    scanner = make_scanner([text_reply(reply)])
+    search = scanner._search
+
+    def partial(arguments):                    # 40 fiches trouvées, 2 rendues : la bonne peut manquer
+        return search(arguments) | {"total": 40}
+
+    scanner._search = partial
+    result = scanner(png_bytes)
+    assert result["statut"] == "non_verifie" and result["fiche_catalogue"] is None
+    assert any("mêmes valeurs que 3000000000024 parmi les 2 premières" in alert for alert in result["alertes"])
+
+
+def test_name_and_brand_are_searched_together(png_bytes):
+    reply = label_json(code_barres=None, nom="Biscuit fourré vanille", marque="marque-b",
+                       nutriments=dict.fromkeys(CHOCOLATE_BISCUIT))
+    client = FakeChatClient([text_reply(reply)])
+    calls = []
+    registry = ToolRegistry.discover(ToolContext(catalog=fake_catalog()))
+    scanner = LabelScanner(registry=registry, client=client, config=FAKE_CONFIG)
+    search = scanner._search
+    scanner._search = lambda arguments: calls.append(arguments["nom"]) or search(arguments)
+    result = scanner(png_bytes)
+    assert calls[0] == "Biscuit fourré vanille marque-b"
+    assert result["statut"] == "verifie" and result["fiche_catalogue"]["code"] == "3000000000031"
+
+
+def test_brand_alone_is_searched_when_no_name_is_read(png_bytes):
+    reply = label_json(code_barres=None, nom=None, marque="marque-a")
+    result = make_scanner([text_reply(reply)])(png_bytes)
+    assert result["statut"] == "verifie" and result["fiche_catalogue"]["code"] == "3000000000017"
+
+
+def test_prompt_reads_values_on_either_photo():
+    from nutriscope.scanner.reading import READ_PROMPT
+
+    assert "one of the photos" in READ_PROMPT and "photo 1 shows the nutrition table" in READ_PROMPT
+
+
 def test_invalid_reading_is_retried_then_fields_discarded(png_bytes):
     bad = label_json(nutriments={"kj": "2252 kJ", "kcal": "100 kcal"})
     scanner = make_scanner([text_reply(bad), text_reply(bad)], max_retries=1)
@@ -188,7 +246,7 @@ def test_front_photo_is_sent_in_the_same_reading(png_bytes):
 
 def test_missing_model_is_named_in_the_alert(png_bytes):
     class NotFoundError(Exception):
-        body = {"message": "model 'qwen3-vl:8b-instruct' not found"}
+        body = {"message": "model 'qwen3-vl:4b-instruct' not found"}
 
     result = make_scanner([NotFoundError("404")])(png_bytes)
     assert any("not found" in alert for alert in result["alertes"])

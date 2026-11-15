@@ -1,6 +1,7 @@
 .vscode
 # Sorties du pipeline : régénérables, jamais versionnées
 /data/*
+/results
 # ... sauf le lot de l'atelier scanner, versionné tel quel (photos CC-BY-SA, vérité terrain)
 !/data/photos/
 !/data/verite_terrain.csv

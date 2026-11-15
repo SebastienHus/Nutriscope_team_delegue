@@ -1,7 +1,7 @@
 """
 L'assistant NutriScope : une boucle d'appel d'outils bornée autour du modèle.
 
-    assistant = Assistant.from_env()               # catalogue PostgreSQL + Ollama (ou API)
+    assistant = Assistant.from_env()               # catalogue PostgreSQL + llama.cpp (ou Ollama, API)
     answer = assistant.ask("Quel est le Nutri-Score du Nutella ?")
     answer.text, answer.tool_calls                  # la réponse, et chaque appel d'outil avec son résultat
 

@@ -3,7 +3,9 @@
 set -e
 for img in \
   postgres:16-alpine \
-  ollama/ollama:0.30.10 \
+  curlimages/curl:8.22.0 \
+  ghcr.io/ggml-org/llama.cpp:server-b11434 \
+  ghcr.io/ggml-org/llama.cpp:server-cuda-b11434 \
   python:3.11-slim \
   nginxinc/nginx-unprivileged:1.30-alpine \
   prom/prometheus:v3.13.4 \

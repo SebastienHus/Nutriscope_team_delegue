@@ -17,8 +17,8 @@ DB_NAME = os.getenv("DB_NAME", "llmapp")
 DB_USER = os.getenv("DB_USER", "llmapp")
 DB_PASSWORD = _read_secret("DB_PASSWORD")
 
-LLM_URL = os.getenv("LLM_URL", "http://llm:11434")
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen3-vl:8b-instruct")
+LLM_URL = os.getenv("LLM_URL", "http://llm:8080")
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen3-vl-4b-instruct")
 LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "300"))
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "256"))
 

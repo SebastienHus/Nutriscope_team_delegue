@@ -23,5 +23,5 @@ LLM_TOKENS = Counter(
     "llm_generated_tokens_total", "Tokens générés par le LLM", ["model"]
 )
 LLM_IN_PROGRESS = Gauge(
-    "llm_requests_in_progress", "Appels au LLM en cours (au-delà de 1 : file d'attente côté Ollama)", ["model"]
+    "llm_requests_in_progress", "Appels au LLM en cours (au-delà de 1 : file d'attente côté serveur LLM)", ["model"]
 )

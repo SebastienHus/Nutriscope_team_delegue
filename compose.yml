@@ -1,5 +1,5 @@
 # ============================================================
-#  Stack applicative : web (nginx) -> api (FastAPI) -> db (PostgreSQL) + llm (Ollama)
+#  Stack applicative : web (nginx) -> api (FastAPI) -> db (PostgreSQL) + llm (llama.cpp)
 #  Usage :
 #    dev   : docker compose up -d --build              (charge compose.override.yml)
 #    prod  : docker compose -f compose.yml -f compose.prod.yml up -d --build
@@ -49,34 +49,42 @@ services:
           memory: 512M
           pids: 200
 
-  # ---------- Job one-shot : télécharge le modèle Ollama dans le volume ----------
-  # Démarre un serveur Ollama temporaire, fait "ollama pull" si le modèle manque, puis rend
-  # le volume à l'utilisateur 1000 (celui du service llm). Relancé à chaque "up" : sans réseau
-  # ni téléchargement si le modèle est déjà là.
+  # ---------- Job one-shot : télécharge le modèle GGUF (texte + vision) dans le volume ----------
+  # Demande la liste des fichiers du dépôt Hugging Face, prend le modèle à la quantification
+  # LLM_QUANT et le module de vision (mmproj) en F16, et les enregistre sous des noms fixes :
+  # /models/<LLM_MODEL>.gguf et /models/<LLM_MODEL>-mmproj.gguf. Relancé à chaque "up" :
+  # sans téléchargement si les deux fichiers sont déjà là.
   llm-init:
-    image: ollama/ollama:${OLLAMA_VERSION:-0.30.10}
+    image: curlimages/curl:8.22.0
     user: root
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         set -e
-        ollama serve > /tmp/serve.log 2>&1 &
-        until ollama list > /dev/null 2>&1; do sleep 1; done
-        if ollama show "$$LLM_MODEL" > /dev/null 2>&1; then
-          echo "Modèle déjà présent : $$LLM_MODEL"
-        else
-          echo "Téléchargement de $$LLM_MODEL (plusieurs Go, la première fois seulement)"
-          ollama pull "$$LLM_MODEL"
+        model="/models/$$LLM_MODEL.gguf"; mmproj="/models/$$LLM_MODEL-mmproj.gguf"
+        if [ -s "$$model" ] && [ -s "$$mmproj" ]; then echo "Modèle déjà présent : $$model"; exit 0; fi
+        files=$$(curl --fail --silent --show-error --location "https://huggingface.co/api/models/$$LLM_HF_REPO" \
+                 | grep -o '"rfilename":"[^"]*\.gguf"' | cut -d'"' -f4)
+        model_file=$$(echo "$$files" | grep -iv mmproj | grep -i -- "$$LLM_QUANT" | head -n 1)
+        mmproj_file=$$(echo "$$files" | grep -i mmproj | grep -i f16 | head -n 1)
+        if [ -z "$$model_file" ] || [ -z "$$mmproj_file" ]; then
+          echo "Fichiers introuvables dans $$LLM_HF_REPO (quantification $$LLM_QUANT) :"; echo "$$files"; exit 1
         fi
+        for pair in "$$model_file|$$model" "$$mmproj_file|$$mmproj"; do
+          file=$${pair%%|*}; target=$${pair#*|}
+          [ -s "$$target" ] && continue
+          echo "Téléchargement de $$LLM_HF_REPO/$$file (plusieurs Go la première fois)"
+          curl --fail --location --retry 5 --continue-at - --output "$$target.part" \
+               "https://huggingface.co/$$LLM_HF_REPO/resolve/main/$$file"
+          mv "$$target.part" "$$target"
+        done
         chown -R 1000:1000 /models
     environment:
-      LLM_MODEL: ${LLM_MODEL:-qwen3-vl:8b-instruct}
-      OLLAMA_MODELS: /models
-      HOME: /tmp
+      LLM_MODEL: ${LLM_MODEL:-qwen3-vl-4b-instruct}
+      LLM_HF_REPO: ${LLM_HF_REPO:-Qwen/Qwen3-VL-4B-Instruct-GGUF}
+      LLM_QUANT: ${LLM_QUANT:-Q4_K_M}
     volumes:
       - llm_models:/models
-    tmpfs:
-      - /tmp
     read_only: true
     cap_drop: [ALL]
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]   # root sans capabilities ne pourrait ni écrire ni faire le chown
@@ -85,37 +93,52 @@ services:
     restart: "no"
     networks: [egress]
 
-  # ---------- Serveur LLM (Ollama, API compatible OpenAI sur /v1) ----------
+  # ---------- Serveur LLM (llama.cpp, API compatible OpenAI sur /v1) ----------
+  # Un seul modèle, texte + vision, pour l'assistant (appel d'outils : --jinja) et le scanner.
+  # Image CPU ici ; compose.gpu.yml passe à l'image CUDA, où le module de vision reste sur le GPU.
   llm:
     extends:
       file: compose.common.yml
       service: hardened
-    image: ollama/ollama:${OLLAMA_VERSION:-0.30.10}
+    image: ghcr.io/ggml-org/llama.cpp:server-${LLAMACPP_VERSION:-b11434}
     user: "1000:1000"
-    environment:
-      HOME: /tmp                                   # Ollama y écrit sa clé : le reste du disque est en lecture seule
-      OLLAMA_HOST: 0.0.0.0:11434
-      OLLAMA_MODELS: /models
-      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m} # garde le modèle en mémoire entre deux requêtes
-      OLLAMA_CONTEXT_LENGTH: ${LLM_CTX:-8192}      # une image consomme beaucoup de tokens
-      OLLAMA_NUM_PARALLEL: "1"
-      OLLAMA_MAX_LOADED_MODELS: "1"
-      OLLAMA_NOPRUNE: "1"
+    command:
+      - --model
+      - /models/${LLM_MODEL:-qwen3-vl-4b-instruct}.gguf
+      - --mmproj
+      - /models/${LLM_MODEL:-qwen3-vl-4b-instruct}-mmproj.gguf
+      - --alias
+      - ${LLM_MODEL:-qwen3-vl-4b-instruct}       # nom du modèle pour les clients (champ "model")
+      - --ctx-size
+      - "${LLM_CTX:-4096}"
+      - --parallel
+      - "1"
+      - --n-gpu-layers
+      - "${LLM_GPU_LAYERS:-99}"                  # sans GPU, ignoré
+      - --threads
+      - "${LLM_THREADS:-4}"
+      - --jinja                                  # gabarit du modèle : appel d'outils de l'assistant
+      - --image-min-tokens
+      - "1024"                                   # même découpage de l'image qu'avant (mesures comparables)
+      - --metrics                                # /metrics pour Prometheus (réseau observability)
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
     volumes:
-      - llm_models:/models
+      - llm_models:/models:ro
     tmpfs:
       - /tmp
     depends_on:
       llm-init:
         condition: service_completed_successfully
     healthcheck:
-      # l'image n'a pas curl : le client ollama vérifie que le serveur répond ET que le modèle est installé
-      test: ["CMD", "ollama", "show", "${LLM_MODEL:-qwen3-vl:8b-instruct}"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
-    networks: [inference]
+      start_period: 60s
+    networks: [inference, observability]
     deploy:
       resources:
         limits:
@@ -137,8 +160,8 @@ services:
       DB_NAME: ${POSTGRES_DB:-llmapp}
       DB_USER: ${POSTGRES_USER:-llmapp}
       DB_PASSWORD_FILE: /run/secrets/db_password
-      LLM_URL: http://llm:11434
-      LLM_MODEL: ${LLM_MODEL:-qwen3-vl:8b-instruct}
+      LLM_URL: http://llm:8080
+      LLM_MODEL: ${LLM_MODEL:-qwen3-vl-4b-instruct}
       LLM_TIMEOUT: ${LLM_TIMEOUT:-300}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     secrets:

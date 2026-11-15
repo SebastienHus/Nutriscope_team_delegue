@@ -10,7 +10,9 @@ avec **Prometheus, Grafana et Loki** pour la supervision. Tout se lance avec Doc
 
 ## Prérequis
 - Docker Engine / Docker Desktop avec **Compose ≥ 2.20** (`docker compose version`) et BuildKit.
-- **6 Go de RAM alloués à Docker** (Docker Desktop : Settings → Resources) et ~8 Go de disque libre.
+- **6 Go de RAM alloués à Docker** (Docker Desktop : Settings → Resources) et ~12 Go de disque libre.
+- Pour une lecture d'étiquette en ~3 s : une carte NVIDIA et la surcouche `compose.gpu.yml` (voir plus bas) ;
+  sans GPU, la stack fonctionne mais le modèle de vision est beaucoup plus lent.
 - Python 3 sur le poste (uniquement pour `scripts/check.py`).
 
 ## Démarrage
@@ -19,10 +21,12 @@ sh scripts/init-secrets.sh          # Windows PowerShell : .\scripts\init-secret
 docker compose up -d --build        # développement (charge compose.override.yml)
 docker compose --profile monitoring up -d          # + supervision
 docker compose -f compose.yml -f compose.prod.yml up -d --build   # production (APP_VERSION obligatoire)
+# avec GPU NVIDIA (image CUDA de llama.cpp, modèle et module de vision sur le GPU) :
+docker compose -f compose.yml -f compose.override.yml -f compose.gpu.yml up -d --build
 ```
 Interfaces : site http://localhost:8080 · Grafana http://localhost:3000 (admin, mot de passe dans `secrets/grafana_admin_password.txt`) · Prometheus http://localhost:9090
 
-> Le premier démarrage télécharge ~500 Mo de modèle : `llm-init` puis `llm` sont longs à devenir *healthy*. Suivre : `docker compose logs -f llm-init llm`.
+> Le premier démarrage télécharge ~3,3 Go de modèle (Qwen3-VL-4B-Instruct `Q4_K_M` + module de vision F16) : `llm-init` puis `llm` sont longs à devenir *healthy*. Suivre : `docker compose logs -f llm-init llm`. Le modèle est servi par llama.cpp et non par Ollama : voir [ADR 0002](../adr/0002-llama-cpp-au-lieu-d-ollama.md).
 
 ## Jalons du TP
 | # | Jalon | Fichiers à écrire |
@@ -52,8 +56,8 @@ python scripts/check.py --runtime       # + contrôles sur la stack démarrée
 | Service | Image / source | Points clés |
 |---------|----------------|-------------|
 | db | `postgres:16-alpine` | env `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD_FILE=/run/secrets/db_password` ; données `/var/lib/postgresql/data` ; scripts `./db/init` → `/docker-entrypoint-initdb.d` ; `read_only` : tmpfs `/tmp` et `/run/postgresql` ; démarre en root puis bascule sur `postgres` : `cap_add` CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID ; healthcheck `pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}` |
-| llm-init | `curlimages/curl:8.22.0` | `user: root`, `entrypoint: ["/bin/sh","-c"]` ; télécharge `$MODEL_URL` vers `/models/$MODEL_FILE` s'il n'existe pas ; volume `llm_models` ; `restart: "no"` |
-| llm | `ghcr.io/ggml-org/llama.cpp:server-b11434` | arguments `--model /models/<fichier> --alias <LLM_MODEL> --ctx-size 4096 --parallel 2 --threads 4 --metrics --port 8080` ; volume `llm_models` en `:ro` ; `user: "1000:1000"` ; tmpfs `/tmp` ; healthcheck `curl -f http://localhost:8080/health` (≈ 5 min de `start_period`/retries) ; limite 2 Go |
+| llm-init | `curlimages/curl:8.22.0` | `user: root`, `entrypoint: ["/bin/sh","-c"]` ; lit la liste des fichiers du dépôt `$LLM_HF_REPO` (API Hugging Face), télécharge le modèle `$LLM_QUANT` et le module de vision F16 vers `/models/$LLM_MODEL.gguf` et `/models/$LLM_MODEL-mmproj.gguf` s'ils n'existent pas ; volume `llm_models` ; `restart: "no"` |
+| llm | `ghcr.io/ggml-org/llama.cpp:server-b11434` (`server-cuda-b11434` avec `compose.gpu.yml`) | arguments `--model /models/<LLM_MODEL>.gguf --mmproj /models/<LLM_MODEL>-mmproj.gguf --alias <LLM_MODEL> --ctx-size 4096 --parallel 1 --n-gpu-layers 99 --threads 4 --jinja --image-min-tokens 1024 --metrics --port 8080` ; volume `llm_models` en `:ro` ; `user: "1000:1000"` ; tmpfs `/tmp` ; healthcheck `curl -f http://localhost:8080/health` ; limite `LLM_MEMORY` (12 Go) ; publié en dev sur `127.0.0.1:8081` |
 | api | `./api` (target `runner`) | port 8000 ; env `DB_HOST=db`, `DB_NAME`, `DB_USER`, `DB_PASSWORD_FILE`, `LLM_URL=http://llm:8080`, `LLM_MODEL`, `LOG_LEVEL` ; endpoints `/health/live`, `/health/ready`, `/api/chat`, `/api/history`, `/metrics` ; tmpfs `/tmp` |
 | web | `./web` | nginx non-root sur **8080** (publier `127.0.0.1:8080:8080`) ; `/api/` proxifié vers `api:8000` ; `/healthz` ; tmpfs `/tmp` |
 | prometheus | `prom/prometheus:v3.13.4` | `/etc/prometheus/prometheus.yml` et `alerts.yml` ← `monitoring/prometheus/` ; `--storage.tsdb.path=/prometheus` ; santé `/-/ready` |
@@ -75,6 +79,6 @@ compose*.yml    solution complète
 
 ## Notes formateur
 - Les fichiers `api/Dockerfile`, `web/Dockerfile`, `api/.dockerignore`, `compose*.yml` et `monitoring/compose.yml` de ce dépôt sont **la solution**. Le dépôt étudiant (starter) les remplace par des squelettes `TODO`.
-- **La veille** : `sh scripts/pull-images.sh` (≈ 3 Go d'images) puis, si le Wi-Fi est limité, `docker save` / `docker load` ou un registre/cache local. Le modèle GGUF (≈ 490 Mo) est téléchargé par chaque poste : le pré-déposer dans le volume `llm_models` ou le servir depuis une machine locale en changeant `MODEL_URL` dans `.env`.
+- **La veille** : `sh scripts/pull-images.sh` (≈ 3 Go d'images) puis, si le Wi-Fi est limité, `docker save` / `docker load` ou un registre/cache local. Les fichiers GGUF (≈ 3,3 Go) sont téléchargés par chaque poste : les pré-déposer dans le volume `llm_models` sous les noms `<LLM_MODEL>.gguf` et `<LLM_MODEL>-mmproj.gguf`, et `llm-init` ne télécharge plus rien.
 - Validé hors conteneurs : `docker compose config` (dev, prod), hadolint, promtool, `loki -verify-config`, `alloy validate`, provisioning Grafana, tests Python, chaîne nginx → API → PostgreSQL. **À faire avant le cours** : un `up` complet sur un poste type (cAdvisor sur Docker Desktop, durcissement de PostgreSQL et de llama.cpp, tailles d'images).
 - Repli si cAdvisor ne remonte rien sous Docker Desktop : les panneaux CPU/RAM restent vides, le reste du dashboard fonctionne ; utiliser `docker stats` pour la démonstration.

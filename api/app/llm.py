@@ -1,4 +1,4 @@
-"""Client du serveur LLM (Ollama, API compatible OpenAI sur /v1)."""
+"""Client du serveur LLM (llama.cpp, API compatible OpenAI sur /v1)."""
 import httpx
 
 from . import config
@@ -15,7 +15,7 @@ class LLMError(Exception):
 
 def is_ready() -> bool:
     try:
-        r = httpx.get(f"{config.LLM_URL}/api/version", timeout=3)  # Ollama n'a pas de /health
+        r = httpx.get(f"{config.LLM_URL}/health", timeout=3)  # 503 tant que le modèle charge
         return r.status_code == 200
     except httpx.HTTPError:
         return False

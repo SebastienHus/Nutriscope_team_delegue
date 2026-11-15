@@ -15,7 +15,7 @@ Deux schémas : **ce qui parle à quoi** une fois la stack démarrée, puis **da
 | `api` | `db` | `backend` | `db:5432` | pool psycopg2 de 1 à 5 connexions ; mot de passe lu dans `/run/secrets/db_password`, jamais dans une variable d'environnement |
 | `api` | `llm` | `inference` | `http://llm:8080/v1/chat/completions` | API compatible OpenAI, timeout 120 s ; `GET /health` sert aussi à la sonde de readiness |
 | `llm-init` | Hugging Face | `egress` | `huggingface.co` | `curl --fail --location --retry 5 --continue-at -` ; **seul** service à sortir sur Internet |
-| `llm-init` | `llm_models` | *(volume)* | `/models` | écrit le fichier `.gguf` ; seul service à y écrire |
+| `llm-init` | `llm_models` | *(volume)* | `/models` | écrit les deux fichiers `.gguf` (modèle et module de vision) ; seul service à y écrire |
 | `llm` | `llm_models` | *(volume)* | `/models` | monté en lecture seule (`:ro`) |
 | `db` | `pgdata` | *(volume)* | `/var/lib/postgresql/data` | état persistant de la base |
 | `prometheus` | `api` | `observability` | `api:8000/metrics` | *scrape* toutes les 15 s (modèle **pull** : c'est Prometheus qui va chercher) |
@@ -66,7 +66,7 @@ Chaque flèche est un `depends_on` avec une condition. Deux conditions différen
 - `service_completed_successfully` — `llm` attend que le job `llm-init` se **termine** en code 0. C'est la condition propre aux jobs one-shot.
 - `service_healthy` — tous les autres attendent que le **healthcheck** de leur dépendance passe au vert. Sans healthcheck, `depends_on` n'attendrait que la création du conteneur, ce qui ne garantit rien.
 
-Au tout premier lancement, `llm-init` télécharge environ 490 Mo : `llm`, puis `api`, puis `web` restent en `starting` plusieurs minutes. Pour suivre :
+Au tout premier lancement, `llm-init` télécharge environ 3,3 Go : `llm`, puis `api`, puis `web` restent en `starting` plusieurs minutes. Pour suivre :
 
 ```bash
 docker compose logs -f llm-init llm
@@ -86,7 +86,7 @@ flowchart LR
   api["api · FastAPI 8000"] -->|"backend · 5432"| db[("db · PostgreSQL")]
   api -->|"inference · /v1/chat/completions"| llm["llm · llama.cpp 8080"]
   init["llm-init"] -->|"egress"| hf(["Hugging Face"])
-  init -->|"écrit le .gguf"| models[("llm_models")]
+  init -->|"écrit les .gguf"| models[("llm_models")]
   models -->|"ro"| llm
   prom["prometheus"] -->|"scrape"| api
   prom -->|"scrape"| llm

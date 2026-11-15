@@ -9,7 +9,7 @@ Le workflow est écrit ici, en code ; le modèle de vision ne fait que lire la p
 
 Réglages (environnement) : ``SCANNER_READS`` (lectures par photo, 1 par défaut),
 ``SCANNER_MODELS`` (modèles de vision séparés par des virgules, utilisés à tour de rôle ;
-``OLLAMA_VISION_MODEL`` par défaut), ``SCANNER_RETRIES`` (relances d'une lecture invalide, 1 par
+le modèle de vision de la configuration par défaut), ``SCANNER_RETRIES`` (relances d'une lecture invalide, 1 par
 défaut), ``SCANNER_MAX_SIDE`` (pixels, 1200 par défaut).
 
     from nutriscope.scanner import scanner_etiquette

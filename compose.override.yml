@@ -24,10 +24,10 @@ services:
 
   llm:
     ports:
-      - "127.0.0.1:11434:11434"   # API Ollama depuis l'hôte : notebooks, src/nutriscope/llm_call.py
+      - "127.0.0.1:8081:8080"     # API llama.cpp depuis l'hôte (8080 est pris par le site) : LLAMACPP_HOST
 
 networks:
   backend:
     internal: false               # nécessaire pour publier le port 5432 de la base
   inference:
-    internal: false               # nécessaire pour publier le port 11434 d'Ollama
+    internal: false               # nécessaire pour publier le port 8081 de llama.cpp

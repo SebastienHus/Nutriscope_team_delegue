@@ -16,10 +16,12 @@ from ..assistant.config import LLMConfig
 from .validation import Reading, check_reading, discard_fields, extract_json, to_reading
 
 READ_PROMPT = """You transcribe the nutrition label of a food package photo.
-There may be two photos of the same package: the nutrition table and the front of the package.
+There may be two photos of the same package: photo 1 shows the nutrition table, photo 2 (if any)
+shows the front of the package. Read the values on photo 1, the name and brand on either photo.
 Answer with one JSON object only, with these keys:
-  "tableau_visible": true if nutrition values are visible on the photo (table or sentence), else false
-  "nom": product name printed on the package, or null
+  "tableau_visible": true if nutrition values are visible on one of the photos (table or sentence), else false
+  "nom": product name printed on the package, or null. When the brand is also the product name
+      (for example Nutella), write it in "nom" too
   "marque": brand printed on the package, or null
   "code_barres": digits printed under the barcode if visible, or null
   "base": "100 g" or "100 ml": the column you transcribe, or null

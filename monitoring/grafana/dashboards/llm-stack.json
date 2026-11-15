@@ -443,7 +443,7 @@
     {
       "id": 9,
       "type": "timeseries",
-      "title": "Serveur LLM : vitesse et charge (Ollama, mesuré par l'API)",
+      "title": "Serveur LLM : vitesse et charge (llama.cpp, mesuré par l'API)",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"

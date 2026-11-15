@@ -1,7 +1,7 @@
 """
 Test rapide des modèles en ligne de commande (adresse du serveur et modèles lus dans l'environnement).
 
-    python -m nutriscope.llm_call                          # état d'Ollama + un appel outillé
+    python -m nutriscope.llm_call                          # état du serveur + un appel outillé
     python -m nutriscope.llm_call --photo data/photos/10_3608580065340_etiquette.jpg
     python -m nutriscope.llm_call --question "Quel est le Nutri-Score du Nutella ?"
 
@@ -14,7 +14,7 @@ import argparse
 import json
 import sys
 
-from .assistant import Assistant, chat, load_config, make_client, ollama_status
+from .assistant import Assistant, chat, llamacpp_status, load_config, make_client, ollama_status
 from .scanner.image import to_data_url
 
 
@@ -26,6 +26,12 @@ def main(argv: list[str] | None = None) -> int:
 
     config = load_config()
     print(f"provider={config.provider} url={config.base_url} chat={config.chat_model} vision={config.vision_model}")
+    if config.provider == "llamacpp":
+        ready, models = llamacpp_status()
+        if not ready:
+            print("llama.cpp ne répond pas (ou charge encore le modèle) : docker compose ps, ou vérifiez LLAMACPP_HOST.")
+            return 1
+        print(f"llama.cpp prêt : {models}")
     if config.provider == "ollama":
         version, models = ollama_status()
         if version is None:

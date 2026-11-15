@@ -42,7 +42,7 @@ flowchart TD
     SC -- résultat = donnée --> L
     PH -- non --> L
     subgraph L [Boucle d'outils bornée : 3 tours max]
-        M[LLM qwen3:8b<br/>Ollama, OLLAMA_HOST] -- demande d'outil --> V{Registre d'outils<br/>nom connu ? arguments valides ?}
+        M[LLM qwen3-vl-4b-instruct<br/>llama.cpp, LLAMACPP_HOST] -- demande d'outil --> V{Registre d'outils<br/>nom connu ? arguments valides ?}
         V -- non --> E["{erreur: ...} renvoyé au modèle"] --> M
         V -- oui --> T[chercher_produit]
         T --> DB[(PostgreSQL nutriscope<br/>connexion lecture seule)]
@@ -60,7 +60,7 @@ flowchart TD
 
 | Composant | Rôle | Où | État |
 |---|---|---|---|
-| Configuration | serveur et modèles depuis l'environnement : `OLLAMA_HOST`, `OLLAMA_CHAT_MODEL`, `OLLAMA_VISION_MODEL` ; ou `LLM_PROVIDER=api` | `assistant/config.py` | branché |
+| Configuration | serveur et modèle depuis l'environnement : `LLAMACPP_HOST`, `LLM_MODEL` (llama.cpp, ADR 0002) ; ou `LLM_PROVIDER=ollama` / `api` | `assistant/config.py` | branché |
 | Rôle du modèle | prompt système et réglages (température 0) | `assistant_behavior.txt`, `assistant/behavior.py` | branché |
 | Boucle d'outils | appels au modèle, exécution des outils, tours bornés, réponse sans outil au dernier tour | `assistant/agent.py` | branché |
 | Registre d'outils (plugins) | découvre les modules de `tools/` ; refuse un outil inconnu ; ne lève jamais d'exception | `tools/__init__.py`, `tools/base.py` | branché |

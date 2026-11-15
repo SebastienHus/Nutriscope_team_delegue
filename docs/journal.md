@@ -172,6 +172,13 @@ l'ancienne organisation, directement dans `data/`).
 - **Problème** : le premier notebook exposait un filtre `df.query` construit avec le texte du modèle (exécution
   de code possible) et appelait les fonctions sans contrôle ; `assistant_behavior.txt` contenait encore le rôle
   d'un vendeur de matériel (température 0,7). Corrigés ; reste à remplir les mesures de l'ADR sur nos postes.
-- **Suite** : exécuter `notebooks/llm.ipynb` et `notebooks/atelier_scanner_demo.ipynb`, charger
+- **Problème (15/11)** : premier passage complet du scanner juste (100 %) mais lent, 55 s par photo. Cause :
+  Ollama met le module de vision sur le processeur dès que la carte a moins de ~10 Go (`limited-vram`,
+  ticket ollama#16496), sans réglage pour l'en empêcher ; Ollama 0.24.0 plante sur `qwen3-vl`.
+  **Décision** : le modèle est servi par llama.cpp (ADR 0002) ; `llamacpp_4b` : 100 %, 3,6 s par photo.
+  Au passage, `data/` contenait trois fichiers décalés d'un cran (`verite_terrain.csv` = sources des photos,
+  `sources_photos.csv` = catalogue, `catalogue_off_lot.csv` = une photo) : remis en place ; et les outils de
+  l'atelier sont passés en anglais dans `scan_tools/`.
+- **Suite** : exécuter `notebooks/llm.ipynb` et `notebooks/scanner_demo.ipynb`, charger
   `data/catalogue_off_lot.csv` dans la base, mesurer les versions du scanner (`docs/mesures_scanner.md`) ;
   TP 21 : moteur de substitution en plugin.

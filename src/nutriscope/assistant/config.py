@@ -1,13 +1,21 @@
 """
 Configuration des modèles : tout vient des variables d'environnement (ou du fichier ``.env``).
 
-En local (par défaut), avec la variable d'Ollama pour l'adresse du serveur :
+En local (par défaut), le serveur llama.cpp de la stack Docker (service ``llm``), avec ``LLM_PROVIDER=llamacpp`` :
+
+| Variable               | Défaut                    | Rôle                                          |
+| ---------------------- | ------------------------- | --------------------------------------------- |
+| `LLAMACPP_HOST`        | `http://localhost:8081`   | serveur llama.cpp (le suffixe `/v1` est ajouté) |
+| `LLM_MODEL`            | `qwen3-vl-4b-instruct`    | modèle servi, pour l'assistant et le scanner  |
+| `LLM_TIMEOUT`          | `300`                     | secondes par appel                            |
+
+Ollama reste possible avec ``LLM_PROVIDER=ollama`` et la variable d'Ollama pour l'adresse du serveur :
 
 | Variable               | Défaut                    | Rôle                                          |
 | ---------------------- | ------------------------- | --------------------------------------------- |
 | `OLLAMA_HOST`          | `http://localhost:11434`  | serveur Ollama (le suffixe `/v1` est ajouté)  |
 | `OLLAMA_CHAT_MODEL`    | `qwen3:8b`                | modèle de l'assistant (appel d'outils)        |
-| `OLLAMA_VISION_MODEL`  | `qwen3-vl:8b-instruct`    | modèle du scanner d'étiquettes                |
+| `OLLAMA_VISION_MODEL`  | `qwen3-vl:4b-instruct`    | modèle du scanner d'étiquettes                |
 | `LLM_REASONING_EFFORT` | `none`                    | coupe la réflexion de qwen3 ("" pour la garder) |
 | `LLM_TIMEOUT`          | `300`                     | secondes par appel                            |
 
@@ -23,13 +31,23 @@ from dataclasses import dataclass
 
 from ..options import load_env_file
 
+DEFAULT_LLAMACPP_HOST = "http://localhost:8081"
+DEFAULT_LLAMACPP_MODEL = "qwen3-vl-4b-instruct"
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 DEFAULT_CHAT_MODEL = "qwen3:8b"
-DEFAULT_VISION_MODEL = "qwen3-vl:8b-instruct"
+DEFAULT_VISION_MODEL = "qwen3-vl:4b-instruct"
 
 
 class ConfigError(RuntimeError):
     """Une variable obligatoire manque."""
+
+
+def llamacpp_host() -> str:
+    """Adresse du serveur llama.cpp lue dans LLAMACPP_HOST (schéma facultatif)."""
+    host = (os.getenv("LLAMACPP_HOST") or DEFAULT_LLAMACPP_HOST).strip().rstrip("/")
+    if "://" not in host:
+        host = f"http://{host}"
+    return host.removesuffix("/v1")
 
 
 def ollama_host() -> str:
@@ -66,8 +84,18 @@ def _required(name: str) -> str:
 
 def load_config() -> LLMConfig:
     load_env_file()
-    provider = (os.getenv("LLM_PROVIDER") or "ollama").strip().lower()
+    provider = (os.getenv("LLM_PROVIDER") or "llamacpp").strip().lower()
     timeout = float(os.getenv("LLM_TIMEOUT") or 300)
+    if provider == "llamacpp":
+        model = os.getenv("LLM_MODEL") or DEFAULT_LLAMACPP_MODEL   # --alias du serveur : un seul modèle
+        return LLMConfig(
+            provider="llamacpp",
+            base_url=f"{llamacpp_host()}/v1",
+            api_key="llamacpp",                     # le serveur l'ignore, mais le client en exige une
+            chat_model=model,
+            vision_model=model,
+            timeout=timeout,
+        )
     if provider == "ollama":
         effort = os.getenv("LLM_REASONING_EFFORT", "none")
         return LLMConfig(
@@ -91,4 +119,4 @@ def load_config() -> LLMConfig:
             reasoning_effort=os.getenv("LLM_REASONING_EFFORT") or None,
             timeout=timeout,
         )
-    raise ConfigError(f"LLM_PROVIDER={provider!r}: expected 'ollama' or 'api'")
+    raise ConfigError(f"LLM_PROVIDER={provider!r}: expected 'llamacpp', 'ollama' or 'api'")

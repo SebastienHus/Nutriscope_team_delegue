@@ -1,5 +1,5 @@
 """
-Un seul client pour les modèles locaux (Ollama) et distants (API) : le point d'accès compatible OpenAI.
+Un seul client pour les modèles locaux (llama.cpp, Ollama) et distants (API) : le point d'accès compatible OpenAI.
 
 ``chat`` fait un appel et le mesure (latence, tokens, coût) ; il rend un ``ModelReply`` dont le
 ``message`` peut être ajouté tel quel à l'historique de la conversation.
@@ -15,7 +15,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
 
-from .config import LLMConfig, ollama_host
+from .config import LLMConfig, llamacpp_host, ollama_host
 
 THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
@@ -81,6 +81,19 @@ def describe_error(exc: Exception) -> str:
     text = message or str(exc) or ""
     text = text.split("\n")[0][:200]
     return f"{type(exc).__name__}: {text}" if text else type(exc).__name__
+
+
+def llamacpp_status(timeout: float = 5.0) -> tuple[bool, list[str]]:
+    """(serveur prêt, modèles servis) ; (False, []) si le serveur ne répond pas ou charge encore."""
+    base = llamacpp_host()
+    try:
+        with urllib.request.urlopen(f"{base}/health", timeout=timeout) as response:
+            ready = response.status == 200
+        with urllib.request.urlopen(f"{base}/v1/models", timeout=timeout) as response:
+            models = [model["id"] for model in json.load(response).get("data", [])]
+    except (urllib.error.URLError, OSError, ValueError, KeyError):
+        return False, []
+    return ready, models
 
 
 def ollama_status(timeout: float = 5.0) -> tuple[str | None, list[str]]:

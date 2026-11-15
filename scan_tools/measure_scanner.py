@@ -7,6 +7,7 @@ Lancement, depuis la racine de votre dépôt (``scan_tools/`` et ``data/`` côte
 
     python scan_tools/measure_scanner.py --version palier1
     python scan_tools/measure_scanner.py --version palier1 --ids 02 10 21      # 3 photos seulement
+    python scan_tools/measure_scanner.py --version face_avant --with-face      # étiquette + face avant
     python scan_tools/measure_scanner.py --version vote3 --scanner src/workflow.py:scan_label
     python scan_tools/measure_scanner.py --history                             # revoir le tableau des versions
 
@@ -20,7 +21,8 @@ Pour chaque photo et chaque nutriment, la valeur rendue tombe dans une case :
 
 Sorties, dans ``results/`` :
 
-- ``<version>.csv`` : une ligne par photo, avec le détail des erreurs ;
+- ``<version>.csv`` : une ligne par photo, avec le détail des erreurs, la fiche du catalogue retenue
+  (``sheet_code``, ``sheet_correct`` : même code-barres que le produit photographié) et les alertes ;
 - ``history.csv`` : une ligne par passage ; la première version est votre référence.
 """
 
@@ -28,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import inspect
 import statistics
 import sys
 import time
@@ -70,6 +73,11 @@ def name_matches(read: Any, expected: str) -> bool:
     return bool(a) and (a <= b or b <= a)
 
 
+def same_code(read: str, expected: str) -> bool:
+    """Même code-barres, aux zéros de tête près (EAN-13 « 0… » et UPC-A désignent le même produit)."""
+    return bool(read) and read.lstrip("0") == str(expected).lstrip("0")
+
+
 def compare(result: Any, product: dict[str, Any], latency: float, error: str | None) -> dict[str, Any]:
     row: dict[str, Any] = {"id": product["id"], "product": product["nom"]}
     if not error and not isinstance(result, dict):
@@ -87,6 +95,9 @@ def compare(result: Any, product: dict[str, Any], latency: float, error: str | N
         row[o] = sum(row[k] == o for k in NUTRIENTS)
     p = r.get("produit") if isinstance(r.get("produit"), dict) else {}
     row["name_correct"] = name_matches(p.get("nom"), product["nom"])
+    sheet = r.get("fiche_catalogue") if isinstance(r.get("fiche_catalogue"), dict) else None
+    row["sheet_code"] = str(sheet.get("code") or "") if sheet else ""
+    row["sheet_correct"] = same_code(row["sheet_code"], product["code"]) if sheet else ""
     row["base_correct"] = r.get("base") == product["base"]
     read_less_than = set(r.get("inferieur_a") or []) if isinstance(r.get("inferieur_a"), list) else set()
     row["less_than_correct"] = read_less_than == set(product["inferieur_a"])
@@ -96,6 +107,7 @@ def compare(result: Any, product: dict[str, Any], latency: float, error: str | N
                       ("tokens_sortie", "output_tokens")):
         row[column] = metrics.get(k) if is_number(metrics.get(k)) else None
     row["alerts"] = len(r.get("alertes") or []) if isinstance(r.get("alertes"), list) else 0
+    row["alert_texts"] = " | ".join(str(a) for a in r.get("alertes") or []) if isinstance(r.get("alertes"), list) else ""
     contract = [] if error else contract_problems(result)
     row["contract_violations"] = " | ".join(contract)
     row["errors"] = error or " ; ".join(details)
@@ -125,9 +137,12 @@ def mean(values: list[Any]) -> float | None:
 
 def show(rows: list[dict[str, Any]], summary: dict[str, Any]) -> None:
     print("\nPar photo")
-    print(table(["id", "produit", "statut", "justes/9", "inventées", "manquées", "fausses", "latence s", "alertes"],
-                [[r["id"], r["product"][:30], r["status"], r["correct"], r["invented"], r["missed"], r["wrong"],
-                  f"{r['latency_s']:.1f}", r["alerts"]] for r in rows]))
+    print(table(["id", "produit", "statut", "fiche", "justes/9", "inventées", "manquées", "fausses", "latence s",
+                 "alertes"],
+                [[r["id"], r["product"][:30], r["status"],
+                  "-" if r["sheet_correct"] == "" else "juste" if r["sheet_correct"] else "FAUSSE",
+                  r["correct"], r["invented"], r["missed"], r["wrong"], f"{r['latency_s']:.1f}", r["alerts"]]
+                 for r in rows]))
     n = len(rows)
     print("\nPar champ")
     lines = [[k, sum(r[k] == "correct" for r in rows), sum(r[k] == "wrong" for r in rows),
@@ -141,6 +156,8 @@ def show(rows: list[dict[str, Any]], summary: dict[str, Any]) -> None:
     print(f"  valeurs inventées : {summary['invented']}   manquées : {summary['missed']}   fausses : {summary['wrong']}")
     print(f"  statuts : " + "   ".join(f"{s} {summary[s]}" for s in STATUSES)
           + f"   exceptions {summary['exceptions']}   hors contrat {summary['contract_violations']}")
+    print(f"  fiches du catalogue retenues : {summary['sheets_correct']} justes, {summary['sheets_wrong']} fausses "
+          f"(autre code-barres que le produit photographié)")
     print(f"  latence : moyenne {summary['latency_mean_s']} s, max {summary['latency_max_s']} s")
     print(f"  par photo : {summary['calls_per_photo']} appel(s) au modèle, {summary['input_tokens_per_photo']} tokens "
           f"en entrée, {summary['output_tokens_per_photo']} en sortie, coût {summary['cost_per_photo_usd']} $")
@@ -188,6 +205,8 @@ def summarize(rows: list[dict[str, Any]], input_price: float, output_price: floa
         "invented": sum(r["invented"] for r in rows), "missed": sum(r["missed"] for r in rows),
         "wrong": sum(r["wrong"] for r in rows),
         "names_correct": sum(r["name_correct"] for r in rows), "bases_correct": sum(r["base_correct"] for r in rows),
+        "sheets_correct": sum(r["sheet_correct"] is True for r in rows),
+        "sheets_wrong": sum(r["sheet_correct"] is False for r in rows),
         "exceptions": sum(r["status"] == "EXCEPTION" for r in rows),
         "contract_violations": sum(bool(r["contract_violations"]) for r in rows),
         **{s: sum(r["status"] == s for r in rows) for s in STATUSES},
@@ -200,13 +219,28 @@ def summarize(rows: list[dict[str, Any]], input_price: float, output_price: floa
     }
 
 
+def accepts_face(function: Any) -> bool:
+    """Vrai si la fonction accepte un argument nommé ``face`` (ou des ``**kwargs``)."""
+    try:
+        parameters = inspect.signature(function).parameters.values()
+    except (TypeError, ValueError):     # signature illisible (fonction C…) : on essaie quand même
+        return True
+    return any(p.name == "face" or p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters)
+
+
 def write_csv(path: Path, rows: list[dict[str, Any]], append: bool = False) -> None:
+    """Écrit les lignes ; en ajout, un fichier d'une version plus ancienne du script reçoit les colonnes nouvelles."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    new = not path.exists() or not append
-    with open(path, "a" if append else "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
-        if new:
-            writer.writeheader()
+    fields = list(rows[0])
+    if append and path.exists():
+        with open(path, encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            old_fields, old_rows = list(reader.fieldnames or []), list(reader)
+        fields = old_fields + [k for k in fields if k not in old_fields]
+        rows = old_rows + rows
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fields, restval="")
+        writer.writeheader()
         writer.writerows(rows)
 
 
@@ -221,6 +255,9 @@ def main(argv: list[str] | None = None) -> int:
                    help=f"où est votre fonction : fichier.py:nom_fonction (défaut : {DEFAULT_SCANNER})")
     p.add_argument("--ids", nargs="+", help="numéros des photos à passer (ex. 02 10 21) ; défaut : les 22")
     p.add_argument("--photo", choices=("etiquette", "face"), default="etiquette", help="photo envoyée (défaut : etiquette)")
+    p.add_argument("--with-face", action="store_true",
+                   help="envoie aussi la face avant : scan_label(etiquette, face=face_avant) ; "
+                        "votre fonction doit accepter le paramètre face")
     p.add_argument("--input-price", type=float, default=0.0, help="$ par million de tokens en entrée (0 en local)")
     p.add_argument("--output-price", type=float, default=0.0, help="$ par million de tokens en sortie (0 en local)")
     p.add_argument("--results", default="results", help="dossier des sorties (défaut : results/)")
@@ -233,11 +270,20 @@ def main(argv: list[str] | None = None) -> int:
     if not a.version:
         p.error("donnez un nom à la version mesurée : --version palier1")
 
+    if a.with_face and a.photo == "face":
+        p.error("--with-face envoie déjà la face avant en plus de l'étiquette : retirez --photo face")
+
     try:
         scan_label = load_scanner(a.scanner)
     except ScannerNotFound as e:
         print(f"✗ Scanner introuvable : {e}", file=sys.stderr)
         return 2
+    if a.with_face and not accepts_face(scan_label):
+        print(f"✗ --with-face : {a.scanner} n'accepte pas de paramètre face "
+              f"(attendu : def scan_label(image, face=None))", file=sys.stderr)
+        return 2
+    if a.with_face:
+        print("Photos envoyées : étiquette + face avant (face=...)")
 
     products = load_ground_truth()
     if a.ids:
@@ -251,7 +297,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"photo {product['id']} ({product['nom'][:40]})…", end=" ", flush=True)
         start, error, result = time.perf_counter(), None, None
         try:
-            result = scan_label(str(photo(product, a.photo)))
+            extra = {"face": str(photo(product, "face"))} if a.with_face else {}
+            result = scan_label(str(photo(product, a.photo)), **extra)
         except Exception as e:  # le contrat l'interdit : on le compte, on continue
             error = f"{type(e).__name__}: {e}"
         latency = time.perf_counter() - start
