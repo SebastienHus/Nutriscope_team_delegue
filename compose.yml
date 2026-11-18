@@ -1,5 +1,6 @@
 # ============================================================
 #  Stack applicative : web (nginx) -> api (FastAPI) -> db (PostgreSQL) + llm (llama.cpp)
+#                      + ollama (embeddings du RAG et juge Flow-Judge) + chroma (base vectorielle du RAG)
 #  Usage :
 #    dev   : docker compose up -d --build              (charge compose.override.yml)
 #    prod  : docker compose -f compose.yml -f compose.prod.yml up -d --build
@@ -146,6 +147,114 @@ services:
           memory: ${LLM_MEMORY:-12G}
           pids: 1000
 
+  # ---------- Job one-shot : télécharge les modèles Ollama (embeddings + juge) dans le volume ----------
+  # Ollama ne sait télécharger qu'en passant par son serveur : ce job lance un serveur temporaire
+  # sur le réseau egress, tire les deux modèles dans le volume ollama_models, puis s'arrête.
+  # Le service "ollama" lit ensuite ce volume sans accès à Internet. Relancé à chaque "up" :
+  # "ollama pull" ne retélécharge rien si le modèle est déjà à jour.
+  # Il crée aussi OLLAMA_EMBED_ALIAS : le modèle d'embeddings avec "num_gpu 0", toujours chargé sur
+  # le processeur avec OLLAMA_EMBED_THREADS threads, pour laisser la mémoire graphique à llama.cpp
+  # (ADR 0003). Le modèle de base reste disponible pour indexer en masse sur le GPU (ADR 0004).
+  ollama-init:
+    image: ollama/ollama:${OLLAMA_VERSION:-0.30.10}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        ollama serve > /tmp/ollama.log 2>&1 &
+        until ollama list > /dev/null 2>&1; do sleep 1; done
+        for model in "$$OLLAMA_EMBED_MODEL" "$$OLLAMA_JUDGE_MODEL"; do
+          echo "Téléchargement de $$model (plusieurs Go la première fois pour le juge)"
+          ollama pull "$$model"
+        done
+        printf 'FROM %s\nPARAMETER num_gpu 0\nPARAMETER num_thread %s\n' \
+          "$$OLLAMA_EMBED_MODEL" "$$OLLAMA_EMBED_THREADS" > /tmp/Modelfile.embed
+        ollama create "$$OLLAMA_EMBED_ALIAS" -f /tmp/Modelfile.embed
+        ollama list
+    environment:
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-qwen3-embedding:0.6b}
+      OLLAMA_EMBED_ALIAS: ${OLLAMA_EMBED_ALIAS:-qwen3-embedding-cpu:0.6b}
+      # Autant de threads que de processeurs accordés au service ollama (OLLAMA_CPUS) : au-delà, ils se
+      # disputent le quota (mesuré : 8 threads sur 4 processeurs, 30 % plus lent que 4 threads)
+      OLLAMA_EMBED_THREADS: ${OLLAMA_EMBED_THREADS:-4}
+      OLLAMA_JUDGE_MODEL: ${OLLAMA_JUDGE_MODEL:-hf.co/flowaicom/Flow-Judge-v0.1-GGUF:Q4_K_M}
+    volumes:
+      - ollama_models:/root/.ollama
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+    networks: [egress]
+
+  # ---------- Serveur Ollama : embeddings du RAG (qwen3-embedding) et juge (Flow-Judge) ----------
+  # API native sur /api (POST /api/embed) et compatible OpenAI sur /v1. Sans accès à Internet :
+  # les modèles viennent du volume rempli par ollama-init. Le chat et la vision restent sur llama.cpp
+  # (ADR 0002) ; ici, ni image ni module de vision, donc pas le problème du mmproj sur le processeur.
+  # Embeddings sur le processeur, juge sur le GPU une fois llama.cpp arrêté (évaluation en deux passes).
+  ollama:
+    extends:
+      file: compose.common.yml
+      service: hardened
+    image: ollama/ollama:${OLLAMA_VERSION:-0.30.10}
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}           # libère la mémoire (graphique) après 5 min sans appel
+      OLLAMA_MAX_LOADED_MODELS: ${OLLAMA_MAX_LOADED_MODELS:-2}  # embeddings (processeur) + juge
+      OLLAMA_NUM_PARALLEL: "1"
+    volumes:
+      - ollama_models:/root/.ollama
+    tmpfs:
+      - /tmp
+    depends_on:
+      ollama-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    networks: [inference]
+    deploy:
+      resources:
+        limits:
+          cpus: "${OLLAMA_CPUS:-4.0}"
+          memory: ${OLLAMA_MEMORY:-10G}
+          pids: 1000
+
+  # ---------- Base vectorielle du RAG (Chroma, mode serveur) ----------
+  # Deux collections : "sheets" (une fiche par produit) et "documents" (morceaux des documents de
+  # référence), remplies par "python -m nutriscope.rag.index" (ADR 0004). Les vecteurs sont calculés
+  # par ollama (qwen3-embedding) et fournis à Chroma : il ne calcule aucun embedding lui-même.
+  # L'image n'a ni curl ni wget : le healthcheck interroge /api/v2/heartbeat par /dev/tcp de bash.
+  chroma:
+    extends:
+      file: compose.common.yml
+      service: hardened
+    image: chromadb/chroma:${CHROMA_VERSION:-1.5.9}
+    environment:
+      ANONYMIZED_TELEMETRY: "FALSE"          # aucune télémétrie (le réseau est interne de toute façon)
+    volumes:
+      - chroma_data:/data                    # persist_path du /config.yaml de l'image
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8000 && printf 'GET /api/v2/heartbeat HTTP/1.0' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks: [inference]
+    deploy:
+      resources:
+        limits:
+          cpus: "${CHROMA_CPUS:-2.0}"
+          memory: ${CHROMA_MEMORY:-2G}
+          pids: 500
+
   # ---------- API ----------
   api:
     extends:
@@ -257,6 +366,8 @@ secrets:
 volumes:
   pgdata:
   llm_models:
+  ollama_models:
+  chroma_data:
 
 networks:
   frontend:

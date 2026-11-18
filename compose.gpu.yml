@@ -13,3 +13,14 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+  # Le juge (Flow-Judge 3.8B) sur le GPU ; les embeddings restent sur le processeur (alias "num_gpu 0"
+  # créé par ollama-init). Le juge est lancé une fois llama.cpp arrêté : évaluation en deux passes (ADR 0003).
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

@@ -20,6 +20,12 @@ services:
   llm:
     restart: always
 
+  ollama:
+    restart: always
+
+  chroma:
+    restart: always
+
   # Surcharge d'un service défini dans le sous-projet monitoring
   grafana:
     restart: always
