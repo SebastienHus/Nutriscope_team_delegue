@@ -5,15 +5,18 @@ Chaque module de ce paquet (sauf ceux qui commencent par ``_`` et ``base``) est 
 définit une sous-classe de ``Tool`` et une fabrique ``create_tool(context)``.
 ``ToolRegistry.discover`` les importe tous : ajouter un outil, c'est déposer un fichier ici.
 
-    registry = ToolRegistry.discover(ToolContext(catalog=PostgresCatalog.from_env()))
+    index = RagIndex.from_env()                              # nutriscope.rag.retriever
+    registry = ToolRegistry.discover(ToolContext(catalog=index, documents=index))
     registry.schemas()                                       # déclarations envoyées au modèle
     registry.run("chercher_produit", '{"nom": "nutella"}')   # ne lève jamais d'exception
 
 Plugins disponibles aujourd'hui :
 
-| Module            | Outil              | Rôle                                                 |
-| ----------------- | ------------------ | ---------------------------------------------------- |
-| `search_product`  | `chercher_produit` | fiches produits du catalogue (contrat du TP 18)      |
+| Module            | Outil               | Rôle                                                              |
+| ----------------- | ------------------- | ----------------------------------------------------------------- |
+| `search_product`  | `chercher_produit`  | fiches produits du catalogue (contrat du TP 18), index du RAG     |
+| `list_products`   | `lister_produits`   | produits d'un type, filtrés et classés (questions de liste)        |
+| `search_document` | `chercher_document` | passages des documents de référence (Nutri-Score, repères PNNS)   |
 """
 
 from __future__ import annotations

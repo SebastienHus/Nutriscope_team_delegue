@@ -1,8 +1,8 @@
 """
 Pipeline bout-en-bout NutriScope — TP 13 (jalon J3).
 
-Une commande unique va du CSV Open Food Facts brut aux données prêtes pour le ML, en cinq
-étapes lançables séparément. Chaque étape résout elle-même son entrée (la sortie datée du
+Une commande unique va du CSV Open Food Facts brut aux données prêtes pour le ML et à l'index
+du RAG, en sept étapes lançables séparément. Chaque étape résout elle-même son entrée (la sortie datée du
 jour, sinon la plus récente), écrit des sorties datées `<AAAAMMJJ>` et consigne une ligne
 dans le journal des durées `data/logs/pipeline_runs.jsonl`, y compris en cas d'échec.
 
@@ -18,6 +18,15 @@ chacun a son propre export figé. Le journal des durées reste commun à toutes 
 | `load_database` | nettoyé              | base PostgreSQL rechargée + `db/load_database_<date>.json`   |
 | `parquet`       | nettoyé              | `parquet/products_<date>/` (par rayon, `_SUCCESS`) + schéma  |
 | `exports`       | Parquet              | `exports/features_nutriscore_<date>.parquet` + `.schema.json` |
+| `sheets`        | nettoyé              | `data/sheets/<code>.txt` + `metadata.jsonl` (corpus du RAG)  |
+| `embeddings`    | fiches + documents   | index Chroma, collections `sheets` et `documents`           |
+
+`sheets` et `embeddings` alimentent le RAG (docs/ia/rag.md) : il n'y a qu'un index, donc un seul
+dossier `data/sheets/`, commun à toutes les sources (comme la base PostgreSQL). Au-delà de
+`MAX_RAG_PRODUCTS` produits (extrait complet : des jours de vectorisation), les deux étapes
+refusent de tourner, sauf avec `--force`. Sans Chroma ni Ollama joignables, `embeddings` est
+ignorée avec un avertissement (comme `load_database` sans base). Les documents de référence
+(`data/documents/`, réseau) restent hors du pipeline : `python -m nutriscope.corpus.scraping`.
 
 Gros volumes (extrait complet, 13 Go, environ 4,5 millions de lignes) : `load` lit la source
 avec DuckDB, en flux et sans rien charger dans pandas ; `clean_data` nettoie par lots de
@@ -35,6 +44,7 @@ obligatoire). Les noms de l'énoncé (`charger`, `nettoyer`, `charger_base`) son
     python -m nutriscope.pipeline all --full                # extrait complet (data/), 8 lots
     python -m nutriscope.pipeline clean_data --batches 4 --memory 8GB
     python -m nutriscope.pipeline exports --date 20261014 --force
+    python -m nutriscope.pipeline embeddings --embed-device cpu --index-limit 500
     python -m nutriscope.pipeline purge [--full | --name N] [--include-exports]   # une source
     python -m nutriscope.pipeline purge -a [--include-exports]                    # toutes
 
@@ -60,7 +70,7 @@ import pandas as pd
 
 from .cleaning import DEFAULT_STRATEGY, clean
 from .options import (CONFIG, DATA_PATH, DB_PASSWORD_ENV, DB_PASSWORD_FILE_ENV, DEFAULT_DB_PASSWORD_FILE,
-                      ROOT_PATH, SHARED_DATA_PATH, db_credentials)
+                      ROOT_PATH, SHARED_DATA_PATH, db_credentials, load_env_file)
 from .report import merge_reports, merge_summaries, render_report, summarize_before
 from .storage.convert_parquet import (LICENSE, is_complete, relative_path, sql_identifier, sql_string,
                                       to_parquet)
@@ -75,8 +85,9 @@ DEFAULT_SOURCE = SHARED_DATA_PATH / "echantillon_france.csv"
 FULL_SOURCE = DATA_PATH / "en.openfoodfacts.org.products.csv"
 DATE_FORMAT = "%Y%m%d"
 
-STEPS = ("load", "clean_data", "load_database", "parquet", "exports")
-ALIASES = {"charger": "load", "nettoyer": "clean_data", "charger_base": "load_database"}
+STEPS = ("load", "clean_data", "load_database", "parquet", "exports", "sheets", "embeddings")
+ALIASES = {"charger": "load", "nettoyer": "clean_data", "charger_base": "load_database",
+           "fiches": "sheets", "embedding": "embeddings"}
 COMMANDS = (*STEPS, "all", "purge")
 
 OK, SKIPPED, FAILED = "ok", "skipped", "failed"
@@ -85,7 +96,10 @@ TMP = Path("tmp")                       # débordement DuckDB et lots du nettoya
 NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 # Noms interdits pour un dossier de source : le journal, et les dossiers de l'ancienne
 # organisation (sorties directement dans data/, avant le 23/10), que purge -a nettoie aussi
-RESERVED_NAMES = {"logs", "tmp", "raw", "clean", "db", "parquet", "exports", "docs"}
+# Plus les dossiers du RAG, communs à toutes les sources (data/sheets, data/documents).
+RESERVED_NAMES = {"logs", "tmp", "raw", "clean", "db", "parquet", "exports", "docs", "sheets", "documents"}
+MAX_RAG_PRODUCTS = 50_000               # au-delà, sheets et embeddings demandent --force
+RAG_CHECK_TIMEOUT_S = 3                 # délai pour savoir si Chroma et Ollama répondent
 
 # Gros volumes : mesures de la proposition alternative du TP 13 (fichier complet, 4 535 553 lignes)
 AUTO_BATCH_ROWS = 1_000_000             # au-delà, nettoyage par lots ; en dessous, un seul bloc
@@ -329,7 +343,7 @@ def purge(data_dir: Path = DATA_PATH, name: str | None = None, include_exports: 
 
 class Pipeline:
     """
-    Les cinq étapes du pipeline. Chaque étape a la même signature : elle ne prend que
+    Les sept étapes du pipeline. Chaque étape a la même signature : elle ne prend que
     l'état du pipeline, résout son entrée, et retourne un `StepOutcome` (lignes, sorties).
     `run()` la chronomètre et l'inscrit au journal ; `run_all()` les enchaîne.
     """
@@ -338,7 +352,8 @@ class Pipeline:
                  data_dir: Path = DATA_PATH, run_date: date | None = None, force: bool = False,
                  require_db: bool = False, batches: int | None = None, memory: str | None = None,
                  name: str | None = None,
-                 db_password_file: Path = DEFAULT_DB_PASSWORD_FILE, verbose: bool = True):
+                 db_password_file: Path = DEFAULT_DB_PASSWORD_FILE, verbose: bool = True,
+                 embed_device: str = "gpu", index_limit: int | None = None):
         self.source = Path(source or os.environ.get(SOURCE_ENV) or DEFAULT_SOURCE)
         self.sep = sep
         self.data_dir = Path(data_dir)                  # racine : journal commun, un dossier par source
@@ -351,9 +366,20 @@ class Pipeline:
         self.memory = memory            # plafond mémoire DuckDB, ex. "12GB" (None : défaut de DuckDB)
         self.db_password_file = Path(db_password_file)
         self.verbose = verbose
+        self.embed_device = embed_device  # gpu : modèle de base, ~0,1 s par fiche ; cpu : alias, ~0,8 s
+        self.index_limit = index_limit    # au plus N morceaux vectorisés par collection (reprise ensuite)
         self.run_id = datetime.now().strftime("%Y%m%dT%H%M%S")
 
     # ------------------------------------------------------------------ chemins
+
+    @property
+    def sheets_dir(self) -> Path:
+        """Fiches du RAG : un seul dossier, commun à toutes les sources (un seul index)."""
+        return self.data_dir / "sheets"
+
+    @property
+    def documents_dir(self) -> Path:
+        return self.data_dir / "documents"
 
     @property
     def tag(self) -> str:
@@ -648,6 +674,77 @@ class Pipeline:
 
     # ------------------------------------------------------------------ base
 
+    def _check_rag_size(self, products: int) -> None:
+        if products > MAX_RAG_PRODUCTS and not self.force:
+            raise RuntimeError(
+                f"{products:,} products: above {MAX_RAG_PRODUCTS:,}, generating and embedding the sheets would "
+                f"take days (~0.1 s per sheet on the GPU). Pass --force to run it anyway, with --index-limit N "
+                f"to embed in several runs.")
+
+    def sheets(self) -> StepOutcome:
+        """
+        Nettoyé → `data/sheets/<code>.txt` + `metadata.jsonl` : une fiche texte par produit, et les
+        valeurs dont `chercher_produit` a besoin. Les fiches des produits sortis du nettoyé
+        disparaissent. Date d'export citée dans les fiches : celle du fichier source.
+        """
+        from .corpus.sheets import METADATA_FILE, default_export_date, read_catalogue, write_sheets
+
+        clean_path = self.resolve(CLEAN)
+        df = read_catalogue(clean_path)
+        self._check_rag_size(len(df))
+        export_date = (datetime.fromtimestamp(self.source.stat().st_mtime).date().isoformat()
+                       if self.source.is_file() else default_export_date(clean_path))
+        count = write_sheets(df, self.sheets_dir, export_date)
+        return StepOutcome(rows=count, outputs=[self.sheets_dir / METADATA_FILE],
+                           message=f"{count} sheets, export of {export_date}")
+
+    def _rag_unavailable(self) -> str | None:
+        """Raison pour laquelle l'index ne peut pas être mis à jour, ou None si Chroma et Ollama répondent."""
+        import requests
+
+        from .assistant.config import ollama_host
+        from .rag.store import chroma_host
+
+        for service, url in (("Chroma", f"{chroma_host()}/api/v2/heartbeat"),
+                             ("Ollama", f"{ollama_host()}/api/tags")):
+            try:
+                requests.get(url, timeout=RAG_CHECK_TIMEOUT_S).raise_for_status()
+            except requests.RequestException as error:
+                return f"{service} unreachable at {url} ({type(error).__name__}): docker compose up -d {service.lower()}"
+        return None
+
+    def embeddings(self) -> StepOutcome:
+        """
+        Fiches (+ documents de référence s'ils ont été téléchargés) → index Chroma, de façon
+        incrémentale : seuls les morceaux nouveaux ou modifiés sont vectorisés (nutriscope.rag.index).
+        Sans Chroma ni Ollama joignables, l'étape est ignorée avec un avertissement.
+        """
+        from .rag.chunking import METADATA_FILE
+
+        metadata = self.sheets_dir / METADATA_FILE
+        if not metadata.is_file():
+            raise MissingInputError(f"No sheets in {relative_path(self.sheets_dir)}: run the `sheets` step first.")
+        with open(metadata, encoding="utf-8") as handle:
+            self._check_rag_size(sum(1 for line in handle if line.strip()))
+        reason = self._rag_unavailable()
+        if reason:
+            return StepOutcome(status=SKIPPED, message=f"WARNING: RAG index not updated: {reason}")
+
+        from .rag.index import build_index
+
+        report = build_index(sheets_dir=self.sheets_dir, documents_dir=self.documents_dir,
+                             device=self.embed_device, limit=self.index_limit, verbose=self.verbose)
+        parts = []
+        for name, counts in report.items():
+            if counts.get("missing"):
+                parts.append(f"{name}: no corpus")
+            else:
+                parts.append(f"{name}: {counts['indexed']} indexed ({counts['added']} added, "
+                             f"{counts['updated']} updated, {counts['metadata']} metadata, "
+                             f"{counts['deleted']} deleted, {counts['skipped']} left)")
+        sheets_counts = report.get("sheets", {})
+        return StepOutcome(rows=sheets_counts.get("indexed"), message="; ".join(parts))
+
     def db_credentials(self) -> dict | None:
         """Identifiants PostgreSQL, ou `None` si aucun mot de passe n'est configuré."""
         return db_credentials(self.db_password_file)
@@ -694,7 +791,7 @@ class Pipeline:
         return result
 
     def run_all(self) -> list[StepResult]:
-        """Enchaîne les cinq étapes ; s'arrête à la première qui échoue."""
+        """Enchaîne les sept étapes ; s'arrête à la première qui échoue."""
         results = []
         for number, step in enumerate(STEPS, start=1):
             self.say(f"\n[{number}/{len(STEPS)}] {step}")
@@ -753,7 +850,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--date", type=parse_date, default=None,
                         help="Run date YYYYMMDD, to replay a past date (default: today)")
     parser.add_argument("--force", action="store_true",
-                        help="Allow overwriting the frozen export of the run date")
+                        help="Allow overwriting the frozen export of the run date, and running the RAG "
+                             f"steps above {MAX_RAG_PRODUCTS:,} products")
     parser.add_argument("--require-db", action="store_true",
                         help="Fail instead of skipping load_database when PostgreSQL is unavailable")
     parser.add_argument("--data-dir", type=Path, default=DATA_PATH,
@@ -767,6 +865,11 @@ def build_parser() -> argparse.ArgumentParser:
                              f"{AUTO_BATCH_ROWS:,} raw rows; 1 = single block)")
     parser.add_argument("--memory", default=None,
                         help="DuckDB memory limit, e.g. 12GB (default: DuckDB's own, 80%% of RAM)")
+    parser.add_argument("--embed-device", choices=("gpu", "cpu"), default="gpu",
+                        help="embeddings step: gpu = base model, ~0.1 s per sheet (falls back to the CPU "
+                             "without a GPU); cpu = num_gpu 0 alias, ~0.8 s per sheet")
+    parser.add_argument("--index-limit", type=int, default=None,
+                        help="embeddings step: embed at most N chunks per collection, the rest on a next run")
     parser.add_argument("--include-exports", action="store_true",
                         help="With purge: also delete the frozen exports")
     parser.add_argument("-a", "--all", action="store_true", dest="all_sources",
@@ -777,6 +880,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    load_env_file()                     # CHROMA_HOST, OLLAMA_HOST... du .env (sans écraser le shell)
     if args.all_sources and args.step != "purge":
         parser.error("-a/--all only applies to purge")
     source = Path(FULL_SOURCE if args.full else args.source or os.environ.get(SOURCE_ENV) or DEFAULT_SOURCE)
@@ -805,6 +909,8 @@ def main(argv: list[str] | None = None) -> int:
         require_db=args.require_db,
         batches=args.batches,
         memory=args.memory,
+        embed_device=args.embed_device,
+        index_limit=args.index_limit,
     )
     print(f"NutriScope pipeline - run date {pipeline.tag} - source {relative_path(pipeline.source)} "
           f"- outputs {relative_path(pipeline.output_dir)}")

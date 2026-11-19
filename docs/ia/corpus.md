@@ -4,7 +4,7 @@ Ce document liste toutes les sources que le RAG a le droit d'utiliser. Une sourc
 
 | Script | Sortie | Commande |
 |---|---|---|
-| `src/nutriscope/corpus/sheets.py` | `data/sheets/<code>.txt` + `data/sheets/metadata.jsonl` | `python -m nutriscope.corpus.sheets` |
+| `src/nutriscope/corpus/sheets.py` | `data/sheets/<code>.txt` + `data/sheets/metadata.jsonl` | `python -m nutriscope.pipeline sheets` (ou `python -m nutriscope.corpus.sheets`) |
 | `src/nutriscope/corpus/scraping.py` | `data/documents/<id>.txt`, `data/documents/raw/` (fichiers bruts) + `data/documents/metadata.jsonl` | `python -m nutriscope.corpus.scraping [--include-unverified]` |
 
 La liste des sources du script (`SOURCES` dans `scraping.py`) reprend les identifiants de ce document : les deux se mettent à jour ensemble.
@@ -13,7 +13,7 @@ La liste des sources du script (`SOURCES` dans `scraping.py`) reprend les identi
 
 | id | titre | éditeur | origine | mis à jour le | consulté le | licence et conditions | utilisé pour |
 |---|---|---|---|---|---|---|---|
-| `fiche:<code>` | une fiche texte par produit du catalogue nettoyé (5 963 produits) | Open Food Facts | `data/clean/echantillon_france.csv`, généré par `python -m nutriscope.corpus.sheets` | export du 2026-10-06 (date du fichier nettoyé, `--export-date` pour la fixer) | 2026-11-18 | ODbL : créditer Open Food Facts, repartager la base dérivée dans les mêmes conditions | questions produit, comparaison, explication de score |
+| `fiche:<code>` | une fiche texte par produit du catalogue nettoyé (5 316 produits, ceux de la base) | Open Food Facts | dernier `data/echantillon_france/clean/products_clean_<date>.parquet` du pipeline, étape `sheets` | export du 2026-10-14 (date du CSV source du pipeline, `--export-date` pour la fixer) | 2026-11-18 | ODbL : créditer Open Food Facts, repartager la base dérivée dans les mêmes conditions | questions produit, comparaison, explication de score |
 
 Règles de la fiche :
 
@@ -21,7 +21,7 @@ Règles de la fiche :
 - « Données incomplètes » est un booléen : « oui » dès qu'un champ de la fiche est « non renseigné », sinon « non » ;
 - rayon = `pnns_groups_2` (le plus fin), sinon `pnns_groups_1` ; marque = la première de `brands` ;
 - Nutri-Score = lettre et score (« D (14) »), la lettre seule si le score manque ;
-- `metadata.jsonl` : `code`, `name`, `brand`, `section`, `nutriscore`, `incomplete_data` (booléen JSON), `source` (une ligne par fiche, pour filtrer et citer).
+- `metadata.jsonl` : `code`, `name`, `brand`, `section`, `nutriscore`, `incomplete_data` (booléen JSON), `source` (une ligne par fiche, pour filtrer et citer) ; plus les valeurs brutes dont `chercher_produit` rend sa fiche sans base SQL : `brands`, `quantity`, `pnns_group_1`, `pnns_group_2`, `labels`, `nutriscore_score`, `nova_group`, `*_100g` (`null` si absent).
 
 ## Famille 2 — documents de référence
 

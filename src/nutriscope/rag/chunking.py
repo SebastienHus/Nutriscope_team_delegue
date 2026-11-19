@@ -55,6 +55,17 @@ class Chunk:
         """Empreinte du texte vectorisé : un morceau inchangé n'est pas revectorisé."""
         return hashlib.sha256(self.to_embed.encode("utf-8")).hexdigest()[:16]
 
+    @property
+    def meta_hash(self) -> str:
+        """Empreinte du texte stocké et des métadonnées : s'ils changent seuls, le vecteur est gardé."""
+        payload = json.dumps([self.text, self.metadata], sort_keys=True, ensure_ascii=False, default=str)
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+    def stored_metadata(self) -> dict:
+        """Métadonnées enregistrées dans Chroma : sans None (refusé par Chroma), avec les deux empreintes."""
+        clean = {key: value for key, value in self.metadata.items() if value is not None}
+        return {**clean, "text_hash": self.text_hash, "meta_hash": self.meta_hash}
+
 
 def read_jsonl(path: Path) -> list[dict]:
     with open(path, encoding="utf-8") as handle:
@@ -76,7 +87,7 @@ def sheet_chunks(directory: Path = SHEETS_DIR) -> list[Chunk]:
         if not path.is_file():
             continue
         text = path.read_text(encoding="utf-8").strip()
-        metadata = {"family": "sheet", **{key: value for key, value in meta.items() if value is not None}}
+        metadata = {"family": "sheet", **meta}
         chunks.append(Chunk(f"fiche:{meta['code']}", text, metadata, sheet_embedding_text(text)))
     return chunks
 

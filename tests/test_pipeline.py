@@ -25,6 +25,7 @@ from nutriscope.pipeline import (
     EXPORT,
     FAILED,
     JOURNAL,
+    MAX_RAG_PRODUCTS,
     OK,
     PARQUET,
     RAW,
@@ -62,11 +63,15 @@ def tree_hashes(path: Path) -> dict[str, str]:
 # FIXTURES
 # ============================================================================
 
+UNREACHABLE = "http://127.0.0.1:9"      # port fermé : l'étape embeddings ne touche jamais l'index du poste
+
+
 @pytest.fixture(autouse=True)
 def no_database(monkeypatch):
-    """Aucun identifiant PostgreSQL ne fuit de l'environnement du poste dans les tests."""
+    """Aucun identifiant PostgreSQL ni index Chroma du poste n'est utilisé par les tests."""
     monkeypatch.delenv(DB_PASSWORD_ENV, raising=False)
     monkeypatch.delenv(DB_PASSWORD_FILE_ENV, raising=False)
+    monkeypatch.setenv("CHROMA_HOST", UNREACHABLE)
 
 
 @pytest.fixture(scope="session")
@@ -77,6 +82,7 @@ def run(tmp_path_factory):
     with pytest.MonkeyPatch.context() as patch:
         patch.delenv(DB_PASSWORD_ENV, raising=False)
         patch.delenv(DB_PASSWORD_FILE_ENV, raising=False)
+        patch.setenv("CHROMA_HOST", UNREACHABLE)
         pipeline = make_pipeline(tmp_path_factory.mktemp("data"))
         results = {result.step: result for result in pipeline.run_all()}
     return pipeline, results
@@ -103,8 +109,31 @@ def test_all_steps_run_and_database_is_skipped_with_warning(run):
     assert list(results) == list(STEPS)
     assert {step: result.status for step, result in results.items()} == {
         "load": OK, "clean_data": OK, "load_database": SKIPPED, "parquet": OK, "exports": OK,
+        "sheets": OK, "embeddings": SKIPPED,
     }
     assert results["load_database"].message.startswith("WARNING")
+    assert results["embeddings"].message.startswith("WARNING: RAG index not updated: Chroma unreachable")
+
+
+def test_sheets_step_writes_one_sheet_per_cleaned_product(run):
+    pipeline, results = run
+    sheets_dir = pipeline.data_dir / "sheets"                  # commun à toutes les sources
+    assert results["sheets"].rows == results["clean_data"].rows
+    assert len(list(sheets_dir.glob("*.txt"))) == results["sheets"].rows
+    first = json.loads((sheets_dir / "metadata.jsonl").read_text(encoding="utf-8").splitlines()[0])
+    assert {"code", "name", "nutriscore", "brands", "fat_100g"} <= set(first)
+
+
+def test_rag_steps_refuse_a_huge_catalogue_without_force(tmp_path):
+    pipeline = make_pipeline(tmp_path)
+    with pytest.raises(RuntimeError, match="--force"):
+        pipeline._check_rag_size(MAX_RAG_PRODUCTS + 1)
+    make_pipeline(tmp_path, force=True)._check_rag_size(MAX_RAG_PRODUCTS + 1)
+
+
+def test_embeddings_without_sheets_names_the_step_to_run(tmp_path):
+    result = make_pipeline(tmp_path).run("embeddings")
+    assert result.status == FAILED and "`sheets`" in result.message
 
 
 def test_each_step_writes_dated_outputs(run):

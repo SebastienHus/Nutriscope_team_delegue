@@ -10,6 +10,7 @@ du dossier courant : le package fonctionne quel que soit le dossier de lancement
 import configparser
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 PACKAGE_PATH = Path(__file__).resolve().parent
 ROOT_PATH = PACKAGE_PATH.parents[1]                  # src/nutriscope/ → racine du dépôt
@@ -50,15 +51,7 @@ DEFAULT_DB_PASSWORD_FILE = ROOT_PATH / "secrets" / "db_password.txt"
 
 def load_env_file(path: os.PathLike = ENV_FILE) -> None:
     """Charge les `CLE=valeur` du `.env` sans écraser une variable déjà définie dans le shell."""
-    path = Path(path)
-    if not path.is_file():
-        return
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+    load_dotenv(path, override=False, encoding="utf-8")
 
 
 def db_credentials(password_file: os.PathLike = DEFAULT_DB_PASSWORD_FILE) -> dict | None:

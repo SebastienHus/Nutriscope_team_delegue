@@ -37,6 +37,7 @@ class ToolContext:
     """Ce dont les plugins peuvent avoir besoin. Un plugin privé d'une dépendance rend None depuis ``create_tool``."""
 
     catalog: Any = None
+    documents: Any = None     # passages des documents de référence : search_documents(question, limit)
     extra: dict[str, Any] = field(default_factory=dict)
 
 

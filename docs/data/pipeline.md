@@ -1,7 +1,7 @@
 # Pipeline de données NutriScope — jalon J3
 
 Une commande unique va de l'export Open Food Facts brut aux données prêtes pour le
-machine learning. Le code vit dans `src/nutriscope/pipeline.py` ; le `Makefile` n'est
+machine learning et à l'index du RAG. Le code vit dans `src/nutriscope/pipeline.py` ; le `Makefile` n'est
 qu'une façade. Installation et prérequis : voir le [README](../../README.md).
 
 Données : © Open Food Facts contributors — ODbL (crédit repris dans chaque manifeste,
@@ -45,6 +45,14 @@ schéma et export produit).
                                             ▼
                                       ANALYSE ET ML (phase 4 : TP 14 à 16)
 
+  nettoyé ──► 6. sheets ──► data/sheets/<code>.txt + metadata.jsonl   (un seul dossier, toutes sources)
+                  │
+                  ▼
+              7. embeddings ──► index Chroma : collections sheets + documents (data/documents/)
+                  │
+                  ▼
+              ASSISTANT (chercher_produit, chercher_document)
+
  Toutes les étapes → data/logs/pipeline_runs.jsonl (journal des durées, échecs compris)
 ```
 
@@ -57,9 +65,9 @@ minuscules, chaque suite de caractères spéciaux remplacée par un tiret :
 | `data/en.openfoodfacts.org.products.csv`       | `data/en-openfoodfacts-org-products/`  |
 
 `--name` force un autre nom (lettres minuscules, chiffres, `_` ou `-`). Les noms `logs`,
-`tmp`, `raw`, `clean`, `db`, `parquet`, `exports` et `docs` sont refusés : ce sont le
-journal et les dossiers de l'ancienne organisation, où les sorties allaient directement
-dans `data/`. Ainsi, l'échantillon et l'extrait complet ne s'écrasent jamais, le même
+`tmp`, `raw`, `clean`, `db`, `parquet`, `exports`, `docs`, `sheets` et `documents` sont
+refusés : ce sont le journal, les dossiers du RAG (communs à toutes les sources) et les
+dossiers de l'ancienne organisation, où les sorties allaient directement dans `data/`. Ainsi, l'échantillon et l'extrait complet ne s'écrasent jamais, le même
 jour non plus, et chacun a son propre export figé. Le journal des durées reste commun :
 chaque ligne indique la source (`source`) et son dossier (`name`).
 
@@ -170,6 +178,10 @@ en place (stratifié, stable produit par produit).
 | Une autre source                         | `--source CHEMIN` ou `NUTRISCOPE_SOURCE=CHEMIN`              |
 | Rejouer une date                         | `--date AAAAMMJJ` (ajouter `--force` pour réécrire l'export) |
 | Exiger la base                           | `--require-db`                                               |
+| RAG seul (fiches puis index)             | `make rag` (= `sheets` puis `embeddings`)                    |
+| Vectoriser sur le processeur             | `--embed-device cpu` (défaut `gpu` : ~0,1 s par fiche)       |
+| Vectoriser en plusieurs fois             | `--index-limit N` (au plus N morceaux, la suite au lancement suivant) |
+| Documents de référence (réseau)          | `python -m nutriscope.corpus.scraping` — `make documents`    |
 | Les tests                                | `python -m pytest -q` — `make test`                          |
 | Changer le dossier de sorties            | `--name NOM` (défaut : nom du fichier source)                |
 | Tout est cassé (source courante)         | `python -m nutriscope.pipeline purge` puis `all` — `make clean pipeline` |
@@ -182,9 +194,17 @@ lui-même tout ce qui commence par un tiret, donc `make clean -a` est refusé, m
 `make clean ARGS=-a` fonctionne. Exemples : `make pipeline ARGS=--full`,
 `make exports ARGS="--date 20261014 --force"`.
 
-Étapes : `load`, `clean_data`, `load_database`, `parquet`, `exports` (alias de
-l'énoncé : `charger`, `nettoyer`, `charger_base`). Code de retour : 0 si aucune étape
-n'a échoué, 1 sinon.
+Étapes : `load`, `clean_data`, `load_database`, `parquet`, `exports`, `sheets`,
+`embeddings` (alias de l'énoncé : `charger`, `nettoyer`, `charger_base` ; et `fiches`,
+`embedding`). Code de retour : 0 si aucune étape n'a échoué, 1 sinon.
+
+**Étapes du RAG.** `sheets` écrit une fiche par produit du nettoyé dans `data/sheets/`
+(5 316 pour l'échantillon, les produits de la base) ; `embeddings` synchronise l'index
+Chroma de façon incrémentale : seules les fiches nouvelles ou modifiées sont vectorisées
+(première fois : ~10 min sur le GPU ; ensuite quelques secondes). Sans Chroma ni Ollama
+joignables, `embeddings` est ignorée avec un avertissement, comme `load_database` sans
+base. Au-delà de 50 000 produits (extrait complet : des jours de vectorisation), les deux
+étapes échouent avec un message, sauf avec `--force`. Détails : [docs/ia/rag.md](../ia/rag.md).
 
 L'export est **figé** : relancé le même jour, `exports` échoue avec `FileExistsError`.
 C'est voulu. `--force` le réécrit et doit redonner la même empreinte SHA-256 ; une

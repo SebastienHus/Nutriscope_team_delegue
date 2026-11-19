@@ -5,6 +5,7 @@ Synchronise chaque collection avec le corpus sur le disque :
 
 - un morceau nouveau ou modifié (empreinte ``text_hash`` différente) est vectorisé puis enregistré ;
 - un morceau inchangé n'est pas revectorisé : relancer la commande ne coûte presque rien ;
+- un morceau dont seuls le texte stocké ou les métadonnées changent (``meta_hash``) garde son vecteur ;
 - un morceau qui a disparu du corpus est supprimé de l'index.
 
 Les vecteurs sont enregistrés lot par lot : une indexation interrompue reprend là où elle s'est
@@ -27,7 +28,7 @@ from typing import Callable, Sequence
 
 from ..corpus.embeddings import BATCH_SIZE, embed_documents, embed_model, embed_model_id
 from ..options import load_env_file
-from .chunking import DOCUMENTS_DIR, SHEETS_DIR, Chunk, document_chunks, sheet_chunks
+from .chunking import DOCUMENTS_DIR, METADATA_FILE, SHEETS_DIR, Chunk, document_chunks, sheet_chunks
 from .store import COLLECTIONS, SHEETS, chroma_client, drop_collection, open_collection
 
 PAGE_SIZE = 1000   # lecture de l'index existant par pages
@@ -35,17 +36,30 @@ PAGE_SIZE = 1000   # lecture de l'index existant par pages
 Embedder = Callable[[Sequence[str]], list[list[float]]]
 
 
-def existing_hashes(collection) -> dict[str, str]:
-    """{id: text_hash} des morceaux déjà indexés."""
-    hashes: dict[str, str] = {}
+def existing_hashes(collection) -> dict[str, tuple[str, str]]:
+    """{id: (text_hash, meta_hash)} des morceaux déjà indexés."""
+    hashes: dict[str, tuple[str, str]] = {}
     offset = 0
     while True:
         page = collection.get(include=["metadatas"], limit=PAGE_SIZE, offset=offset)
         for chunk_id, metadata in zip(page["ids"], page["metadatas"]):
-            hashes[chunk_id] = (metadata or {}).get("text_hash", "")
+            metadata = metadata or {}
+            hashes[chunk_id] = (metadata.get("text_hash", ""), metadata.get("meta_hash", ""))
         if len(page["ids"]) < PAGE_SIZE:
             return hashes
         offset += PAGE_SIZE
+
+
+def refresh_metadata(collection, chunks: list[Chunk]) -> None:
+    """Texte stocké ou métadonnées changés, texte vectorisé identique : on renvoie le vecteur déjà
+    enregistré (Chroma refuse de mettre à jour un document sans vecteur quand il ne calcule rien)."""
+    for start in range(0, len(chunks), PAGE_SIZE):
+        batch = {chunk.id: chunk for chunk in chunks[start:start + PAGE_SIZE]}
+        stored = collection.get(ids=list(batch), include=["embeddings"])
+        ids = list(stored["ids"])
+        collection.upsert(ids=ids, embeddings=[list(vector) for vector in stored["embeddings"]],
+                          documents=[batch[chunk_id].text for chunk_id in ids],
+                          metadatas=[batch[chunk_id].stored_metadata() for chunk_id in ids])
 
 
 def sync(collection, chunks: list[Chunk], embedder: Embedder, batch_size: int = BATCH_SIZE,
@@ -59,13 +73,17 @@ def sync(collection, chunks: list[Chunk], embedder: Embedder, batch_size: int = 
     for start in range(0, len(stale), PAGE_SIZE):
         collection.delete(ids=stale[start:start + PAGE_SIZE])
 
-    todo = [chunk for chunk in chunks if indexed.get(chunk.id) != chunk.text_hash]
+    todo = [chunk for chunk in chunks if indexed.get(chunk.id, ("", ""))[0] != chunk.text_hash]
+    retag = [chunk for chunk in chunks if chunk.id in indexed and indexed[chunk.id][0] == chunk.text_hash
+             and indexed[chunk.id][1] != chunk.meta_hash]
+    refresh_metadata(collection, retag)
     skipped = 0
     if limit is not None and len(todo) > limit:
         skipped, todo = len(todo) - limit, todo[:limit]
     counts = {"added": sum(chunk.id not in indexed for chunk in todo),
-              "updated": sum(chunk.id in indexed for chunk in todo),
-              "unchanged": len(chunks) - len(todo) - skipped, "deleted": len(stale), "skipped": skipped}
+              "updated": sum(chunk.id in indexed for chunk in todo), "metadata": len(retag),
+              "unchanged": len(chunks) - len(todo) - len(retag) - skipped, "deleted": len(stale),
+              "skipped": skipped}
 
     start_time = time.perf_counter()
     for start in range(0, len(todo), batch_size):
@@ -73,7 +91,7 @@ def sync(collection, chunks: list[Chunk], embedder: Embedder, batch_size: int = 
         vectors = embedder([chunk.to_embed for chunk in batch])
         collection.upsert(ids=[chunk.id for chunk in batch], embeddings=vectors,
                           documents=[chunk.text for chunk in batch],
-                          metadatas=[{**chunk.metadata, "text_hash": chunk.text_hash} for chunk in batch])
+                          metadatas=[chunk.stored_metadata() for chunk in batch])
         if verbose:
             done = start + len(batch)
             elapsed = time.perf_counter() - start_time
@@ -83,10 +101,50 @@ def sync(collection, chunks: list[Chunk], embedder: Embedder, batch_size: int = 
     return counts
 
 
-def load_chunks(name: str, args: argparse.Namespace) -> list[Chunk]:
+def load_chunks(name: str, sheets_dir: Path = SHEETS_DIR, documents_dir: Path = DOCUMENTS_DIR,
+                include_unverified: bool = False) -> list[Chunk]:
     if name == SHEETS:
-        return sheet_chunks(args.sheets_dir)
-    return document_chunks(args.documents_dir, include_unverified=args.include_unverified)
+        return sheet_chunks(sheets_dir)
+    return document_chunks(documents_dir, include_unverified=include_unverified)
+
+
+def available(name: str, sheets_dir: Path = SHEETS_DIR, documents_dir: Path = DOCUMENTS_DIR) -> bool:
+    """Le corpus de la collection existe sur le disque. Sinon, on ne touche pas à la collection :
+    la synchroniser avec un corpus vide la viderait."""
+    folder = Path(sheets_dir if name == SHEETS else documents_dir)
+    return (folder / METADATA_FILE).is_file()
+
+
+def build_index(collections=COLLECTIONS, sheets_dir: Path = SHEETS_DIR, documents_dir: Path = DOCUMENTS_DIR,
+                include_unverified: bool = False, device: str = "cpu", limit: int | None = None,
+                rebuild: bool = False, batch_size: int = BATCH_SIZE, client=None,
+                verbose: bool = True) -> dict[str, dict]:
+    """Synchronise les collections demandées ; {collection: décompte}. Une collection dont le corpus
+    est absent est ignorée (décompte ``{"missing": True}``)."""
+    model_id, model = embed_model_id(), embed_model(device)
+    client = client or chroma_client()
+    embedder: Embedder = lambda texts: embed_documents(texts, model=model)  # noqa: E731
+    report: dict[str, dict] = {}
+    for name in collections:
+        if not available(name, sheets_dir, documents_dir):
+            if verbose:
+                print(f"{name}: no corpus on disk, collection left untouched")
+            report[name] = {"missing": True}
+            continue
+        chunks = load_chunks(name, sheets_dir, documents_dir, include_unverified)
+        if verbose:
+            print(f"{name}: {len(chunks)} chunks (model {model_id}, called as {model})")
+        if rebuild and drop_collection(client, name) and verbose:
+            print(f"  collection {name!r} dropped")
+        collection = open_collection(client, name, model_id)
+        counts = sync(collection, chunks, embedder, batch_size=batch_size, limit=limit, verbose=verbose)
+        counts["indexed"] = collection.count()
+        if verbose:
+            print(f"  added {counts['added']}, updated {counts['updated']}, metadata only {counts['metadata']}, "
+                  f"unchanged {counts['unchanged']}, deleted {counts['deleted']}, left for a next run "
+                  f"{counts['skipped']} ({counts['seconds']} s); {counts['indexed']} in the index")
+        report[name] = counts
+    return report
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -111,19 +169,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     load_env_file()
     args = parse_args(argv)
-    model_id, model = embed_model_id(), embed_model(args.device)
-    client = chroma_client()
-    embedder: Embedder = lambda texts: embed_documents(texts, model=model)  # noqa: E731
-    for name in ([args.only] if args.only else COLLECTIONS):
-        chunks = load_chunks(name, args)
-        print(f"{name}: {len(chunks)} chunks (model {model_id}, called as {model})")
-        if args.rebuild and drop_collection(client, name):
-            print(f"  collection {name!r} dropped")
-        collection = open_collection(client, name, model_id)
-        counts = sync(collection, chunks, embedder, batch_size=args.batch_size, limit=args.limit)
-        print(f"  added {counts['added']}, updated {counts['updated']}, unchanged {counts['unchanged']}, "
-              f"deleted {counts['deleted']}, left for a next run {counts['skipped']} "
-              f"({counts['seconds']} s); {collection.count()} in the index")
+    build_index([args.only] if args.only else COLLECTIONS, args.sheets_dir, args.documents_dir,
+                include_unverified=args.include_unverified, device=args.device, limit=args.limit,
+                rebuild=args.rebuild, batch_size=args.batch_size)
     return 0
 
 

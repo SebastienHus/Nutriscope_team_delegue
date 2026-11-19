@@ -73,5 +73,5 @@ class FakeChatClient:
         calls = [SimpleNamespace(id=cid, function=SimpleNamespace(name=name, arguments=args))
                  for cid, name, args in reply.get("tool_calls", [])]
         message = SimpleNamespace(content=reply.get("content", ""), tool_calls=calls or None)
-        return SimpleNamespace(choices=[SimpleNamespace(message=message, finish_reason="stop")],
+        return SimpleNamespace(choices=[SimpleNamespace(message=message, finish_reason=reply.get("finish_reason", "stop"))],
                                usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5))

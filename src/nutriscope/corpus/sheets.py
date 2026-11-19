@@ -1,17 +1,21 @@
 """
 Fiches produits du corpus du RAG (TP du 16/11, bloc 3).
 
-Lit le CSV du catalogue nettoyé, transforme chaque produit en un texte court et lisible, et écrit :
+Lit le catalogue nettoyé (par défaut le dernier ``products_clean_<date>.parquet`` du pipeline, les
+mêmes produits que la base PostgreSQL ; un CSV nettoyé est aussi accepté), transforme chaque produit
+en un texte court et lisible, et écrit :
 
 - ``data/sheets/<code>.txt`` : une fiche par produit ;
-- ``data/sheets/metadata.jsonl`` : une ligne JSON par produit
-  (``code``, ``name``, ``brand``, ``section``, ``nutriscore``, ``incomplete_data``, ``source``).
+- ``data/sheets/metadata.jsonl`` : une ligne JSON par produit. Pour filtrer et citer : ``code``,
+  ``name``, ``brand``, ``section``, ``nutriscore`` (lettre), ``incomplete_data``, ``source``. Pour
+  rendre la fiche de ``chercher_produit`` sans base SQL (``CATALOG_FIELDS``) : marques, quantité,
+  groupes PNNS, labels, score Nutri-Score, NOVA et valeurs pour 100 g. Une valeur absente est ``null``.
 
 Règle héritée du TP 18 : une valeur inconnue s'écrit « non renseigné », jamais 0.
 
 Utilisation ::
 
-    python -m nutriscope.corpus.sheets
+    python -m nutriscope.corpus.sheets                     # aussi : python -m nutriscope.pipeline sheets
     python -m nutriscope.corpus.sheets --source data/clean/echantillon_france.csv --export-date 2026-10-06
 """
 
@@ -25,9 +29,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..options import DATA_PATH
+from ..options import DATA_PATH, SHARED_DATA_PATH
 
-DEFAULT_SOURCE = DATA_PATH / "clean" / "echantillon_france.csv"
+# Nettoyé du pipeline pour l'échantillon partagé : data/echantillon_france/clean/products_clean_<date>.parquet
+PIPELINE_CLEAN_DIR = DATA_PATH / "echantillon_france" / "clean"
+PIPELINE_SOURCE = SHARED_DATA_PATH / "echantillon_france.csv"   # sa date sert de date d'export
 DEFAULT_OUTPUT = DATA_PATH / "sheets"
 METADATA_FILE = "metadata.jsonl"
 UNKNOWN = "non renseigné"
@@ -43,7 +49,7 @@ Données incomplètes : {incomplete_data}
 Source : {source}, export du {export_date}
 """
 
-# Seulement les colonnes utiles du CSV nettoyé (le fichier en compte ~45).
+# Seulement les colonnes utiles du nettoyé (le fichier en compte ~45).
 COLUMNS = [
     "code",
     "product_name",
@@ -60,6 +66,39 @@ COLUMNS = [
     "fiber_100g",
     "proteins_100g",
 ]
+# Colonnes en plus, lues si elles existent : seulement pour les métadonnées (fiche de chercher_produit).
+EXTRA_COLUMNS = [
+    "quantity",
+    "labels_tags",
+    "nova_group",
+    "energy_100g",
+    "carbohydrates_100g",
+    "fruits-vegetables-legumes_100g",
+]
+
+# Champ des métadonnées -> colonne du nettoyé. Les noms des champs sont ceux des colonnes de la base
+# (nutriscope.catalog.DETAIL_COLUMNS) : nutriscope.rag.retriever en refait une ligne du catalogue.
+CATALOG_FIELDS = {
+    "brands": "brands",
+    "quantity": "quantity",
+    "pnns_group_1": "pnns_groups_1",
+    "pnns_group_2": "pnns_groups_2",
+    "labels": "labels_tags",
+    "nutriscore_score": "nutriscore_score",
+    "nova_group": "nova_group",
+    "energy_kcal_100g": "energy-kcal_100g",
+    "fat_100g": "fat_100g",
+    "saturated_fat_100g": "saturated-fat_100g",
+    "sugars_100g": "sugars_100g",
+    "salt_100g": "salt_100g",
+    "fiber_100g": "fiber_100g",
+    "proteins_100g": "proteins_100g",
+    "energy_100g": "energy_100g",
+    "carbohydrates_100g": "carbohydrates_100g",
+    "fruits_vegetables_legumes_100g": "fruits-vegetables-legumes_100g",
+}
+INTEGER_FIELDS = {"nutriscore_score", "nova_group"}
+NUMERIC_FIELDS = {field for field in CATALOG_FIELDS if field.endswith("_100g")} | INTEGER_FIELDS
 
 # Colonne du nutriment -> (champ du gabarit, unité).
 NUTRIENTS = {
@@ -150,8 +189,23 @@ def product_to_sheet(row: pd.Series, export_date: str) -> str:
     )
 
 
+def catalog_value(field: str, value):
+    """Valeur brute pour les métadonnées : nombre (entier pour le score et NOVA), texte, ou None."""
+    if is_missing(value):
+        return None
+    if field in NUMERIC_FIELDS:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        if math.isnan(number):
+            return None
+        return int(number) if field in INTEGER_FIELDS else number
+    return str(value).strip()
+
+
 def product_metadata(row: pd.Series, export_date: str) -> dict:
-    """Une ligne de metadata.jsonl : ce dont le RAG a besoin pour filtrer et citer une fiche."""
+    """Une ligne de metadata.jsonl : ce dont le RAG a besoin pour filtrer, citer et rendre une fiche."""
     grade = row.get("nutriscore_grade")
     return {
         "code": str(row["code"]).strip(),
@@ -161,12 +215,28 @@ def product_metadata(row: pd.Series, export_date: str) -> dict:
         "nutriscore": None if is_missing(grade) else str(grade).strip().lower(),
         "incomplete_data": is_incomplete(row),
         "source": f"{SOURCE_LABEL}, export du {export_date}",
+        **{field: catalog_value(field, row.get(column)) for field, column in CATALOG_FIELDS.items()},
     }
 
 
+def latest_pipeline_clean(directory: Path = PIPELINE_CLEAN_DIR) -> Path | None:
+    """Le nettoyé le plus récent du pipeline, ou None."""
+    files = sorted(directory.glob("products_clean_*.parquet")) if directory.is_dir() else []
+    return files[-1] if files else None
+
+
 def read_catalogue(source: Path) -> pd.DataFrame:
-    """Colonnes utiles du CSV nettoyé ; codes-barres gardés en texte (zéros en tête)."""
-    df = pd.read_csv(source, usecols=COLUMNS, dtype={"code": str}, encoding="utf-8")
+    """Colonnes utiles du nettoyé (Parquet du pipeline ou CSV) ; codes-barres gardés en texte (zéros en tête)."""
+    source = Path(source)
+    if source.suffix == ".parquet":
+        df = pd.read_parquet(source)
+    else:
+        df = pd.read_csv(source, dtype={"code": str}, encoding="utf-8", low_memory=False)
+    missing = [column for column in COLUMNS if column not in df.columns]
+    if missing:
+        raise ValueError(f"{source.name}: missing column(s) {', '.join(missing)}")
+    df = df[COLUMNS + [column for column in EXTRA_COLUMNS if column in df.columns]].copy()
+    df["code"] = df["code"].astype("string")
     df = df.dropna(subset=["code"])
     df["code"] = df["code"].str.strip()
     duplicates = df["code"].duplicated()
@@ -177,8 +247,11 @@ def read_catalogue(source: Path) -> pd.DataFrame:
 
 
 def default_export_date(source: Path) -> str:
-    """Sans --export-date, la date d'export est la date de modification du fichier nettoyé."""
-    return datetime.fromtimestamp(source.stat().st_mtime).date().isoformat()
+    """Sans --export-date : pour un Parquet du pipeline, la date du CSV source du pipeline (le nettoyé
+    est daté du jour du nettoyage, pas de l'export) ; sinon celle du fichier lui-même."""
+    source = Path(source)
+    reference = PIPELINE_SOURCE if source.suffix == ".parquet" and PIPELINE_SOURCE.is_file() else source
+    return datetime.fromtimestamp(reference.stat().st_mtime).date().isoformat()
 
 
 def write_sheets(df: pd.DataFrame, output_dir: Path, export_date: str, clean: bool = True) -> int:
@@ -198,7 +271,9 @@ def write_sheets(df: pd.DataFrame, output_dir: Path, export_date: str, clean: bo
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Génère une fiche texte par produit pour le corpus du RAG.")
-    parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE, help="CSV du catalogue nettoyé")
+    parser.add_argument("--source", type=Path, default=None,
+                        help="catalogue nettoyé, Parquet ou CSV (défaut : dernier nettoyé du pipeline, "
+                             "data/echantillon_france/clean/products_clean_<date>.parquet)")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="dossier des fiches")
     parser.add_argument("--export-date", type=date.fromisoformat, default=None,
                         help="date de l'export Open Food Facts (AAAA-MM-JJ) ; par défaut : date du fichier source")
@@ -209,8 +284,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    if not args.source.is_file():
-        print(f"Cleaned catalogue not found: {args.source} (run the cleaning step first)")
+    args.source = args.source or latest_pipeline_clean()
+    if args.source is None or not args.source.is_file():
+        print(f"Cleaned catalogue not found: {args.source or PIPELINE_CLEAN_DIR} "
+              f"(run python -m nutriscope.pipeline clean_data first)")
         return 1
     export_date = args.export_date.isoformat() if args.export_date else default_export_date(args.source)
     df = read_catalogue(args.source)

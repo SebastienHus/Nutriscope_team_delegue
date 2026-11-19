@@ -148,3 +148,158 @@ def test_unverified_scan_is_always_announced():
     assistant.scanner = lambda image: {"statut": "non_verifie", "nutriments": {"sucres": 10.6}, "produit": {}}
     answer = assistant.ask("C'est sucré ?", image=b"photo")
     assert answer.text.startswith("Lecture de l'étiquette non vérifiée")
+
+
+# --- outil chercher_document (questions générales) ---------------------------
+
+class FakeDocuments:
+    """Faux index de documents : un passage pour « Nutri-Score », rien sinon."""
+
+    def __init__(self):
+        self.questions = []
+
+    def search_documents(self, question, limit):
+        from nutriscope.rag.search import Hit
+        self.questions.append(question)
+        if "nutri-score" not in question.lower():
+            return []
+        return [Hit("doc:viepub-ns:0001", "documents", 0.8,
+                    "Un arrêté du 31 octobre 2017 fixe les modalités de calcul du score.",
+                    {"source_id": "viepub-ns", "title": "Le Nutri-Score en cinq questions",
+                     "publisher": "Vie publique (DILA)", "updated": "2025-03-18"})]
+
+
+def make_rag_assistant(replies):
+    documents = FakeDocuments()
+    registry = ToolRegistry.discover(ToolContext(catalog=fake_catalog(), documents=documents))
+    client = FakeChatClient(replies)
+    return Assistant(registry, client=client, config=FAKE_CONFIG, behavior=FAKE_BEHAVIOR), documents
+
+
+def test_document_not_found_gives_a_fixed_answer():
+    assistant, _ = make_rag_assistant([
+        tool_reply("chercher_document", {"question": "Combien de fruits par jour ?"}),
+        text_reply("Les documents n'en parlent pas ; consultez l'INSP."),   # ajout de mémoire, écarté
+    ])
+    answer = assistant.ask("Combien de fruits par jour ?")
+    assert answer.text.startswith("Les documents de référence de NutriScope ne traitent pas cette question")
+    assert "INSP" not in answer.text
+
+
+def test_answer_from_memory_triggers_a_document_search_by_the_agent():
+    assistant, documents = make_rag_assistant([
+        text_reply("Le Nutri-Score date de 2016 et compte 5 couleurs."),          # mémoire : 2016 inventé
+        text_reply("Un arrêté du 31 octobre 2017 fixe son calcul. Source : Vie publique (DILA)."),
+    ])
+    answer = assistant.ask("D'où vient le Nutri-Score ?")
+    assert documents.questions == ["D'où vient le Nutri-Score ?"]
+    assert [trace.name for trace in answer.tool_calls] == ["chercher_document"]
+    assert answer.outcome == "reviewed" and "2017" in answer.text
+
+
+def test_fallback_quotes_the_closest_passage():
+    assistant, _ = make_rag_assistant([
+        tool_reply("chercher_document", {"question": "Comment est calculé le Nutri-Score ?"}),
+        text_reply("Le calcul date de 1999."),
+        text_reply("Le calcul date toujours de 1999."),
+    ])
+    answer = assistant.ask("Comment est calculé le Nutri-Score ?")
+    assert answer.outcome == "fallback"
+    assert "« Un arrêté du 31 octobre 2017" in answer.text and "Vie publique (DILA)" in answer.text
+
+
+# --- produit ambigu : l'assistant demande, il ne choisit pas -------------------
+
+def test_ambiguous_search_gets_a_question_not_a_choice():
+    assistant, _ = make_assistant([
+        tool_reply("chercher_produit", {"nom": "biscuit fourré"}),
+        text_reply("Le biscuit fourré chocolat a un Nutri-Score D."),     # choix à la place de l'utilisateur
+    ])
+    answer = assistant.ask("Quel est le Nutri-Score du biscuit fourré ?")
+    assert answer.outcome == "clarification"
+    assert answer.text.startswith("Plusieurs produits correspondent à « biscuit fourré » :")
+    assert "Biscuit fourré chocolat de marque-b (code 3000000000024)" in answer.text
+    assert "Biscuit fourré vanille" in answer.text and answer.text.endswith("son code-barres.")
+
+
+def test_a_precise_search_settles_the_ambiguity():
+    assistant, _ = make_assistant([
+        tool_reply("chercher_produit", {"nom": "biscuit fourré"}),
+        tool_reply("chercher_produit", {"nom": "biscuit fourré vanille"}, call_id="call_2"),
+        text_reply("Le biscuit fourré vanille a un Nutri-Score D. Données : Open Food Facts."),
+    ])
+    answer = assistant.ask("Nutri-Score du biscuit fourré vanille ?")
+    assert answer.outcome == "answered" and "vanille" in answer.text
+
+
+def test_comparison_asks_only_about_the_ambiguous_product():
+    assistant, _ = make_assistant([
+        tool_reply("chercher_produit", {"nom": "yaourt nature"}),
+        tool_reply("chercher_produit", {"nom": "biscuit"}, call_id="call_2"),
+        text_reply("Le yaourt est meilleur que le biscuit fourré chocolat."),
+    ])
+    answer = assistant.ask("Compare le yaourt nature et le biscuit")
+    assert answer.outcome == "clarification"
+    assert "« biscuit »" in answer.text and "« yaourt nature »" not in answer.text
+
+
+class FakeListCatalog:
+    """Catalogue de test qui sait aussi lister : rend toujours les deux biscuits fourrés (ou rien)."""
+
+    def __init__(self, found=True):
+        self.catalog, self.found = fake_catalog(), found
+
+    def find_by_code(self, code):
+        return self.catalog.find_by_code(code)
+
+    def search_by_name(self, words, limit, query=None):
+        return self.catalog.search_by_name(words, limit, query=query)
+
+    def list_products(self, words, query, grades, sort, descending, limit):
+        return self.catalog.search_by_name(["biscuit", "fourre"], limit) if self.found else (0, [])
+
+
+@pytest.mark.parametrize("found, outcome", [(True, "answered"), (False, "clarification")])
+def test_a_list_question_is_not_asked_back(found, outcome):
+    registry = ToolRegistry.discover(ToolContext(catalog=FakeListCatalog(found)))
+    assert "lister_produits" in registry.names
+    client = FakeChatClient([
+        tool_reply("chercher_produit", {"nom": "biscuit fourré"}),                         # ambigu
+        tool_reply("lister_produits", {"mots": ["biscuit", "fourré"]}, call_id="call_2"),
+        text_reply("Deux biscuits fourrés du catalogue NutriScope, tous deux notés D."),
+    ])
+    assistant = Assistant(registry, client=client, config=FAKE_CONFIG, behavior=FAKE_BEHAVIOR)
+    answer = assistant.ask("Quels biscuits fourrés avez-vous ?")
+    assert answer.outcome == outcome   # liste rendue : pas de question ; liste vide : l'ambiguïté reste
+
+
+def test_answer_cut_by_the_token_limit_is_never_shown():
+    assistant, _ = make_assistant([
+        tool_reply("chercher_produit", {"nom": "yaourt nature"}),
+        {"content": "Le yaourt nature a un Nutri-Score", "finish_reason": "length"},
+    ])
+    answer = assistant.ask("Nutri-Score du yaourt nature ?")
+    assert answer.outcome == "fallback" and answer.text.startswith("Je préfère ne citer que des valeurs vérifiées")
+
+
+class FakeRouter:
+    def __init__(self, collection):
+        self.collection = collection
+
+    def closest_collection(self, question):
+        return self.collection
+
+
+def test_answer_from_memory_on_a_product_triggers_a_product_search():
+    documents = FakeDocuments()
+    registry = ToolRegistry.discover(ToolContext(catalog=fake_catalog(), documents=documents))
+    client = FakeChatClient([
+        text_reply("Le yaourt nature a 3 g de sucres."),                       # mémoire : 3 inventé
+        text_reply("La teneur en sucres n'est pas renseignée. Données : Open Food Facts."),
+    ])
+    assistant = Assistant(registry, client=client, config=FAKE_CONFIG, behavior=FAKE_BEHAVIOR,
+                          router=FakeRouter("sheets"))
+    answer = assistant.ask("yaourt nature")
+    assert [trace.name for trace in answer.tool_calls] == ["chercher_produit"]
+    assert answer.tool_calls[0].result["statut"] == "ok" and documents.questions == []
+    assert answer.outcome == "reviewed"

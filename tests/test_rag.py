@@ -5,7 +5,8 @@ import json
 import pytest
 
 from nutriscope.corpus import embeddings
-from nutriscope.rag import chunking, index, search, store
+from nutriscope.rag import chunking, index, retriever, search, store
+from nutriscope.tools import ToolContext, ToolRegistry
 
 
 # ---------- Faux Chroma : juste ce que le pipeline utilise ----------
@@ -14,9 +15,13 @@ class FakeCollection:
     def __init__(self, name, metadata):
         self.name, self.metadata, self.rows = name, metadata, {}
 
-    def get(self, include=(), limit=None, offset=0):
-        ids = sorted(self.rows)[offset:offset + limit if limit else None]
-        return {"ids": ids, "metadatas": [self.rows[i]["metadata"] for i in ids]}
+    def get(self, ids=None, include=(), limit=None, offset=0):
+        if ids is None:
+            ids = sorted(self.rows)[offset:offset + limit if limit else None]
+        else:
+            ids = [i for i in ids if i in self.rows]
+        return {"ids": ids, "metadatas": [self.rows[i]["metadata"] for i in ids],
+                "embeddings": [self.rows[i]["vector"] for i in ids]}
 
     def upsert(self, ids, embeddings, documents, metadatas):
         for chunk_id, vector, text, metadata in zip(ids, embeddings, documents, metadatas):
@@ -31,8 +36,10 @@ class FakeCollection:
 
     def query(self, query_embeddings, n_results, where=None, include=()):
         query = query_embeddings[0]
-        rows = [(chunk_id, row) for chunk_id, row in self.rows.items()
-                if not where or all(row["metadata"].get(key) == value for key, value in where.items())]
+        def accepted(metadata):
+            return all(metadata.get(key) in value["$in"] if isinstance(value, dict) else metadata.get(key) == value
+                       for key, value in (where or {}).items())
+        rows = [(chunk_id, row) for chunk_id, row in self.rows.items() if accepted(row["metadata"])]
         scored = sorted(rows, key=lambda item: -sum(a * b for a, b in zip(item[1]["vector"], query)))
         scored = scored[:n_results]
         return {"ids": [[i for i, _ in scored]], "documents": [[r["text"] for _, r in scored]],
@@ -130,8 +137,11 @@ def test_sheet_chunks(corpus):
     chunks = chunking.sheet_chunks(sheets)
     assert [chunk.id for chunk in chunks] == ["fiche:111", "fiche:222"]
     assert "Source :" in chunks[0].text and "Source :" not in chunks[0].to_embed
-    assert chunks[0].metadata == {"family": "sheet", "code": "111", "name": "Chocolat noir",
-                                  "incomplete_data": False}  # None retiré : Chroma le refuse
+    stored = chunks[0].stored_metadata()
+    assert "brand" not in stored, "None retiré : Chroma le refuse"
+    assert {key: stored[key] for key in ("family", "code", "name", "incomplete_data")} == {
+        "family": "sheet", "code": "111", "name": "Chocolat noir", "incomplete_data": False}
+    assert {"text_hash", "meta_hash"} <= set(stored)
 
 
 def test_document_chunks_status_pages_and_text(corpus):
@@ -200,6 +210,18 @@ def test_search_returns_closest_with_citation(corpus, monkeypatch):
     both = search.search_all("le nutri-score", k_sheets=1, k_documents=1, client=client, embedder=embedder.vector)
     assert both["documents"][0].citation == "Le Nutri-Score, p. 2"
 
+    # le filtre ne porte que sur les fiches : les documents n'ont pas ce champ
+    both = search.search_all("un chocolat", k_sheets=1, k_documents=1, where_sheets={"incomplete_data": True},
+                             client=client, embedder=embedder.vector)
+    assert both["sheets"][0].id == "fiche:222" and len(both["documents"]) == 1
+
+
+def test_section_filter_is_rejected_on_documents():
+    assert search.parse_args(["q", "--section", "Cheese"]).section == "Cheese"
+    assert search.parse_args(["q", "--no-instruction"]).no_instruction
+    with pytest.raises(SystemExit):
+        search.parse_args(["q", "--collection", "documents", "--section", "Cheese"])
+
 
 def test_query_text_and_model_names(monkeypatch):
     assert embeddings.query_text("Q ?", "Find it") == "Instruct: Find it\nQuery:Q ?"
@@ -212,3 +234,177 @@ def test_query_text_and_model_names(monkeypatch):
 def test_chroma_host_parsing(monkeypatch):
     monkeypatch.setenv("CHROMA_HOST", "localhost:8001/")
     assert store.chroma_host() == "http://localhost:8001"
+
+
+def test_metadata_change_keeps_the_vector(corpus):
+    sheets, _ = corpus
+    collection, embedder = FakeCollection("sheets", {}), CountingEmbedder()
+    chunks = chunking.sheet_chunks(sheets)
+    index.sync(collection, chunks, embedder, verbose=False)
+    retagged = [chunking.Chunk(chunk.id, chunk.text, {**chunk.metadata, "fat_100g": 12.5}, chunk.embed_text)
+                for chunk in chunks]
+    counts = index.sync(collection, retagged, embedder, verbose=False)
+    assert (counts["metadata"], counts["added"] + counts["updated"], embedder.calls) == (2, 0, 2)
+    assert collection.rows["fiche:111"]["metadata"]["fat_100g"] == 12.5
+
+
+def test_build_index_leaves_a_collection_without_corpus_untouched(corpus, tmp_path, monkeypatch):
+    sheets, _ = corpus
+    monkeypatch.setenv("OLLAMA_EMBED_MODEL", "fake-model")
+    monkeypatch.setattr(index, "embed_documents", lambda texts, model=None: CountingEmbedder()(texts))
+    client = FakeClient()
+    store.open_collection(client, "documents", "fake-model").upsert(["doc:x:0000"], [[1, 0, 0]], ["x"], [{}])
+    report = index.build_index(sheets_dir=sheets, documents_dir=tmp_path / "absent", client=client, verbose=False)
+    assert report["sheets"]["added"] == 2 and report["documents"] == {"missing": True}
+    assert client.collections["documents"].count() == 1
+
+
+# ---------- RagIndex : le catalogue derrière chercher_produit ----------
+
+def sheet_meta(code, name, brands, **values):
+    return {"family": "sheet", "code": code, "name": name, "brand": brands.split(",")[0], "brands": brands,
+            "nutriscore": "e", "nutriscore_score": 24, "section": "Sweets", **values}
+
+
+@pytest.fixture
+def rag(monkeypatch):
+    """Un index de 4 fiches et 1 passage ; vecteur = (chocolat, biscuit, nutri) selon les mots du texte."""
+    monkeypatch.setenv("OLLAMA_EMBED_MODEL", "fake-model")
+    client = FakeClient()
+    sheets_col = store.open_collection(client, "sheets", "fake-model")
+    rows = [("111", "Pâte à tartiner chocolat", "Choco, Marque", [0.9, 0.1, 0]),
+            ("222", "Pâte à tartiner chocolat", "Autre", [0.8, 0.2, 0]),
+            ("3000000000333", "Prince goût chocolat", "LU, Prince", [0.5, 0.86, 0]),
+            ("0012345678905", "Biscuit nature", "Sablé", [0, 1, 0])]
+    for code, name, brands, vector in rows:
+        sheets_col.upsert([f"fiche:{code}"], [vector], [name],
+                          [sheet_meta(code, name, brands, sugars_100g=56.3, fiber_100g=None)])
+    docs = store.open_collection(client, "documents", "fake-model")
+    docs.upsert(["doc:viepub-ns:0000"], [[0, 0, 1]], ["Le Nutri-Score classe les aliments de A à E."],
+                [{"family": "document", "source_id": "viepub-ns", "title": "Le Nutri-Score en cinq questions",
+                  "publisher": "Vie publique (DILA)", "updated": "2025-03-18"}])
+    vectors = {"nutella": [0, 0, 0.1], "pate a tartiner": [0.9, 0.1, 0], "prince lu": [0.3, 0.3, 0],
+               "chocolat tartinable": [0.95, 0.05, 0], "Comment est calculé le Nutri-Score ?": [0, 0, 1],
+               "Quel temps fera-t-il ?": [0.1, 0.1, 0.1]}
+    return retriever.RagIndex(client=client, embedder=lambda text: vectors[text])
+
+
+def test_rag_index_find_by_code_and_upc_variant(rag):
+    assert rag.find_by_code("012345678905")[0]["code"] == "0012345678905"   # UPC-A à 12 chiffres
+    assert rag.find_by_code("30000000009") == []
+
+
+def test_rag_index_lexical_then_semantic_then_nothing(rag):
+    total, rows = rag.search_by_name(["pate", "a", "tartiner"], 5, query="pate a tartiner")
+    assert total == 2 and {row["code"] for row in rows} == {"111", "222"}
+    total, rows = rag.search_by_name(["prince", "lu"], 5, query="prince lu")      # score faible, mots présents
+    assert (total, rows[0]["code"]) == (1, "3000000000333")
+    total, rows = rag.search_by_name(["chocolat", "tartinable"], 5, query="chocolat tartinable")  # repli
+    assert (total, rows[0]["code"]) == (1, "111"), "seule la meilleure, à moins de NAME_MARGIN"
+    assert rag.search_by_name(["nutella"], 5, query="nutella") == (0, [])
+
+
+def test_chercher_produit_keeps_its_contract_on_the_rag_index(rag):
+    registry = ToolRegistry.discover(ToolContext(catalog=rag, documents=rag))
+    assert {"chercher_produit", "chercher_document"} <= set(registry.names)
+    result = registry.run("chercher_produit", {"code": "3000000000333"})
+    assert result["statut"] == "ok" and result["total"] == 1
+    fiche = result["produits"][0]
+    assert fiche["nom"] == "Prince goût chocolat" and fiche["marque"] == "LU, Prince"
+    assert fiche["nutriscore"] == "E" and fiche["score_nutriscore"] == 24
+    assert fiche["nutriments"]["sucres"] == 56.3 and fiche["nutriments"]["fibres"] is None
+    assert fiche["donnees_incompletes"] is True
+    assert registry.run("chercher_produit", {"nom": "nutella"}) == {"statut": "introuvable", "total": 0,
+                                                                    "produits": []}
+
+
+def test_chercher_document(rag):
+    registry = ToolRegistry.discover(ToolContext(catalog=rag, documents=rag))
+    result = registry.run("chercher_document", {"question": "Comment est calculé le Nutri-Score ?"})
+    assert result["statut"] == "ok" and result["total"] == 1
+    passage = result["passages"][0]
+    assert passage["editeur"] == "Vie publique (DILA)" and passage["mis_a_jour"] == "2025-03-18"
+    assert passage["texte"].startswith("Le Nutri-Score classe")
+    far = registry.run("chercher_document", {"question": "Quel temps fera-t-il ?"})
+    assert far == {"statut": "introuvable", "total": 0, "passages": []}
+    assert "erreur" in registry.run("chercher_document", {"question": "x", "rayon": "y"})
+    assert "erreur" in registry.run("chercher_document", {"limite": 2})
+
+
+def test_document_tool_is_absent_without_documents():
+    assert "chercher_document" not in ToolRegistry.discover(ToolContext(catalog=None)).names
+
+
+def test_default_catalog_is_the_rag_index():
+    from nutriscope import catalog
+    assert isinstance(catalog.default_catalog(), retriever.RagIndex)   # paresseux : aucun appel réseau
+
+
+# ---------- lister_produits : plusieurs produits d'un type, classés ----------
+
+@pytest.mark.parametrize("word, text, expected", [
+    ("biscuits", "biscuit nature", True), ("biscuit", "biscuits and cakes", True),
+    ("gateaux", "gateau basque", True), ("chips", "archipel", False), ("chips", "chipolata", False),
+    ("eau", "gateau", False), ("eau", "eaux minerales", True), ("jus", "pur jus", True),
+])
+def test_word_pattern_whole_word_singular_or_plural(word, text, expected):
+    assert bool(retriever.word_pattern(word).search(text)) is expected
+
+
+@pytest.fixture
+def shelf(monkeypatch):
+    """5 fiches : 3 biscuits (dont 1 par sa seule catégorie), 1 yaourt, 1 soda ; vecteur = (biscuit, yaourt, soda)."""
+    monkeypatch.setenv("OLLAMA_EMBED_MODEL", "fake-model")
+    client = FakeClient()
+    col = store.open_collection(client, "sheets", "fake-model")
+    rows = [("1", "Biscuit nature", "Biscuits and cakes", "b", 2, 20.0, [1, 0, 0]),
+            ("2", "Sablé au beurre", "Biscuits and cakes", "a", -1, 12.0, [0.9, 0, 0]),
+            ("3", "Biscuits fourrés", "Biscuits and cakes", "d", 14, None, [0.95, 0, 0]),
+            ("4", "Yaourt nature", "Milk and yogurt", "a", 0, 4.0, [0, 1, 0]),
+            ("5", "Cola", "Sweetened beverages", "e", 13, 10.6, [0, 0, 1])]
+    for code, name, group, grade, score, sugars, vector in rows:
+        col.upsert([f"fiche:{code}"], [vector], [name],
+                   [sheet_meta(code, name, "Marque", pnns_group_2=group, nutriscore=grade, nutriscore_score=score,
+                               sugars_100g=sugars)])
+    vectors = {"biscuits": [1, 0, 0], "boisson gazeuse": [0, 0, 1], "ordinateur": [0.3, 0.3, 0.3]}
+    return retriever.RagIndex(client=client, embedder=lambda text: vectors[text])
+
+
+def test_list_products_by_words_and_category_label(shelf):
+    total, rows = shelf.list_products(["biscuits"], "biscuits", None, "nutriscore_score", False, 5)
+    assert total == 3 and [row["code"] for row in rows] == ["2", "1", "3"]   # meilleur score d'abord
+    total, rows = shelf.list_products(["biscuits"], "biscuits", ["a", "b"], "sugars_100g", False, 5)
+    assert [row["code"] for row in rows] == ["2", "1"]
+    total, rows = shelf.list_products(["biscuits"], "biscuits", None, "sugars_100g", True, 5)
+    assert [row["code"] for row in rows] == ["1", "2", "3"], "valeur non renseignée en dernier"
+    assert shelf.list_products(["gateaux"], "gateaux", None, "nutriscore_score", False, 5)[0] == 3
+
+
+def test_list_products_semantic_fallback_then_nothing(shelf):
+    total, rows = shelf.list_products(["boisson", "gazeuse"], "boisson gazeuse", None, "nutriscore_score", False, 5)
+    assert (total, rows[0]["code"]) == (1, "5")
+    assert shelf.list_products(["ordinateur"], "ordinateur", None, "nutriscore_score", False, 5) == (0, [])
+
+
+def test_list_products_filters_the_type_found_never_replaces_it(shelf):
+    # des yaourts existent, aucun noté E : introuvable, sans repli sémantique (l'embedder ne connaît pas « yaourt »)
+    assert shelf.list_products(["yaourt"], "yaourt", ["e"], "nutriscore_score", False, 5) == (0, [])
+
+
+def test_lister_produits_contract(shelf):
+    registry = ToolRegistry.discover(ToolContext(catalog=shelf))
+    result = registry.run("lister_produits", {"mots": ["biscuits"], "nutriscore_max": "b", "tri": "sucres"})
+    assert (result["statut"], result["total"], result["tri"], result["ordre"]) == ("ok", 2, "sucres", "le moins d'abord")
+    first = result["produits"][0]
+    assert list(first) == ["rang", "code", "nom", "marque", "nutriscore", "categorie", "nutriments"]
+    assert (first["rang"], first["nom"], first["nutriscore"], first["nutriments"]["sucres"]) == (1, "Sablé au beurre", "A", 12.0)
+    assert registry.run("lister_produits", {"mots": ["ordinateur"]})["statut"] == "introuvable"
+    for bad in ({"mots": ["biscuits"], "limite": 6}, {"mots": ["biscuits"], "nutriscore_max": "F"},
+                {"mots": ["biscuits"], "tri": "prix"}, {"mots": ["  "]}, {"mots": []}, {"mots": "biscuits"},
+                {"mots": ["a", "b", "c", "d", "e", "f"]}, {"recherche": "biscuits"}, {"nom": "biscuits"}):
+        assert "erreur" in registry.run("lister_produits", bad), bad
+
+
+def test_list_tool_needs_a_catalog_that_can_list():
+    from nutriscope.catalog import InMemoryCatalog
+    assert "lister_produits" not in ToolRegistry.discover(ToolContext(catalog=InMemoryCatalog([]))).names

@@ -30,8 +30,8 @@ Le détail du flux, des commandes et des durées est dans
 
 ## Assistant conversationnel (TP 18) et scanner d'étiquettes
 
-L'assistant répond sur les produits **à partir du catalogue PostgreSQL**, jamais de mémoire. Le modèle
-demande des outils ; c'est notre code qui vérifie, exécute et relit.
+L'assistant répond **à partir de l'index du RAG** (fiches produits et documents de référence, ADR 0004
+et 0005), jamais de mémoire. Le modèle demande des outils ; c'est notre code qui vérifie, exécute et relit.
 
 ```mermaid
 flowchart TD
@@ -45,15 +45,22 @@ flowchart TD
         M[LLM qwen3-vl-4b-instruct<br/>llama.cpp, LLAMACPP_HOST] -- demande d'outil --> V{Registre d'outils<br/>nom connu ? arguments valides ?}
         V -- non --> E["{erreur: ...} renvoyé au modèle"] --> M
         V -- oui --> T[chercher_produit]
-        T --> DB[(PostgreSQL nutriscope<br/>connexion lecture seule)]
-        DB --> T -- fiches --> M
+        V -- oui --> TD[chercher_document]
+        V -- oui --> TL[lister_produits]
+        T --> IDX[(Chroma : collection sheets<br/>vecteurs qwen3-embedding, Ollama)]
+        TL --> IDX
+        IDX --> TL -- fiches classées --> M
+        TD --> IDXD[(Chroma : collection documents)]
+        IDX --> T -- fiches --> M
+        IDXD --> TD -- passages + source --> M
     end
-    M -- réponse texte --> RV{Relecture en code :<br/>chaque nombre est dans<br/>un résultat d'outil ?}
-    RV -- non, 1 tour de correction --> M
-    RV -- toujours non --> FB[Réponse de repli<br/>construite depuis les fiches]
-    RV -- oui --> A([Réponse + « Données : Open Food Facts »])
+    M -- réponse texte --> AMB{Produit ambigu<br/>non tranché, sans liste ?}
+    AMB -- oui --> Q([Question de précision construite en code :<br/>candidats, marque, code-barres])
+    AMB -- non --> RV{Relecture en code :<br/>chaque nombre est dans<br/>un résultat d'outil ?}
+    RV -- non, 1 tour de correction<br/>+ chercher_document lancé par le code<br/>si aucun outil appelé --> M
+    RV -- toujours non --> FB[Réponse de repli<br/>construite depuis les fiches<br/>ou le passage le plus proche]
+    RV -- oui --> A([Réponse + « Données : Open Food Facts »<br/>ou « Source : éditeur, titre, date »])
     SB[Moteur de substitution TP 16]:::later -.TP 21.-> V
-    RAG[RAG / embeddings]:::later -.à venir.-> V
     API[API FastAPI + application]:::later -.TP 23.-> U
     classDef later stroke-dasharray: 5 5,color:#888
 ```
@@ -65,11 +72,13 @@ flowchart TD
 | Boucle d'outils | appels au modèle, exécution des outils, tours bornés, réponse sans outil au dernier tour | `assistant/agent.py` | branché |
 | Registre d'outils (plugins) | découvre les modules de `tools/` ; refuse un outil inconnu ; ne lève jamais d'exception | `tools/__init__.py`, `tools/base.py` | branché |
 | `chercher_produit` | contrat imposé : `nom` / `code` / `limite`, statut `ok` / `ambigu` / `introuvable`, `null` jamais 0 | `tools/search_product.py` | branché |
-| Catalogue | requêtes paramétrées sur PostgreSQL, session en lecture seule, délai max 5 s ; casse et accents ignorés ; le nom cherche aussi la marque | `catalog.py` | branché |
-| Garde-fous en code | refus médical avant le modèle ; relecture des nombres ; lecture non vérifiée toujours annoncée | `assistant/guards.py` | branché |
+| `lister_produits` | contrat de l'équipe : `mots` (mots-clés donnés par le modèle) / `nutriscore_max` / `tri` / `limite` (5 au plus) ; produits d'un type, classés ; jamais `ambigu` | `tools/list_products.py` | branché |
+| `chercher_document` | contrat de l'équipe : `question` / `limite` ; passages d'origine avec éditeur, titre, page, date ; `introuvable` sous le seuil de 0,5 | `tools/search_document.py` | branché |
+| Catalogue | index Chroma (ADR 0005) : code exact par identifiant ; nom = 20 fiches les plus proches, puis celles qui contiennent tous les mots du nom ou de la marque, sinon repli sémantique (seuil 0,5) | `rag/retriever.py` | branché |
+| Garde-fous en code | refus médical avant le modèle ; produit `ambigu` non tranché : question de précision construite en code (candidats, marque, code-barres), sauf après une liste réussie ; réponse coupée par la limite de tokens : repli ; relecture des nombres (réponse de mémoire : l'agent lance lui-même l'outil de la collection la plus proche) ; question générale sans document : réponse fixe ; lecture non vérifiée toujours annoncée | `assistant/guards.py`, `assistant/agent.py` | branché |
 | Scanner d'étiquettes | photo → lecture (vision) → validation → vote → `chercher_produit` → `verifie` / `non_verifie` / `illisible` | `scanner/` | branché |
 | Substitution | `SubstitutionEngine` du TP 16 exposé comme plugin | `substitution.py` → futur `tools/substitutes.py` | TP 21 |
-| RAG | recherche sémantique (fiches, ingrédients) | — | à venir |
+| RAG | fiches et documents découpés, vectorisés (Ollama) et indexés (Chroma) ; étapes `sheets` et `embeddings` du pipeline | `corpus/`, `rag/`, docs/ia/rag.md | branché |
 | API / application | route de chat qui appelle `Assistant.ask` | `api/` (stack Docker) | TP 23 |
 
 ### Où passent les garde-fous, et pourquoi là

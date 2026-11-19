@@ -5,9 +5,9 @@ PY ?= python
 ARGS ?=
 export PYTHONUTF8 = 1
 
-STEPS = load clean_data load_database parquet exports
+STEPS = load clean_data load_database parquet exports sheets embeddings
 
-.PHONY: install pipeline extrait $(STEPS) test clean clean-all
+.PHONY: install pipeline extrait $(STEPS) rag documents test clean clean-all
 
 # Dans un venv activé : dépendances épinglées + package nutriscope en mode éditable
 install:
@@ -23,6 +23,16 @@ extrait:
 
 $(STEPS):
 	$(PY) -m nutriscope.pipeline $@ $(ARGS)
+
+# RAG seul : fiches depuis le dernier nettoyé, puis index Chroma (services chroma et ollama démarrés).
+# Ex. : make rag ARGS="--embed-device cpu" ; make embeddings ARGS="--index-limit 500"
+rag:
+	$(PY) -m nutriscope.pipeline sheets $(ARGS)
+	$(PY) -m nutriscope.pipeline embeddings $(ARGS)
+
+# Documents de référence (téléchargement, hors pipeline) ; ARGS="--include-unverified" pour tous
+documents:
+	$(PY) -m nutriscope.corpus.scraping $(ARGS)
 
 test:
 	$(PY) -m pytest -q $(ARGS)

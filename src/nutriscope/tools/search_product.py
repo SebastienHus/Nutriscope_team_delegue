@@ -17,6 +17,10 @@ Arguments invalides -> {"erreur": "<explication>"}, jamais d'exception. Une rech
 (plus de `catalog.MAX_MATCHES` produits, ex. « de ») rend aussi une erreur, qui demande de préciser
 le nom : classer autant de produits dépasserait le délai de la base, et le contrat reste inchangé.
 Le nom cherche aussi dans la marque (« prince lu » trouve les Prince de LU).
+
+Derrière l'outil, le catalogue est l'index du RAG (``nutriscope.rag.retriever.RagIndex``, ADR 0005),
+qui a remplacé la base PostgreSQL : le contrat ne change pas, seule la façon de chercher change
+(proximité sémantique, puis mots du nom ou de la marque).
 """
 
 from __future__ import annotations
@@ -99,7 +103,8 @@ class SearchProductTool(Tool):
             total = len(rows)
         else:
             try:
-                total, rows = self.catalog.search_by_name(search_words(arguments["nom"]), limit)
+                total, rows = self.catalog.search_by_name(search_words(arguments["nom"]), limit,
+                                                          query=arguments["nom"])
             except TooManyMatches as exc:
                 return {"erreur": f"`nom` is too vague ({exc}): add words, e.g. the brand or the product type"}
         products = [build_fiche(row) for row in rows[:limit]]

@@ -58,9 +58,20 @@ def test_write_sheets_and_metadata(tmp_path):
     assert (tmp_path / "3017620422003.txt").read_text(encoding="utf-8").startswith("Produit :")
     lines = (tmp_path / sheets.METADATA_FILE).read_text(encoding="utf-8").splitlines()
     first = json.loads(lines[0])
-    assert first == {"code": "0012345678905", "name": "Le Goût Primeur", "brand": "Savencia",
-                     "section": "Cheese", "nutriscore": "d", "incomplete_data": True,
-                     "source": "Open Food Facts (licence ODbL), export du 2026-10-06"}
+    assert {key: first[key] for key in ("code", "name", "brand", "section", "nutriscore", "incomplete_data",
+                                        "source")} == {
+        "code": "0012345678905", "name": "Le Goût Primeur", "brand": "Savencia", "section": "Cheese",
+        "nutriscore": "d", "incomplete_data": True, "source": "Open Food Facts (licence ODbL), export du 2026-10-06"}
+    # valeurs brutes pour la fiche de chercher_produit : nombres, toutes les marques, None si absent
+    assert first["brands"] == "Savencia, St Moret" and first["nutriscore_score"] == 14
+    assert first["fat_100g"] == 17.8 and first["fiber_100g"] is None and first["quantity"] is None
+
+
+def test_read_catalogue_accepts_pipeline_parquet(tmp_path):
+    path = tmp_path / "products_clean_20261116.parquet"
+    pd.DataFrame([product(code="0012345678905", quantity="200 g")]).to_parquet(path)
+    df = sheets.read_catalogue(path)
+    assert df.loc[0, "code"] == "0012345678905" and df.loc[0, "quantity"] == "200 g"
 
 
 HTML = """<html><head><meta property="article:modified_time" content="2026-10-01T16:58:43+02:00"></head>

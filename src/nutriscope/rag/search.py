@@ -12,6 +12,8 @@ cosinus (1 - distance de Chroma), entre -1 et 1.
     hits = search("Nutri-Score", collection="sheets", where={"incomplete_data": False})
 
     python -m nutriscope.rag.search "comment est calculé le Nutri-Score ?" --collection documents
+    python -m nutriscope.rag.search "peu salé" --collection sheets --section Cheese
+    python -m nutriscope.rag.search "pâte à tartiner" --no-instruction   # sans la consigne, pour comparer
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ import argparse
 from dataclasses import dataclass, field
 from typing import Callable
 
-from ..corpus.embeddings import embed_model, embed_model_id, embed_query
+from ..corpus.embeddings import embed_documents, embed_model, embed_model_id, embed_query
 from ..options import load_env_file
 from .store import COLLECTIONS, DOCUMENTS, SHEETS, chroma_client, open_collection
 
@@ -55,23 +57,33 @@ def query_collection(collection, name: str, vector: list[float], k: int, where: 
                                                           result["metadatas"][0], result["distances"][0])]
 
 
+def question_vector(question: str, instruction: bool = True) -> list[float]:
+    """Vecteur de la question, avec la consigne (défaut) ou brute, comme un document (pour comparer)."""
+    if instruction:
+        return embed_query(question, model=embed_model())
+    return embed_documents([question], model=embed_model())[0]
+
+
 def search(question: str, collection: str = SHEETS, k: int = 5, where: dict | None = None,
-           client=None, embedder: Callable[[str], list[float]] | None = None) -> list[Hit]:
+           client=None, embedder: Callable[[str], list[float]] | None = None,
+           instruction: bool = True) -> list[Hit]:
     """Les ``k`` morceaux les plus proches de la question, du plus proche au moins proche."""
-    vector = (embedder or (lambda text: embed_query(text, model=embed_model())))(question)
+    vector = embedder(question) if embedder else question_vector(question, instruction)
     client = client or chroma_client()
     return query_collection(open_collection(client, collection, embed_model_id(), create=False), collection,
                             vector, k, where)
 
 
-def search_all(question: str, k_sheets: int = 5, k_documents: int = 3, client=None,
-               embedder: Callable[[str], list[float]] | None = None) -> dict[str, list[Hit]]:
-    """Les deux collections, chacune avec son ``k`` ; la question n'est vectorisée qu'une fois."""
-    vector = (embedder or (lambda text: embed_query(text, model=embed_model())))(question)
+def search_all(question: str, k_sheets: int = 5, k_documents: int = 3, where_sheets: dict | None = None,
+               client=None, embedder: Callable[[str], list[float]] | None = None,
+               instruction: bool = True) -> dict[str, list[Hit]]:
+    """Les deux collections, chacune avec son ``k`` ; la question n'est vectorisée qu'une fois.
+    ``where_sheets`` ne filtre que les fiches (rayon, Nutri-Score...) : les documents n'ont pas ces champs."""
+    vector = embedder(question) if embedder else question_vector(question, instruction)
     client = client or chroma_client()
     return {name: query_collection(open_collection(client, name, embed_model_id(), create=False), name,
-                                   vector, k, None)
-            for name, k in ((SHEETS, k_sheets), (DOCUMENTS, k_documents))}
+                                   vector, k, where)
+            for name, k, where in ((SHEETS, k_sheets, where_sheets), (DOCUMENTS, k_documents, None))}
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -82,16 +94,27 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="collection interrogée (défaut : les deux)")
     parser.add_argument("-k", type=int, default=5, help="nombre de morceaux par collection")
     parser.add_argument("--chars", type=int, default=300, help="caractères affichés par morceau")
-    return parser.parse_args(argv)
+    parser.add_argument("--section", default=None,
+                        help="filtre sur la métadonnée section (rayon) des fiches, valeur exacte (ex. Cheese)")
+    parser.add_argument("--no-instruction", action="store_true",
+                        help="vectorise la question sans consigne (pour mesurer ce qu'elle apporte)")
+    args = parser.parse_args(argv)
+    if args.section and args.collection == DOCUMENTS:
+        parser.error("--section only applies to the sheets collection")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
     load_env_file()
     args = parse_args(argv)
+    where = {"section": args.section} if args.section else None
+    instruction = not args.no_instruction
     if args.collection == "both":
-        results = search_all(args.question, k_sheets=args.k, k_documents=args.k)
+        results = search_all(args.question, k_sheets=args.k, k_documents=args.k, where_sheets=where,
+                             instruction=instruction)
     else:
-        results = {args.collection: search(args.question, args.collection, args.k)}
+        results = {args.collection: search(args.question, args.collection, args.k, where=where,
+                                           instruction=instruction)}
     for name, hits in results.items():
         print(f"== {name}")
         for rank, hit in enumerate(hits, start=1):

@@ -10,8 +10,8 @@ et **4 documents** (281 morceaux, dont 16 pour la seule source autorisée aujour
 [docs/ia/corpus.md](../ia/corpus.md). La recherche avec NumPy seul (séquence 2 du 17/11) suffit
 pour 50 fiches, mais pas pour un index persistant partagé par l'assistant et les scripts.
 
-Plus tard, l'outil de recherche de l'assistant passera par cet index et **remplacera la recherche
-SQL** (`chercher_produit`).
+L'outil de recherche de l'assistant passe désormais par cet index, à la place de la recherche
+SQL (`chercher_produit`) : voir l'[ADR 0005](0005-chercher-produit-sur-l-index-rag.md).
 
 ## Options
 
